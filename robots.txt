@@ -1,0 +1,104 @@
+# Baseline Studio — robots.txt
+# https://www.baselinestudiofl.com
+
+# ── Search engines: full access ───────────────────────────────────────────────
+User-agent: Googlebot
+Allow: /
+
+User-agent: Bingbot
+Allow: /
+
+User-agent: msnbot
+Allow: /
+
+User-agent: BingPreview
+Allow: /
+
+User-agent: Slurp
+Allow: /
+
+User-agent: DuckDuckBot
+Allow: /
+
+# ── AI search & citation bots: allowed ────────────────────────────────────────
+# These power AI search results — ChatGPT, Perplexity, Gemini, Claude, Apple.
+# Blocking these makes you invisible when someone asks an AI "best DJ Miami."
+
+# OpenAI — ChatGPT search & browsing
+User-agent: GPTBot
+Allow: /
+
+User-agent: ChatGPT-User
+Allow: /
+
+User-agent: OAI-SearchBot
+Allow: /
+
+# Anthropic — Claude search citations
+User-agent: ClaudeBot
+Allow: /
+
+# Perplexity — major AI search engine
+User-agent: PerplexityBot
+Allow: /
+
+# Google AI Overviews & Gemini search
+User-agent: Google-Extended
+Allow: /
+
+# Apple Intelligence search
+User-agent: Applebot-Extended
+Allow: /
+
+# You.com AI search
+User-agent: YouBot
+Allow: /
+
+# ── Pure training bots: blocked ───────────────────────────────────────────────
+# These harvest content for model training with no citation benefit.
+
+# Anthropic training (separate from ClaudeBot search)
+User-agent: anthropic-ai
+Disallow: /
+
+# Common Crawl (feeds bulk AI datasets, no search citation)
+User-agent: CCBot
+Disallow: /
+
+# Meta AI training
+User-agent: FacebookBot
+Disallow: /
+
+# Cohere training
+User-agent: cohere-ai
+Disallow: /
+
+# ByteDance / TikTok
+User-agent: Bytespider
+Disallow: /
+
+# Amazon
+User-agent: Amazonbot
+Disallow: /
+
+# Diffbot (data extraction, no citation)
+User-agent: Diffbot
+Disallow: /
+
+# Allen Institute for AI training
+User-agent: AI2Bot
+Disallow: /
+
+# Omgili social data harvesting
+User-agent: omgilibot
+Disallow: /
+
+# ── All other bots: full access except private pages ─────────────────────────
+User-agent: *
+Allow: /
+Disallow: /portal-client.html
+Disallow: /portal-provider.html
+Disallow: /login.html
+Disallow: /reset-password.html
+
+Sitemap: https://www.baselinestudiofl.com/sitemap.xml

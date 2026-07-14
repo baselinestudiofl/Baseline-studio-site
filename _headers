@@ -1,0 +1,65 @@
+# Cloudflare Pages headers
+
+# Security headers — applied to all pages
+/*
+  X-Frame-Options: SAMEORIGIN
+  X-Content-Type-Options: nosniff
+  Referrer-Policy: strict-origin-when-cross-origin
+  Permissions-Policy: camera=(), microphone=(), geolocation=()
+  Strict-Transport-Security: max-age=63072000; includeSubDomains; preload
+
+# HTML — short cache, always revalidate (so updates go live fast)
+/*.html
+  Cache-Control: public, max-age=0, must-revalidate
+
+# CSS and JS — short cache while the portal is under active development.
+# (Browsers were holding old JS for a year and breaking logins after deploys.
+#  Once things stabilize, restore long cache + version query strings on script tags.)
+/*.css
+  Cache-Control: public, max-age=300, must-revalidate
+
+/*.js
+  Cache-Control: public, max-age=300, must-revalidate
+
+# Images — long cache
+/*.png
+  Cache-Control: public, max-age=31536000, immutable
+
+/*.jpg
+  Cache-Control: public, max-age=31536000, immutable
+
+/*.jpeg
+  Cache-Control: public, max-age=31536000, immutable
+
+/*.webp
+  Cache-Control: public, max-age=31536000, immutable
+
+/*.ico
+  Cache-Control: public, max-age=31536000, immutable
+
+/*.svg
+  Cache-Control: public, max-age=31536000, immutable
+
+# Fonts
+/*.woff2
+  Cache-Control: public, max-age=31536000, immutable
+
+/*.woff
+  Cache-Control: public, max-age=31536000, immutable
+
+# Text files — moderate cache
+/llms.txt
+  Cache-Control: public, max-age=86400
+  Content-Type: text/plain; charset=utf-8
+
+/robots.txt
+  Cache-Control: public, max-age=86400
+
+/sitemap.xml
+  Cache-Control: public, max-age=86400
+
+# Markdown mirrors — served as plain text so AI crawlers and bots can read them
+/md/*.md
+  Content-Type: text/markdown; charset=utf-8
+  Cache-Control: public, max-age=86400
+  X-Robots-Tag: all

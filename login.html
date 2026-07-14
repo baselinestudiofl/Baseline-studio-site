@@ -1,0 +1,411 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+    <meta name="robots" content="noindex, nofollow">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Login | Baseline Studio</title>
+<!-- Google tag (gtag.js) -->
+<script async src="https://www.googletagmanager.com/gtag/js?id=G-420BHQKJE5"></script>
+<script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  gtag('js', new Date());
+  gtag('config', 'G-420BHQKJE5');
+</script>
+<link rel="stylesheet" href="fonts/fonts.css">
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  :root {
+    --black: #000; --black-2: #0a0a0a; --black-3: #111;
+    --white: #fff; --cyan: #1FA3E0; --cyan-dark: #1585b8; --cyan-dim: rgba(31,163,224,0.1);
+    --gray: #888; --border: rgba(255,255,255,0.1);
+    --font-head: 'Anton', Impact, sans-serif;
+    --font-body: 'Barlow', system-ui, sans-serif;
+    --font-cond: 'Barlow Condensed', sans-serif;
+  }
+  html, body { height: 100%; }
+  body { background: var(--black); color: var(--white); font-family: var(--font-body); display: flex; min-height: 100vh; }
+
+  /* LEFT PANEL */
+  .l-panel {
+    width: 45%; background: linear-gradient(160deg, #071e28 0%, #04121a 50%, #020a10 100%);
+    display: flex; flex-direction: column; justify-content: space-between;
+    padding: 3rem; position: relative; overflow: hidden;
+  }
+  .l-panel::before {
+    content: ''; position: absolute; inset: 0;
+    background: radial-gradient(ellipse at 30% 70%, rgba(31,163,224,0.12) 0%, transparent 60%);
+  }
+  .l-logo { display: flex; align-items: center; gap: 10px; position: relative; z-index: 2; }
+  .l-hero { position: relative; z-index: 2; }
+  .l-tagline { font-family: var(--font-head); font-size: clamp(2.5rem, 5vw, 4.5rem); text-transform: uppercase; line-height: 0.95; margin-bottom: 2rem; }
+  .l-features { display: flex; flex-direction: column; gap: 1.2rem; }
+  .l-feature { display: flex; align-items: flex-start; gap: 1rem; }
+  .l-feature-icon { width: 32px; height: 32px; border: 1px solid rgba(31,163,224,0.4); border-radius: 6px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; color: var(--cyan); font-family: var(--font-cond); font-size: 0.7rem; font-weight: 700; letter-spacing: 0.1em; }
+  .l-feature-text { font-size: 0.85rem; color: rgba(255,255,255,0.7); line-height: 1.5; }
+  .l-feature-text strong { color: var(--white); font-weight: 600; }
+  .l-back { position: relative; z-index: 2; font-size: 0.75rem; color: rgba(255,255,255,0.4); letter-spacing: 0.08em; }
+  .l-back a { color: var(--cyan); }
+
+  /* RIGHT PANEL */
+  .r-panel { flex: 1; display: flex; align-items: center; justify-content: center; padding: 3rem; background: var(--black); }
+  .login-box { width: 100%; max-width: 420px; }
+  .login-title { font-family: var(--font-head); font-size: 2.2rem; text-transform: uppercase; margin-bottom: 0.5rem; }
+  .login-sub { font-size: 0.85rem; color: var(--gray); margin-bottom: 2.5rem; }
+
+  /* TABS */
+  .tabs { display: flex; border-bottom: 1px solid var(--border); margin-bottom: 2rem; }
+  .tab-btn { flex: 1; padding: 0.9rem; background: none; border: none; color: var(--gray); font-family: var(--font-body); font-size: 0.8rem; font-weight: 600; letter-spacing: 0.1em; text-transform: uppercase; cursor: pointer; border-bottom: 2px solid transparent; margin-bottom: -1px; transition: all 0.2s; }
+  .tab-btn.active { color: var(--cyan); border-bottom-color: var(--cyan); }
+  .tab-panel { display: none; }
+  .tab-panel.active { display: block; }
+
+  /* FORM */
+  .f-group { margin-bottom: 1.4rem; }
+  .f-label { display: block; font-size: 0.72rem; font-weight: 600; letter-spacing: 0.12em; text-transform: uppercase; color: rgba(255,255,255,0.55); margin-bottom: 0.5rem; }
+  .f-input { width: 100%; background: var(--black-2); border: 1px solid var(--border); color: var(--white); font-family: var(--font-body); font-size: 0.95rem; padding: 0.8rem 1rem; outline: none; transition: border-color 0.2s; border-radius: 2px; }
+  .f-input:focus { border-color: var(--cyan); }
+  .f-input::placeholder { color: rgba(255,255,255,0.2); }
+  .f-btn { width: 100%; padding: 1rem; background: var(--cyan); border: none; color: var(--white); font-family: var(--font-body); font-size: 0.82rem; font-weight: 700; letter-spacing: 0.14em; text-transform: uppercase; cursor: pointer; transition: background 0.2s; margin-top: 0.5rem; border-radius: 2px; }
+  .f-btn:hover { background: var(--cyan-dark); }
+  .f-btn:disabled { opacity: 0.6; cursor: not-allowed; }
+  .f-btn-ghost { width: 100%; padding: 0.8rem; background: none; border: 1px solid var(--border); color: rgba(255,255,255,0.5); font-family: var(--font-body); font-size: 0.8rem; font-weight: 600; letter-spacing: 0.1em; text-transform: uppercase; cursor: pointer; transition: all 0.2s; margin-top: 0.6rem; border-radius: 2px; }
+  .f-btn-ghost:hover { border-color: rgba(255,255,255,0.3); color: var(--white); }
+  .f-err { color: #ff6b6b; font-size: 0.8rem; margin-top: 1rem; display: none; }
+  .f-ok  { color: #5cdb95; font-size: 0.8rem; margin-top: 1rem; display: none; }
+  .f-link { display: block; text-align: right; font-size: 0.78rem; color: rgba(255,255,255,0.4); cursor: pointer; margin-top: 0.4rem; background: none; border: none; padding: 0; transition: color 0.2s; }
+  .f-link:hover { color: var(--cyan); }
+
+  /* FORGOT PASSWORD VIEW */
+  #forgot-view { display: none; }
+  #forgot-view.active { display: block; }
+  .back-link { display: inline-flex; align-items: center; gap: 0.4rem; font-size: 0.78rem; color: rgba(255,255,255,0.45); cursor: pointer; background: none; border: none; padding: 0; margin-bottom: 2rem; transition: color 0.2s; }
+  .back-link:hover { color: var(--white); }
+  .forgot-title { font-family: var(--font-head); font-size: 1.6rem; text-transform: uppercase; margin-bottom: 0.5rem; }
+  .forgot-sub { font-size: 0.85rem; color: var(--gray); margin-bottom: 2rem; line-height: 1.6; }
+
+  @media (max-width: 768px) {
+    body { flex-direction: column; }
+    .l-panel { width: 100%; padding: 2rem; min-height: auto; }
+    .l-features { display: none; }
+    .l-tagline { font-size: 2.5rem; margin-bottom: 1rem; }
+    .r-panel { padding: 2rem; }
+  }
+</style>
+<link rel="icon" href="favicon.ico" sizes="any">
+<link rel="icon" href="favicon-32x32.png" type="image/png" sizes="32x32">
+<link rel="icon" href="favicon-16x16.png" type="image/png" sizes="16x16">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<link rel="stylesheet" href="fable.css">
+</head>
+<body>
+
+<div class="l-panel">
+  <a href="/" class="l-logo">
+    <img src="logo-full.webp" alt="Baseline Studio" style="height:44px;width:auto;" width="281" height="88">
+  </a>
+  <div class="l-hero">
+    <h1 class="l-tagline">Execution<br>Starts<br>Here</h1>
+    <div class="l-features">
+      <div class="l-feature"><div class="l-feature-icon">01</div><div class="l-feature-text"><strong>Event Management</strong><br>View, edit, and manage all your events in one place</div></div>
+      <div class="l-feature"><div class="l-feature-icon">02</div><div class="l-feature-text"><strong>Music &amp; Playlists</strong><br>Spotify &amp; Apple Music integration for seamless curation</div></div>
+      <div class="l-feature"><div class="l-feature-icon">03</div><div class="l-feature-text"><strong>Smart Contracts</strong><br>Auto-filled contracts with e-signature built in</div></div>
+      <div class="l-feature"><div class="l-feature-icon">04</div><div class="l-feature-text"><strong>Client Portal</strong><br>Give clients a beautiful experience to customize their event</div></div>
+    </div>
+  </div>
+  <p class="l-back"><a href="/">&#8592; Back to site</a></p>
+</div>
+
+<div class="r-panel">
+  <div class="login-box">
+
+    <!-- MAIN LOGIN VIEW -->
+    <div id="login-view">
+      <h2 class="login-title">Sign In</h2>
+      <p class="login-sub">Access your portal below</p>
+
+      <div class="tabs">
+        <button class="tab-btn active" data-tab="provider">Provider</button>
+        <button class="tab-btn" data-tab="client">Client</button>
+      </div>
+
+      <!-- PROVIDER TAB -->
+      <div class="tab-panel active" id="tab-provider">
+        <div class="f-group">
+          <label class="f-label">Email</label>
+          <input class="f-input" type="email" id="pEmail" placeholder="you@baselinestudiofl.com" autocomplete="email">
+        </div>
+        <div class="f-group">
+          <label class="f-label">Password</label>
+          <input class="f-input" type="password" id="pPass" placeholder="&bull;&bull;&bull;&bull;&bull;&bull;&bull;&bull;" autocomplete="current-password">
+          <button class="f-link" onclick="showForgot()">Forgot password?</button>
+        </div>
+        <p class="f-err" id="pErr"></p>
+        <button class="f-btn" id="pBtn" onclick="doLogin('provider')">Sign In as Provider</button>
+      </div>
+
+      <!-- CLIENT TAB -->
+      <div class="tab-panel" id="tab-client">
+        <div class="f-group">
+          <label class="f-label">Email</label>
+          <input class="f-input" type="email" id="cEmail" placeholder="your@email.com" autocomplete="email">
+        </div>
+        <div class="f-group">
+          <label class="f-label">Portal Password</label>
+          <input class="f-input" type="password" id="cPass" placeholder="Your event portal code" autocomplete="current-password">
+        </div>
+        <p class="f-err" id="cErr"></p>
+        <button class="f-btn" id="cBtn" onclick="doLogin('client')">Access My Portal</button>
+      </div>
+    </div>
+
+    <!-- FORGOT PASSWORD VIEW -->
+    <div id="forgot-view">
+      <button class="back-link" onclick="showLogin()">&#8592; Back to sign in</button>
+      <h2 class="forgot-title">Reset Password</h2>
+      <p class="forgot-sub">Enter your provider email and we'll send you a link to set a new password.</p>
+      <div class="f-group">
+        <label class="f-label">Email Address</label>
+        <input class="f-input" type="email" id="fEmail" placeholder="you@baselinestudiofl.com" autocomplete="email">
+      </div>
+      <p class="f-err" id="fErr"></p>
+      <p class="f-ok"  id="fOk">Check your inbox — a reset link has been sent.</p>
+      <button class="f-btn" id="fBtn" onclick="doForgot()">Send Reset Link</button>
+      <button class="f-btn-ghost" onclick="showLogin()">Cancel</button>
+    </div>
+
+  </div>
+</div>
+
+<script>
+const SUPABASE_URL  = 'https://jkdhkwcxnwpiufeyrnso.supabase.co';
+const SUPABASE_ANON = 'sb_publishable_6xcEpHwIJi8bq4XuSyLCGg_3A30raS9';
+
+// ── View switching ────────────────────────────────────────────────────────────
+function showForgot() {
+  document.getElementById('login-view').style.display = 'none';
+  document.getElementById('forgot-view').classList.add('active');
+  document.getElementById('forgot-view').style.display = 'block';
+  // Pre-fill email from provider field
+  const provEmail = document.getElementById('pEmail').value;
+  if (provEmail) document.getElementById('fEmail').value = provEmail;
+  document.getElementById('fErr').style.display = 'none';
+  document.getElementById('fOk').style.display  = 'none';
+  document.getElementById('fBtn').textContent = 'Send Reset Link';
+  document.getElementById('fBtn').disabled = false;
+}
+function showLogin() {
+  document.getElementById('forgot-view').style.display = 'none';
+  document.getElementById('forgot-view').classList.remove('active');
+  document.getElementById('login-view').style.display = '';
+}
+
+// ── Loading state ─────────────────────────────────────────────────────────────
+function setLoading(btn, loading, label) {
+  btn.disabled = loading;
+  btn.textContent = loading ? 'Please wait\u2026' : label;
+}
+
+// ── Login (provider = Supabase Auth, client = RPC lookup) ─────────────────────
+async function doLogin(type) {
+  const isProvider = type === 'provider';
+  const email  = document.getElementById(isProvider ? 'pEmail' : 'cEmail').value.trim().toLowerCase();
+  const pass   = document.getElementById(isProvider ? 'pPass'  : 'cPass').value;
+  const errEl  = document.getElementById(isProvider ? 'pErr'   : 'cErr');
+  const btn    = document.getElementById(isProvider ? 'pBtn'   : 'cBtn');
+  const label  = isProvider ? 'Sign In as Provider' : 'Access My Portal';
+
+  errEl.style.display = 'none';
+  if (!email || !pass) {
+    errEl.textContent = 'Please enter your email and password.';
+    errEl.style.display = 'block';
+    return;
+  }
+
+  setLoading(btn, true, label);
+
+  try {
+    if (isProvider) {
+      const res  = await fetch(`${SUPABASE_URL}/auth/v1/token?grant_type=password`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'apikey': SUPABASE_ANON },
+        body: JSON.stringify({ email, password: pass })
+      });
+      const data = await res.json();
+
+      if (!res.ok || data.error) {
+        let msg = 'Invalid email or password.';
+        const desc = (data.error_description || data.msg || '').toLowerCase();
+        if (desc.includes('not confirmed') || desc.includes('email_not_confirmed'))
+          msg = 'Please confirm your email address first \u2014 check your inbox for a verification link.';
+        else if (desc.includes('invalid login') || desc.includes('invalid credentials'))
+          msg = 'Invalid email or password. Please try again.';
+        errEl.textContent = msg;
+        errEl.style.display = 'block';
+        setLoading(btn, false, label);
+        return;
+      }
+
+      sessionStorage.setItem('bs_sb_session', JSON.stringify({
+        type:         'provider',
+        access_token: data.access_token,
+        refresh_token:data.refresh_token,
+        user_id:      data.user.id,
+        email:        data.user.email,
+        name:         data.user.user_metadata?.name || email.split('@')[0],
+        role:         data.user.user_metadata?.role || 'master'
+      }));
+      window.location.href = 'portal-provider.html';
+
+    } else {
+      // Client: look up all their events by email + password
+      const res     = await fetch(`${SUPABASE_URL}/rest/v1/rpc/get_client_events`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'apikey': SUPABASE_ANON },
+        body: JSON.stringify({ p_email: email, p_password: pass })
+      });
+      const payload = res.ok ? await res.json() : null;
+      const events  = Array.isArray(payload) ? payload : (payload ? [payload] : []);
+
+      if (!events.length) {
+        errEl.textContent = 'Email or portal password not found. Check your invitation email.';
+        errEl.style.display = 'block';
+        setLoading(btn, false, label);
+        return;
+      }
+
+      setLoading(btn, false, label);
+
+      if (events.length === 1) {
+        _storeClientSession(email, pass, events[0], events);
+        window.location.href = 'portal-client.html';
+      } else {
+        showEventPicker(email, pass, events, errEl);
+      }
+      return;
+    }
+  } catch (err) {
+    errEl.textContent = 'Connection error. Check your internet and try again.';
+    errEl.style.display = 'block';
+    setLoading(btn, false, label);
+    console.error(err);
+  }
+}
+
+// ── Forgot password ───────────────────────────────────────────────────────────
+async function doForgot() {
+  const email = document.getElementById('fEmail').value.trim().toLowerCase();
+  const errEl = document.getElementById('fErr');
+  const okEl  = document.getElementById('fOk');
+  const btn   = document.getElementById('fBtn');
+
+  errEl.style.display = 'none';
+  okEl.style.display  = 'none';
+
+  if (!email) {
+    errEl.textContent = 'Please enter your email address.';
+    errEl.style.display = 'block';
+    return;
+  }
+
+  setLoading(btn, true, 'Send Reset Link');
+
+  try {
+    const resetUrl = 'https://www.baselinestudiofl.com/reset-password.html';
+    const res = await fetch(`${SUPABASE_URL}/auth/v1/recover`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'apikey': SUPABASE_ANON },
+      body: JSON.stringify({ email: email.toLowerCase(), redirect_to: resetUrl })
+    });
+    if (!res.ok) {
+      const data = await res.json().catch(() => ({}));
+      const msg = data.msg || data.message || data.error_description || 'Could not send reset email. Check your Supabase redirect URL allowlist.';
+      errEl.textContent = msg;
+      errEl.style.display = 'block';
+      setLoading(btn, false, 'Send Reset Link');
+      console.error('[Reset error]', data);
+      return;
+    }
+    // Supabase returns 200 and doesn't reveal if the email exists (security by design)
+    okEl.textContent = 'Check your inbox \u2014 a reset link has been sent.';
+    okEl.style.display = 'block';
+    btn.textContent = 'Email Sent';
+  } catch (err) {
+    errEl.textContent = 'Network error. Please try again.';
+    errEl.style.display = 'block';
+    setLoading(btn, false, 'Send Reset Link');
+    console.error(err);
+  }
+}
+
+// ── Client session helper ─────────────────────────────────────────────────────
+function _storeClientSession(email, pass, selectedEvent, allEvents) {
+  sessionStorage.setItem('bs_sb_session', JSON.stringify({
+    type:      'client',
+    role:      selectedEvent.type === 'corporate' ? 'client-corporate' : 'client-private',
+    email,
+    portalPw:  pass,
+    name:      selectedEvent.clientName || selectedEvent.client_name || email,
+    eventId:   selectedEvent.id,
+    event:     selectedEvent,
+    allEvents: allEvents
+  }));
+}
+
+// ── Event picker (multi-event clients) ────────────────────────────────────────
+function showEventPicker(email, pass, events) {
+  const picker = document.createElement('div');
+  picker.id = 'eventPicker';
+  picker.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.88);display:flex;align-items:center;justify-content:center;z-index:9999;';
+  picker.innerHTML = `
+    <div style="background:#111118;border:1px solid rgba(255,255,255,0.1);border-radius:16px;padding:32px;width:min(460px,90vw);max-height:80vh;overflow-y:auto;">
+      <h2 style="font-family:'Anton',Impact,sans-serif;font-size:22px;color:#fff;margin-bottom:6px;letter-spacing:0.04em;">YOUR EVENTS</h2>
+      <p style="color:rgba(255,255,255,0.5);font-size:13px;margin-bottom:24px;">You have multiple events on file. Pick one to open.</p>
+      <div style="display:flex;flex-direction:column;gap:10px;">
+        ${events.map((ev, i) => {
+          const dateStr = ev.date || ev.eventDate || '';
+          const label   = dateStr ? new Date(dateStr + 'T00:00:00').toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'}) : 'Date TBD';
+          return `<button onclick="pickEvent(${i})" style="text-align:left;background:rgba(31,163,224,0.07);border:1px solid rgba(31,163,224,0.25);border-radius:10px;padding:14px 16px;cursor:pointer;color:#fff;font-family:inherit;width:100%;">
+            <div style="font-weight:600;font-size:15px;margin-bottom:3px;">${ev.name || 'Event'}</div>
+            <div style="font-size:12px;color:rgba(255,255,255,0.45);">${ev.type || ''} &bull; ${label}</div>
+          </button>`;
+        }).join('')}
+      </div>
+    </div>
+  `;
+  document.body.appendChild(picker);
+  window._pickerState = { email, pass, events };
+}
+
+function pickEvent(idx) {
+  const { email, pass, events } = window._pickerState;
+  _storeClientSession(email, pass, events[idx], events);
+  window.location.href = 'portal-client.html';
+}
+
+// ── Tab switching ─────────────────────────────────────────────────────────────
+document.querySelectorAll('.tab-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('.tab-btn, .tab-panel').forEach(el => el.classList.remove('active'));
+    btn.classList.add('active');
+    document.getElementById('tab-' + btn.dataset.tab).classList.add('active');
+  });
+});
+
+// URL param: login.html?role=client
+const urlRole = new URLSearchParams(location.search).get('role');
+if (urlRole === 'client') document.querySelector('[data-tab="client"]').click();
+
+// Enter key — G: e.preventDefault() stops implicit form submit / page reload
+document.addEventListener('keydown', e => {
+  if (e.key !== 'Enter') return;
+  e.preventDefault();
+  const forgotVisible = document.getElementById('forgot-view').style.display === 'block';
+  if (forgotVisible) { doForgot(); return; }
+  const active = document.querySelector('.tab-btn.active');
+  if (active) doLogin(active.dataset.tab);
+});
+</script>
+</body>
+</html>

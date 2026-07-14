@@ -1,0 +1,491 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+<link rel="canonical" href="https://www.baselinestudiofl.com/corporate">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Corporate Event Production Miami | DJ, Lighting &amp; AV | Baseline Studio</title>
+  <meta name="description" content="Corporate event production in Miami — DJ, LED video walls, branded lighting, AV, and live musicians from one crew. We load in early, follow the run of show, and handle everything so your team doesn't have to. Fully insured.">
+  <link rel="stylesheet" href="fonts/fonts.css">
+  <link rel="stylesheet" href="style.css?v=2">
+  <style>
+
+    .corp-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 2px;
+      margin-top: 60px;
+    }
+    .corp-card {
+      padding: 48px 40px;
+      background: var(--black-2);
+      position: relative;
+      transition: background 0.3s;
+    }
+    .corp-card:hover { background: var(--black-3); }
+    .corp-card::after {
+      content: '';
+      position: absolute;
+      bottom: 0; left: 0;
+      width: 0; height: 2px;
+      background: var(--cyan);
+      transition: width 0.35s cubic-bezier(0.16,1,0.3,1);
+    }
+    .corp-card:hover::after { width: 100%; }
+    .cc-icon { font-size: 26px; margin-bottom: 18px; display: block; opacity: 0.7; }
+    .cc-name { font-family: var(--font-cond); font-size: 20px; font-weight: 700; color: var(--white); margin-bottom: 12px; }
+    .cc-desc { font-size: 14px; font-weight: 300; color: rgba(255,255,255,0.55); line-height: 1.8; }
+    .cc-link { display: inline-flex; align-items: center; gap: 6px; margin-top: 16px; font-family: var(--font-cond); font-size: 11px; font-weight: 700; letter-spacing: 1.5px; text-transform: uppercase; text-decoration: none; color: var(--cyan); transition: gap 0.2s; }
+    .cc-link:hover { gap: 10px; }
+    .cc-link::after { content: '→'; }
+    .brand-strip { padding: 80px 48px; background: var(--black-3); border-top: 1px solid var(--rule); border-bottom: 1px solid var(--rule); }
+    .brand-inner { max-width: 1300px; margin: 0 auto; display: grid; grid-template-columns: 1fr 1fr; gap: 80px; align-items: center; }
+    .brand-title { font-family: var(--font-cond); font-size: clamp(28px, 3.5vw, 44px); font-weight: 800; letter-spacing: -1.5px; line-height: 1.1; color: var(--white); margin-bottom: 16px; }
+    .brand-body { font-size: 15px; font-weight: 300; color: rgba(255,255,255,0.55); line-height: 1.8; }
+    .checklist { list-style: none; margin-top: 8px; }
+    .checklist li { padding: 11px 0; border-bottom: 1px solid var(--rule); font-size: 14px; color: rgba(255,255,255,0.55); display: flex; align-items: center; gap: 12px; }
+    .checklist li:last-child { border-bottom: none; }
+    .checklist li::before { content: ''; color: var(--cyan); font-weight: 700; font-size: 12px; }
+    .faq-section { padding: 80px 48px; max-width: 1300px; margin: 0 auto; }
+    .faq-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 2px; margin-top: 48px; }
+    .faq-item { padding: 32px 36px; background: var(--black-2); }
+    .faq-q { font-family: var(--font-cond); font-size: 17px; font-weight: 700; color: var(--white); margin-bottom: 12px; line-height: 1.3; }
+    .faq-a { font-size: 14px; font-weight: 300; color: rgba(255,255,255,0.55); line-height: 1.8; }
+    @media (max-width: 900px) {
+      .corp-grid { grid-template-columns: 1fr 1fr; }
+      .brand-strip { padding: 60px 24px; }
+      .brand-inner { grid-template-columns: 1fr; gap: 48px; }
+      .faq-section { padding: 60px 24px; }
+      .faq-grid { grid-template-columns: 1fr; }
+    }
+    @media (max-width: 600px) { .corp-grid { grid-template-columns: 1fr; } }
+
+  
+    /* From the Blog section */
+    .from-the-blog { padding: 60px 48px; background: #0a0a0a; border-top: 1px solid var(--rule); }
+    .ftb-inner { max-width: 960px; margin: 0 auto; }
+    .ftb-label { font-family: var(--font-condensed); font-size: 0.78rem; letter-spacing: .12em; text-transform: uppercase; color: var(--gold); margin-bottom: 24px; }
+    .ftb-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; }
+    .blog-link-card { display: block; padding: 24px 20px; background: var(--black-2); border: 1px solid var(--rule); border-radius: 4px; text-decoration: none; transition: border-color .2s; }
+    .blog-link-card:hover { border-color: var(--gold); }
+    .blc-title { font-size: 0.95rem; color: rgba(255,255,255,0.88); line-height: 1.5; margin-bottom: 12px; }
+    .blc-arrow { font-size: 0.82rem; color: var(--gold); }
+    @media (max-width: 768px) { .ftb-grid { grid-template-columns: 1fr; } .from-the-blog { padding: 40px 24px; } }
+    </style>
+<!-- Google Analytics — deferred until after page load to avoid blocking LCP -->
+<script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  window.addEventListener('load', function() {
+    var s = document.createElement('script');
+    s.src = 'https://www.googletagmanager.com/gtag/js?id=G-420BHQKJE5';
+    s.async = true;
+    document.head.appendChild(s);
+    s.onload = function() { gtag('js', new Date()); gtag('config', 'G-420BHQKJE5'); };
+  });
+</script>
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "FAQPage",
+  "mainEntity": [
+    {
+      "@type": "Question",
+      "name": "How much does corporate event production in Miami cost?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "Corporate event production in Miami typically ranges from $2,500 for a DJ-only setup to $15,000 or more for full production including LED video walls, branded lighting, live musicians, and special effects. The range depends on event size, venue, duration, and services needed. Baseline Studio builds custom quotes for every event — no pre-set packages."
+      }
+    },
+    {
+      "@type": "Question",
+      "name": "Do you provide both a DJ and live musicians for corporate events?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "Yes. Baseline Studio offers corporate event DJ services and live musician entertainment from the same crew. Jazz trios, Latin bands, string quartets, and vocalists are available for cocktail hours, dinner sets, and after-parties. Every live performance runs through our own sound system, so there is no coordination gap between live entertainment and the rest of your AV."
+      }
+    },
+    {
+      "@type": "Question",
+      "name": "What is included in corporate event production?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "A typical corporate event package includes a professional DJ, full sound system, and microphones for speakers and presenters. Additional services — LED video walls, uplighting, branded lighting, gobo logo projection, cold spark fountains, CO2 jets, and live musicians — are added based on your event needs and budget. We handle venue coordination, setup, and load-out."
+      }
+    },
+    {
+      "@type": "Question",
+      "name": "How far in advance should we book for a corporate event in Miami?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "For most corporate events, booking 4 to 8 weeks in advance is ideal. For galas or events at high-demand venues, 2 to 4 months is recommended to secure crew and equipment availability. We can accommodate shorter lead times depending on the date and scope — reach out even if your event is coming up soon."
+      }
+    },
+    {
+      "@type": "Question",
+      "name": "Do you handle AV and presentation support for conferences?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "Yes. Baseline Studio provides full AV support for corporate conferences in Miami, including line array sound systems, wireless microphones for presenters and panelists, and LED video wall or projector setups for presentation content. We can run IMAG feeds for larger venues and coordinate with your event team on the run of show. All equipment is tested before guests arrive."
+      }
+    }
+  ]
+}
+</script>
+<link rel="icon" href="favicon.ico" sizes="any">
+<link rel="icon" href="favicon-32x32.png" type="image/png" sizes="32x32">
+<link rel="icon" href="favicon-16x16.png" type="image/png" sizes="16x16">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+</head>
+<body>
+  <div class="scroll-progress" id="scrollProgress"></div>
+  <nav>
+    <div class="nav-inner">
+      <a href="/" class="nav-logo">
+        <img src="logo-full.webp" alt="Baseline Studio" style="height:44px;width:auto;" width="281" height="88">
+      </a>
+      <ul class="nav-links">
+        <li><a href="/">Home</a></li>
+        <li><a href="services.html">Services</a></li>
+        <li><a href="weddings" >Weddings</a></li>
+        <li><a href="corporate" class="active">Corporate</a></li>
+
+        <li><a href="blog">Blog</a></li>
+        <li><a href="faq" >FAQ</a></li>
+        <li><a href="login.html" style="font-size:12px;opacity:0.5;">Client Portal</a></li>
+        <li><a href="contact" class="nav-cta">Get a Quote</a></li>
+      </ul>
+      <button class="hamburger" id="hamburger" aria-label="Menu">
+        <span></span><span></span><span></span>
+      </button>
+    </div>
+  </nav>
+  <div class="mobile-menu" id="mobile-menu">
+    <a href="/">Home</a>
+    <a href="services.html">Services</a>
+    <a href="weddings">Weddings</a>
+    <a href="corporate">Corporate</a>
+    <a href="blog">Blog</a>
+    <a href="faq">FAQ</a>
+    <a href="login.html" style="opacity:0.5;font-size:12px;">Client Portal</a>
+    <a href="contact" style="color:var(--cyan);font-weight:600;">Get a Quote</a>
+  </div>
+
+  <section class="page-hero page-hero--video">
+    <video id="corporate-bg-video" class="hero-video" autoplay muted loop playsinline></video>
+    <script>
+      (function() {
+        var v = document.getElementById('corporate-bg-video');
+        v.src = window.matchMedia('(min-width:769px)').matches ? 'corporate-bg-mobile.mp4' : 'corporate-bg-mobile.mp4';
+        v.addEventListener('canplay', function() { v.style.opacity = '1'; }, { once: true });
+        setTimeout(function() { v.style.opacity = '1'; }, 2000);
+      })();
+    </script>
+    <div class="page-hero-glow"></div>
+    <div class="page-hero-inner">
+      <div class="section-eyebrow reveal">Corporate Event Production · Miami</div>
+      <h1 class="page-hero-title reveal reveal-delay-1">
+        Corporate event DJ<br>
+        <em>and production. Done.</em>
+      </h1>
+      <p class="page-hero-body reveal reveal-delay-2">
+        A corporate event has one shot. The AV works or it doesn't. The room looks like something or it doesn't. We've done galas, product launches, award nights, and conference dinners across South Florida. We know exactly where things go sideways and how to prevent it. DJ, LED video walls, branded lighting, live musicians, special effects: we handle everything so your team doesn't have to think about any of it.
+      </p>
+      <div class="page-hero-ctas reveal reveal-delay-3">
+        <a href="contact" class="btn-primary">Request a Proposal</a>
+        <a href="pricing" class="btn-ghost">View Pricing</a>
+      </div>
+    </div>
+  </section>
+
+  <div class="marquee-wrap">
+    <div class="marquee-track">
+      <span class="marquee-item">Product Launches</span><span class="marquee-dot"></span>
+      <span class="marquee-item">Annual Galas</span><span class="marquee-dot"></span>
+      <span class="marquee-item">Award Ceremonies</span><span class="marquee-dot"></span>
+      <span class="marquee-item">Company Milestones</span><span class="marquee-dot"></span>
+      <span class="marquee-item">Team Events</span><span class="marquee-dot"></span>
+      <span class="marquee-item">Conferences</span><span class="marquee-dot"></span>
+      <span class="marquee-item">Charity Galas</span><span class="marquee-dot"></span>
+      <span class="marquee-item">Product Launches</span><span class="marquee-dot"></span>
+      <span class="marquee-item">Annual Galas</span><span class="marquee-dot"></span>
+      <span class="marquee-item">Award Ceremonies</span><span class="marquee-dot"></span>
+      <span class="marquee-item">Company Milestones</span><span class="marquee-dot"></span>
+      <span class="marquee-item">Team Events</span><span class="marquee-dot"></span>
+      <span class="marquee-item">Conferences</span><span class="marquee-dot"></span>
+      <span class="marquee-item">Charity Galas</span><span class="marquee-dot"></span>
+    </div>
+  </div>
+
+  <section style="padding: 100px 48px; max-width: 1300px; margin: 0 auto;">
+    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 60px; align-items: end; margin-bottom: 0; padding-bottom: 40px; border-bottom: 1px solid var(--rule);">
+      <div>
+        <div class="section-eyebrow reveal">What We Do</div>
+        <h2 style="font-family: var(--font-cond); font-size: clamp(34px, 4vw, 52px); font-weight: 800; letter-spacing: -2px; line-height: 1.05; color: var(--white);" class="reveal reveal-delay-1">DJ, AV, lighting,<br>and effects — one crew.</h2>
+      </div>
+      <p style="font-size: 15px; font-weight: 300; color: rgba(255,255,255,0.55); line-height: 1.8;" class="reveal">There's a hierarchy to corporate event production. The AV has to work. That's the baseline. After that, lighting is what transforms a venue from how it looks on a regular Tuesday into something that actually feels like an event. Then comes the DJ, the LED wall, the effects, the live music. We've done enough galas, product launches, and award dinners in South Florida to know what order that matters in and how to get all of it right on the same night.</p>
+    </div>
+    <div class="corp-grid">
+      <div class="corp-card reveal">
+        <span class="cc-icon"></span>
+        <div class="cc-name">Live Sound &amp; AV</div>
+        <p class="cc-desc">Line arrays, subs, handhelds and lavs for presenters, panelists, and performers. We spec the system based on your room and headcount, not just drop in a PA and hope for the best. From a 50-person boardroom to a 1,000-guest gala, clarity is non-negotiable. We test everything before anyone walks in.</p>
+        <a href="service-audio.html" class="cc-link">Learn More</a>
+      </div>
+      <div class="corp-card reveal reveal-delay-1">
+        <span class="cc-icon"></span>
+        <div class="cc-name">LED Video Walls</div>
+        <p class="cc-desc">P3.9 indoor LED panels in whatever size and configuration your stage needs. Brand content, presentation slides, event graphics, live camera feeds: all sources managed and switched live. We've done installs where the wall is the focal point of the entire room. We know how to make it look right.</p>
+        <a href="service-led.html" class="cc-link">Learn More</a>
+      </div>
+      <div class="corp-card reveal reveal-delay-2">
+        <span class="cc-icon"></span>
+        <div class="cc-name">Branded Lighting</div>
+        <p class="cc-desc">Uplighting in your exact brand colors. Your logo projected on walls and floors. Stage lighting for speakers and award presentations. Lighting is honestly the highest-impact item per dollar in corporate event production. It's what makes a room go from ordinary to something worth photographing.</p>
+        <a href="service-uplighting.html" class="cc-link">Learn More</a>
+      </div>
+      <div class="corp-card reveal reveal-delay-3">
+        <span class="cc-icon"></span>
+        <div class="cc-name">Corporate Event DJ</div>
+        <p class="cc-desc">Cocktail hour, dinner, post-dinner dancing. We know when to keep it understated and when to bring the energy up. Corporate events have a different arc than a wedding. Reading the room is the whole job. Open format or genre-specific, whatever the night calls for. No cheese unless requested.</p>
+        <a href="service-dj.html" class="cc-link">Learn More</a>
+      </div>
+      <div class="corp-card reveal reveal-delay-4">
+        <span class="cc-icon"></span>
+        <div class="cc-name">Special Effects</div>
+        <p class="cc-desc">CO2 jets, cold spark fountains, confetti. Used at exactly the right moment: when the award winner walks up, when the product hits the screen. Effects create the kind of moment people talk about after. We time them, test them beforehand, and don't improvise with them on the day.</p>
+        <a href="service-fx.html" class="cc-link">Learn More</a>
+      </div>
+      <div class="corp-card reveal reveal-delay-5">
+        <span class="cc-icon"></span>
+        <div class="cc-name">Live Music &amp; Entertainment</div>
+        <p class="cc-desc">Jazz trio for cocktail hour. Latin band for the after-party. String quartet for an elevated dinner. Every musician on our roster runs through our own sound system, so there's no coordination gap between live entertainment and AV. Corporate event entertainment in Miami that actually changes the energy in the room.</p>
+        <a href="service-live-musicians.html" class="cc-link">Learn More</a>
+      </div>
+    </div>
+  </section>
+
+  <div class="brand-strip" style="background:var(--black);">
+    <div class="brand-inner">
+      <div>
+        <div class="section-eyebrow reveal">Live Entertainment · Miami</div>
+        <h2 class="brand-title reveal reveal-delay-1">Live music for corporate<br>events in Miami.</h2>
+        <p class="brand-body reveal reveal-delay-2">A playlist sets a tone. Live music changes the room. When a corporate event calls for something beyond background sound, whether that's a cocktail hour that feels elevated, a gala dinner with real atmosphere, or an after-party that actually gets going, we bring in live talent. Jazz, Latin, contemporary, whatever fits the moment. Every musician runs through our own sound system, so there's no handoff gap between the live set and the rest of your production.</p>
+      </div>
+      <ul class="checklist reveal">
+        <li>Jazz and contemporary sets for cocktail hour and dinner</li>
+        <li>Latin and danceable entertainment for after-dinner</li>
+        <li>Corporate-appropriate sets that build energy on cue</li>
+        <li>Full sound system and monitoring included</li>
+        <li>Clean transition from live performance to DJ set</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="brand-strip">
+    <div class="brand-inner">
+      <div>
+        <div class="section-eyebrow reveal">Why Clients Come Back</div>
+        <h2 class="brand-title reveal reveal-delay-1">We know how a<br>professional event runs.</h2>
+        <p class="brand-body reveal reveal-delay-2">Event coordinators need a vendor who handles their scope without creating extra work. We load in before guests arrive, we follow the run of show, and we communicate before the day, not during it. If something shifts last minute, we adapt. That's part of the job. We've worked the Bath Club, The Alexander, The Carillon, the Miami Airport Convention Center, and venues across South Florida. We know what those rooms need before you have to ask.</p>
+      </div>
+      <ul class="checklist reveal">
+        <li>Single point of contact from quote through event day</li>
+        <li>Branded LED content and logo projection available</li>
+        <li>Venue coordination handled by our team</li>
+        <li>Backup gear on every event, no exceptions</li>
+        <li>Fully insured. COI provided on request</li>
+        <li>Load-in complete before the first guest arrives</li>
+        <li>South Florida crew. We know these venues</li>
+      </ul>
+    </div>
+  </div>
+
+  <section class="testimonials-section">
+    <div class="section-eyebrow reveal">Clients</div>
+    <h2 class="testimonials-title reveal reveal-delay-1">Results that<br>speak for themselves.</h2>
+    <div class="testimonials-grid">
+      <div class="testimonial-card reveal">
+        <div class="testimonial-stars"></div>
+        <p class="testimonial-text">"Flawless execution on our annual gala. The LED wall content was stunning and the DJ kept the energy going all night. Every detail was handled exactly as discussed."</p>
+        <div class="testimonial-author">Corporate Client, Miami</div>
+      </div>
+      <div class="testimonial-card reveal reveal-delay-1">
+        <div class="testimonial-stars"></div>
+        <p class="testimonial-text">"We've used them for multiple events now. The production quality is consistent, they communicate well, and they show up ready. That's all we ask for."</p>
+        <div class="testimonial-author">Marketing Director, Fort Lauderdale</div>
+      </div>
+      <div class="testimonial-card reveal reveal-delay-2">
+        <div class="testimonial-stars"></div>
+        <p class="testimonial-text">"Professional from start to finish. The cold spark reveal during our award presentation was the highlight of the night. Our team is still talking about it."</p>
+        <div class="testimonial-author">Event Coordinator, Boca Raton</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- FAQ Section -->
+  <section class="faq-section">
+    <div class="section-eyebrow reveal">Common Questions</div>
+    <h2 style="font-family: var(--font-cond); font-size: clamp(28px, 3.5vw, 44px); font-weight: 800; letter-spacing: -1.5px; line-height: 1.1; color: var(--white); margin-top: 12px;" class="reveal reveal-delay-1">Corporate event production — FAQ.</h2>
+    <div class="faq-grid">
+      <div class="faq-item reveal">
+        <div class="faq-q">How much does corporate event production in Miami cost?</div>
+        <p class="faq-a">It ranges from around $2,500 for a DJ-only setup to $15,000 or more for full production: LED video walls, branded lighting, live musicians, effects, and AV. The number depends on event size, venue, duration, and what you're going for. We build a custom quote for every event. No pre-set packages, because every event is different.</p>
+      </div>
+      <div class="faq-item reveal reveal-delay-1">
+        <div class="faq-q">Do you provide both a DJ and live musicians for corporate events?</div>
+        <p class="faq-a">Yes, and it all runs through our own system. Jazz trios, Latin bands, string quartets, vocalists: whatever fits your event. The live set runs through our sound system, so there's no handoff gap when you transition from entertainment to the DJ set or the awards program. One crew handles the whole thing.</p>
+      </div>
+      <div class="faq-item reveal">
+        <div class="faq-q">What's typically included in a corporate event package?</div>
+        <p class="faq-a">Every package starts with a professional DJ, full sound system, and microphones for speakers and presenters. From there it depends on the event: LED video walls, uplighting, branded lighting, logo projection, cold spark fountains, CO2 jets, and live musicians are all add-ons based on your needs and budget. We handle venue coordination, setup, and load-out.</p>
+      </div>
+      <div class="faq-item reveal reveal-delay-1">
+        <div class="faq-q">How far in advance should we book?</div>
+        <p class="faq-a">For most corporate events, 4 to 8 weeks is ideal. For larger galas or high-demand venues, 2 to 4 months gives us room to lock in crew and equipment. That said, reach out even if your event is coming up soon. Depending on the date and scope, we can usually make it work.</p>
+      </div>
+      <div class="faq-item reveal" style="grid-column: 1 / -1;">
+        <div class="faq-q">Do you handle AV and presentation support for conferences?</div>
+        <p class="faq-a">Yes. We provide full AV support for corporate conferences in Miami: line array sound systems, wireless mics for presenters and panelists, and LED video wall or projector setups for presentation content. We can run IMAG feeds for larger venues and we coordinate directly with your event team on the run of show. Everything is tested before the first guest walks in.</p>
+      </div>
+    </div>
+  </section>
+
+  <section style="background:#111; padding:3rem 0;">
+  <div style="max-width:1100px;margin:0 auto;padding:0 2rem;">
+    <p style="font-size:.75rem;letter-spacing:.12em;text-transform:uppercase;color:#888;margin-bottom:1rem;">Corporate Event Production · Miami</p>
+    <h2 style="font-size:1.75rem;font-weight:700;color:#fff;margin-bottom:1.5rem;">Everything your event needs, from one crew.</h2>
+    <p style="color:#aaa;max-width:640px;margin-bottom:2rem;line-height:1.7;">From the corporate event DJ to the LED video wall to branded lighting and live musicians, Baseline Studio handles corporate event production in Miami end to end. One contact, one contract, no vendor coordination gaps on the day.</p>
+    <div style="display:flex;flex-wrap:wrap;gap:.75rem;">
+      <a href="service-dj.html" style="display:inline-block;padding:.55rem 1.1rem;border:1px solid #333;border-radius:4px;color:#ddd;font-size:.85rem;text-decoration:none;">Corporate DJ</a>
+      <a href="service-audio.html" style="display:inline-block;padding:.55rem 1.1rem;border:1px solid #333;border-radius:4px;color:#ddd;font-size:.85rem;text-decoration:none;">Live Sound & AV</a>
+      <a href="service-led.html" style="display:inline-block;padding:.55rem 1.1rem;border:1px solid #333;border-radius:4px;color:#ddd;font-size:.85rem;text-decoration:none;">LED Video Walls</a>
+      <a href="service-stage-lighting.html" style="display:inline-block;padding:.55rem 1.1rem;border:1px solid #333;border-radius:4px;color:#ddd;font-size:.85rem;text-decoration:none;">Stage & Presentation Lighting</a>
+      <a href="service-uplighting.html" style="display:inline-block;padding:.55rem 1.1rem;border:1px solid #333;border-radius:4px;color:#ddd;font-size:.85rem;text-decoration:none;">Branded Uplighting</a>
+      <a href="service-gobo-projection.html" style="display:inline-block;padding:.55rem 1.1rem;border:1px solid #333;border-radius:4px;color:#ddd;font-size:.85rem;text-decoration:none;">Logo Projection</a>
+      <a href="service-projection.html" style="display:inline-block;padding:.55rem 1.1rem;border:1px solid #333;border-radius:4px;color:#ddd;font-size:.85rem;text-decoration:none;">Event Projection</a>
+      <a href="service-tv-displays.html" style="display:inline-block;padding:.55rem 1.1rem;border:1px solid #333;border-radius:4px;color:#ddd;font-size:.85rem;text-decoration:none;">TV & Display Screens</a>
+      <a href="service-fx.html" style="display:inline-block;padding:.55rem 1.1rem;border:1px solid #333;border-radius:4px;color:#ddd;font-size:.85rem;text-decoration:none;">Special Effects</a>
+    </div>
+  </div>
+</section>
+
+<section class="from-the-blog">
+  <div class="ftb-inner">
+    <div class="ftb-label">From the Blog</div>
+    <div class="ftb-grid">
+        <a href="blog/2026-07-corporate-event-production-miami.html" class="blog-link-card">
+          <div class="blc-title">Corporate Event Production Miami: What Makes an Event Feel Produced</div>
+          <div class="blc-arrow">Read &rarr;</div>
+        </a>
+        <a href="blog/led-video-walls-for-corporate-events-miami.html" class="blog-link-card">
+          <div class="blc-title">The Complete Guide to LED Video Walls for Corporate Events</div>
+          <div class="blc-arrow">Read &rarr;</div>
+        </a>
+        <a href="blog/why-live-sound-quality-makes-or-breaks-your-event.html" class="blog-link-card">
+          <div class="blc-title">Why Live Sound Quality Makes or Breaks Your Event</div>
+          <div class="blc-arrow">Read &rarr;</div>
+        </a>
+    </div>
+  </div>
+</section>
+<div class="cta-strip">
+    <div class="section-eyebrow reveal" style="justify-content:center;margin-bottom:16px;">Get Started</div>
+    <h2 class="cta-strip-title reveal reveal-delay-1">Tell us about your event.</h2>
+    <p class="cta-strip-sub reveal reveal-delay-2">Give us the date, the venue, the headcount, and what you're going for. We'll put a custom proposal together. Usually within a day.</p>
+    <div class="cta-strip-btns reveal reveal-delay-3">
+      <a href="contact" class="btn-primary">Request a Proposal</a>
+      <a href="services.html" class="btn-ghost">All Services</a>
+    </div>
+  </div>
+  <footer>
+    <div class="footer-inner">
+      <div class="footer-top">
+        <div>
+          <div class="footer-brand-name">Baseline Studio</div>
+          <p class="footer-brand-tagline">South Florida's event production crew for weddings, corporate events, and everything in between. Fully insured. Always prepared.</p>
+          <div class="footer-contact-line"><a href="tel:7863026056" onclick="gtag('event','phone_call',{'event_category':'contact','event_label':'corporate'});">(786) 302-6056</a></div>
+          <div class="footer-contact-line"><a href="mailto:Hello@baselinestudiofl.com">Hello@baselinestudiofl.com</a></div>
+          <div class="footer-contact-line"><a href="https://instagram.com/baselinestudiofl" target="_blank" rel="noopener">@baselinestudiofl</a></div>
+        </div>
+        <div class="footer-col">
+          <div class="footer-col-label">Navigate</div>
+          <ul>
+            <li><a href="weddings">Weddings</a></li>
+            <li><a href="corporate">Corporate</a></li>
+            <li><a href="services.html">Services</a></li>
+
+            <li><a href="blog">Blog</a></li>
+            <li><a href="faq">FAQ</a></li>
+            <li><a href="about">About</a></li>
+            <li><a href="contact">Contact</a></li>
+          </ul>
+        </div>
+        <div class="footer-col">
+          <div class="footer-col-label">South Florida Markets</div>
+          <ul>
+            <li><a href="event-production-coral-gables.html">Coral Gables</a></li>
+            <li><a href="event-production-brickell.html">Brickell</a></li>
+            <li><a href="event-production-aventura.html">Aventura</a></li>
+            <li><a href="event-production-fort-lauderdale.html">Fort Lauderdale</a></li>
+            <li><a href="event-production-doral.html">Doral</a></li>
+            <li><a href="event-production-hialeah.html">Hialeah</a></li>
+            <li><a href="event-production-kendall.html">Kendall</a></li>
+            <li><a href="event-production-hollywood-fl.html">Hollywood, FL</a></li>
+          </ul>
+        </div>
+        <div class="footer-col">
+          <div class="footer-col-label">Venue Partners</div>
+          <ul>
+            <li><a href="venue/bath-club-miami.html">The Bath Club Miami</a></li>
+            <li><a href="venue/ritz-carlton-bal-harbour.html">Ritz Carlton Bal Harbour</a></li>
+            <li><a href="venue/hilton-miami-beach-resort.html">Hilton Miami Beach Resort</a></li>
+          </ul>
+        </div>
+        <div class="footer-col">
+          <div class="footer-col-label">Resources</div>
+          <ul>
+            <li><a href="blog">Blog</a></li>
+            <li><a href="faq">FAQ</a></li>
+            <li><a href="login.html">Client Portal</a></li>
+          </ul>
+        </div>
+      </div>
+      <div class="footer-bottom">
+        <p>&copy; 2026 Baseline Studio LLC. All rights reserved. Miami, Florida.</p>
+        <div class="footer-bottom-links">
+          <a href="login.html">Client Portal</a>
+          <a href="sitemap.xml">Sitemap</a>
+        </div>
+      </div>
+    </div>
+  </footer>
+  <script>
+    window.addEventListener('scroll', function() {
+      var sh = document.documentElement.scrollHeight - window.innerHeight;
+      if (sh > 0) document.getElementById('scrollProgress').style.width = (window.scrollY / sh * 100) + '%';
+    }, { passive: true });
+    var hamburger = document.getElementById('hamburger');
+    var mobileMenu = document.getElementById('mobile-menu');
+    hamburger.addEventListener('click', function() { mobileMenu.classList.toggle('active'); });
+    mobileMenu.querySelectorAll('a').forEach(function(a) { a.addEventListener('click', function() { mobileMenu.classList.remove('active'); }); });
+    var revealEls = document.querySelectorAll('.reveal');
+    var obs = new IntersectionObserver(function(entries) {
+      entries.forEach(function(e) { if (e.isIntersecting) { e.target.classList.add('active'); obs.unobserve(e.target); } });
+    }, { threshold: 0.06, rootMargin: '0px 0px -30px 0px' });
+    revealEls.forEach(function(el) { obs.observe(el); });
+    function revealNow() { revealEls.forEach(function(el) { var r = el.getBoundingClientRect(); if (r.top < window.innerHeight && r.bottom > 0) el.classList.add('active'); }); }
+    revealNow();
+    window.addEventListener('scroll', revealNow, { passive: true });
+    setTimeout(function() { revealEls.forEach(function(el) { el.classList.add('active'); }); }, 3000);
+    document.querySelectorAll('.accordion-header').forEach(function(h) {
+      h.addEventListener('click', function() {
+        var item = h.parentElement;
+        var was = item.classList.contains('active');
+        document.querySelectorAll('.accordion-item').forEach(function(i) { i.classList.remove('active'); });
+        if (!was) item.classList.add('active');
+      });
+    });
+  </script>
+</body>
+</html>

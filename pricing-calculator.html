@@ -1,0 +1,988 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Event Pricing Calculator</title>
+<style>
+  :root {
+    --bg: #0f0f12;
+    --surface: #1a1a20;
+    --surface2: #22222a;
+    --border: #2e2e38;
+    --accent: #6c63ff;
+    --accent-dim: #4a44b3;
+    --gold: #f0b429;
+    --green: #34d399;
+    --red: #f87171;
+    --text: #e8e8f0;
+    --muted: #8888a8;
+    --radius: 10px;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+    font-size: 14px;
+  }
+
+  header {
+    background: var(--surface);
+    border-bottom: 1px solid var(--border);
+    padding: 18px 32px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+
+  header h1 {
+    font-size: 18px;
+    font-weight: 700;
+    letter-spacing: -0.3px;
+  }
+
+  header span {
+    font-size: 12px;
+    color: var(--muted);
+    background: var(--surface2);
+    padding: 4px 10px;
+    border-radius: 20px;
+    border: 1px solid var(--border);
+  }
+
+  .layout {
+    display: grid;
+    grid-template-columns: 420px 1fr;
+    gap: 0;
+    min-height: calc(100vh - 61px);
+  }
+
+  /* LEFT PANEL */
+  .inputs {
+    background: var(--surface);
+    border-right: 1px solid var(--border);
+    padding: 28px 24px;
+    overflow-y: auto;
+  }
+
+  .section-label {
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 1.2px;
+    text-transform: uppercase;
+    color: var(--muted);
+    margin-bottom: 12px;
+    margin-top: 24px;
+  }
+
+  .section-label:first-child { margin-top: 0; }
+
+  /* Client info */
+  .field-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+    margin-bottom: 10px;
+  }
+
+  .field-row.full { grid-template-columns: 1fr; }
+
+  label.field {
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+  }
+
+  label.field span {
+    font-size: 11px;
+    color: var(--muted);
+    font-weight: 500;
+  }
+
+  input[type="text"], input[type="date"], input[type="number"], select, textarea {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    color: var(--text);
+    padding: 8px 10px;
+    font-size: 13px;
+    outline: none;
+    transition: border-color 0.15s;
+    width: 100%;
+  }
+
+  input:focus, select:focus, textarea:focus {
+    border-color: var(--accent);
+  }
+
+  textarea { resize: vertical; min-height: 60px; font-family: inherit; }
+
+  /* Service cards */
+  .services-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+  }
+
+  .service-card {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 12px;
+    cursor: pointer;
+    transition: all 0.15s;
+    user-select: none;
+  }
+
+  .service-card:hover { border-color: var(--accent-dim); }
+
+  .service-card.active {
+    border-color: var(--accent);
+    background: rgba(108, 99, 255, 0.08);
+  }
+
+  .service-card input { display: none; }
+
+  .service-card .icon { font-size: 20px; margin-bottom: 6px; display: block; }
+  .service-card .name { font-size: 13px; font-weight: 600; }
+  .service-card .price-hint { font-size: 11px; color: var(--muted); margin-top: 2px; }
+
+  /* Sliders */
+  .slider-row {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 12px;
+  }
+
+  .slider-row label { font-size: 12px; color: var(--muted); min-width: 80px; }
+
+  input[type="range"] {
+    flex: 1;
+    -webkit-appearance: none;
+    height: 4px;
+    background: var(--border);
+    border-radius: 2px;
+    outline: none;
+  }
+
+  input[type="range"]::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    width: 16px; height: 16px;
+    border-radius: 50%;
+    background: var(--accent);
+    cursor: pointer;
+  }
+
+  .slider-value {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 5px;
+    padding: 4px 8px;
+    font-size: 13px;
+    font-weight: 600;
+    min-width: 58px;
+    text-align: center;
+  }
+
+  /* Toggles */
+  .toggle-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 10px 0;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .toggle-row:last-child { border-bottom: none; }
+
+  .toggle-info .toggle-name { font-size: 13px; font-weight: 500; }
+  .toggle-info .toggle-desc { font-size: 11px; color: var(--muted); margin-top: 2px; }
+
+  .toggle {
+    position: relative;
+    width: 38px;
+    height: 21px;
+    cursor: pointer;
+  }
+
+  .toggle input { display: none; }
+
+  .toggle-track {
+    position: absolute;
+    inset: 0;
+    background: var(--border);
+    border-radius: 21px;
+    transition: background 0.2s;
+  }
+
+  .toggle input:checked + .toggle-track { background: var(--accent); }
+
+  .toggle-thumb {
+    position: absolute;
+    top: 3px;
+    left: 3px;
+    width: 15px;
+    height: 15px;
+    background: #fff;
+    border-radius: 50%;
+    transition: transform 0.2s;
+  }
+
+  .toggle input:checked ~ .toggle-thumb { transform: translateX(17px); }
+
+  /* RIGHT PANEL */
+  .quote-panel {
+    padding: 28px 32px;
+    overflow-y: auto;
+  }
+
+  .quote-header {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    margin-bottom: 28px;
+  }
+
+  .quote-header h2 { font-size: 22px; font-weight: 700; }
+  .quote-header .meta { font-size: 12px; color: var(--muted); margin-top: 4px; }
+
+  .btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+    padding: 9px 18px;
+    border-radius: 7px;
+    font-size: 13px;
+    font-weight: 600;
+    border: none;
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+
+  .btn-primary { background: var(--accent); color: #fff; }
+  .btn-primary:hover { background: var(--accent-dim); }
+  .btn-outline {
+    background: transparent;
+    color: var(--text);
+    border: 1px solid var(--border);
+  }
+  .btn-outline:hover { border-color: var(--accent); color: var(--accent); }
+
+  .btn-row { display: flex; gap: 10px; }
+
+  /* Line items */
+  .line-items {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    overflow: hidden;
+    margin-bottom: 20px;
+  }
+
+  .line-item {
+    display: flex;
+    align-items: center;
+    padding: 13px 18px;
+    border-bottom: 1px solid var(--border);
+    gap: 12px;
+  }
+
+  .line-item:last-child { border-bottom: none; }
+
+  .line-item .li-icon { font-size: 16px; width: 24px; text-align: center; }
+  .line-item .li-name { flex: 1; font-size: 13px; }
+  .line-item .li-sub { font-size: 11px; color: var(--muted); margin-top: 2px; }
+  .line-item .li-price { font-size: 14px; font-weight: 700; font-variant-numeric: tabular-nums; }
+
+  .line-item.surcharge .li-price { color: var(--gold); }
+  .line-item.discount .li-price { color: var(--green); }
+
+  .line-item.editable .li-price-wrap {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+
+  .price-edit {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 5px;
+    color: var(--text);
+    font-size: 13px;
+    font-weight: 700;
+    padding: 4px 8px;
+    width: 90px;
+    text-align: right;
+    outline: none;
+  }
+
+  .price-edit:focus { border-color: var(--accent); }
+
+  /* Total block */
+  .total-block {
+    background: linear-gradient(135deg, rgba(108,99,255,0.15), rgba(108,99,255,0.05));
+    border: 1px solid var(--accent);
+    border-radius: var(--radius);
+    padding: 20px 24px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 20px;
+  }
+
+  .total-block .label { font-size: 14px; color: var(--muted); }
+  .total-block .amount {
+    font-size: 34px;
+    font-weight: 800;
+    font-variant-numeric: tabular-nums;
+    color: var(--text);
+    letter-spacing: -1px;
+  }
+
+  .range-hint {
+    font-size: 11px;
+    color: var(--muted);
+    text-align: right;
+    margin-top: 4px;
+  }
+
+  /* Rate editor */
+  .rate-editor {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 16px 18px;
+    margin-bottom: 20px;
+  }
+
+  .rate-editor summary {
+    font-size: 12px;
+    color: var(--muted);
+    cursor: pointer;
+    font-weight: 600;
+    letter-spacing: 0.3px;
+    user-select: none;
+  }
+
+  .rate-editor summary:hover { color: var(--text); }
+
+  .rate-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    gap: 10px;
+    margin-top: 14px;
+  }
+
+  .rate-field label {
+    font-size: 11px;
+    color: var(--muted);
+    display: block;
+    margin-bottom: 4px;
+  }
+
+  /* Client card in quote */
+  .client-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 16px 18px;
+    margin-bottom: 20px;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px 20px;
+  }
+
+  .client-card .field { font-size: 12px; }
+  .client-card .field .key { color: var(--muted); margin-bottom: 2px; }
+  .client-card .field .val { font-weight: 500; }
+
+  /* Empty state */
+  .empty-state {
+    text-align: center;
+    padding: 60px 20px;
+    color: var(--muted);
+  }
+
+  .empty-state .icon { font-size: 40px; margin-bottom: 12px; }
+  .empty-state p { font-size: 13px; }
+
+  /* Print styles */
+  @media print {
+    body { background: #fff; color: #000; font-size: 12px; }
+    header, .inputs, .btn-row, .rate-editor { display: none !important; }
+    .layout { display: block; }
+    .quote-panel { padding: 20px; }
+    .line-items, .total-block, .client-card {
+      border: 1px solid #ddd !important;
+      background: #fff !important;
+      color: #000 !important;
+      break-inside: avoid;
+    }
+    .line-item { border-bottom: 1px solid #eee !important; }
+    .total-block .amount { color: #000 !important; }
+    .line-item.surcharge .li-price { color: #b8860b !important; }
+    .muted { color: #666 !important; }
+    .price-edit { border: none !important; background: transparent !important; }
+  }
+
+  .badge {
+    font-size: 10px;
+    padding: 2px 7px;
+    border-radius: 20px;
+    font-weight: 600;
+  }
+
+  .badge-holiday { background: rgba(240,180,41,0.15); color: var(--gold); border: 1px solid rgba(240,180,41,0.3); }
+  .badge-outdoor { background: rgba(52,211,153,0.1); color: var(--green); border: 1px solid rgba(52,211,153,0.25); }
+  .badge-night { background: rgba(248,113,113,0.1); color: var(--red); border: 1px solid rgba(248,113,113,0.25); }
+
+  .divider {
+    height: 1px;
+    background: var(--border);
+    margin: 20px 0;
+  }
+</style>
+<link rel="icon" href="favicon.ico" sizes="any">
+<link rel="icon" href="favicon-32x32.png" type="image/png" sizes="32x32">
+<link rel="icon" href="favicon-16x16.png" type="image/png" sizes="16x16">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+</head>
+<body>
+
+<header>
+  <h1>⚡ Event Pricing Calculator</h1>
+  <span>South Florida · Mid-High Production</span>
+</header>
+
+<div class="layout">
+  <!-- LEFT: INPUTS -->
+  <div class="inputs">
+
+    <div class="section-label">Client Info</div>
+    <div class="field-row">
+      <label class="field"><span>First Name</span><input type="text" id="firstName" placeholder="Amy"></label>
+      <label class="field"><span>Last Name</span><input type="text" id="lastName" placeholder="Kaplan"></label>
+    </div>
+    <div class="field-row">
+      <label class="field"><span>Event Date</span><input type="date" id="eventDate" value="2026-07-04"></label>
+      <label class="field"><span>Venue</span><input type="text" id="venue" placeholder="Venue name"></label>
+    </div>
+    <div class="field-row full">
+      <label class="field"><span>Notes (internal)</span><textarea id="notes" placeholder="Outdoor pool deck, community event..."></textarea></label>
+    </div>
+
+    <div class="section-label">Services</div>
+    <div class="services-grid">
+      <label class="service-card" id="card-dj">
+        <input type="checkbox" id="svc-dj" onchange="calc()">
+        <span class="icon">🎧</span>
+        <div class="name">DJ</div>
+        <div class="price-hint">Hourly + flat</div>
+      </label>
+      <label class="service-card" id="card-sound">
+        <input type="checkbox" id="svc-sound" onchange="calc()">
+        <span class="icon">🔊</span>
+        <div class="name">Sound System</div>
+        <div class="price-hint">By guest count</div>
+      </label>
+      <label class="service-card" id="card-led">
+        <input type="checkbox" id="svc-led" onchange="calc()">
+        <span class="icon">💡</span>
+        <div class="name">LED Package</div>
+        <div class="price-hint">Moving heads + wash</div>
+      </label>
+      <label class="service-card" id="card-up">
+        <input type="checkbox" id="svc-up" onchange="calc()">
+        <span class="icon">🌟</span>
+        <div class="name">Uplighting</div>
+        <div class="price-hint">Per fixture</div>
+      </label>
+      <label class="service-card" id="card-bistro">
+        <input type="checkbox" id="svc-bistro" onchange="calc()">
+        <span class="icon">✨</span>
+        <div class="name">Bistro Lights</div>
+        <div class="price-hint">String/café lights</div>
+      </label>
+      <label class="service-card" id="card-photo">
+        <input type="checkbox" id="svc-photo" onchange="calc()">
+        <span class="icon">📸</span>
+        <div class="name">Photo Booth</div>
+        <div class="price-hint">4-hr flat rate</div>
+      </label>
+      <label class="service-card" id="card-stage">
+        <input type="checkbox" id="svc-stage" onchange="calc()">
+        <span class="icon">🎪</span>
+        <div class="name">Stage / Riser</div>
+        <div class="price-hint">Setup + rental</div>
+      </label>
+      <label class="service-card" id="card-gen">
+        <input type="checkbox" id="svc-gen" onchange="calc()">
+        <span class="icon">⚡</span>
+        <div class="name">Generator</div>
+        <div class="price-hint">Outdoor power</div>
+      </label>
+    </div>
+
+    <div class="section-label">Event Details</div>
+
+    <div class="slider-row">
+      <label>Guests</label>
+      <input type="range" id="guests" min="50" max="1500" step="25" value="750" oninput="syncSlider('guests','guestVal'); calc()">
+      <div class="slider-value" id="guestVal">750</div>
+    </div>
+
+    <div class="slider-row">
+      <label>Hours</label>
+      <input type="range" id="hours" min="2" max="12" step="0.5" value="5" oninput="syncSlider('hours','hourVal'); calc()">
+      <div class="slider-value" id="hourVal">5 hrs</div>
+    </div>
+
+    <div class="slider-row">
+      <label>Uplight Qty</label>
+      <input type="range" id="uplightQty" min="6" max="50" step="2" value="28" oninput="syncSlider('uplightQty','uplightVal'); calc()">
+      <div class="slider-value" id="uplightVal">28</div>
+    </div>
+
+    <div class="section-label">Modifiers</div>
+
+    <div class="toggle-row">
+      <div class="toggle-info">
+        <div class="toggle-name">Outdoor Event</div>
+        <div class="toggle-desc">+10% — weather risk, extra cabling</div>
+      </div>
+      <label class="toggle">
+        <input type="checkbox" id="mod-outdoor" onchange="calc()">
+        <div class="toggle-track"></div>
+        <div class="toggle-thumb"></div>
+      </label>
+    </div>
+
+    <div class="toggle-row">
+      <div class="toggle-info">
+        <div class="toggle-name">Holiday / Peak Day</div>
+        <div class="toggle-desc">+15% — 4th of July, NYE, etc.</div>
+      </div>
+      <label class="toggle">
+        <input type="checkbox" id="mod-holiday" onchange="calc()">
+        <div class="toggle-track"></div>
+        <div class="toggle-thumb"></div>
+      </label>
+    </div>
+
+    <div class="toggle-row">
+      <div class="toggle-info">
+        <div class="toggle-name">Late Night (after 11pm)</div>
+        <div class="toggle-desc">+$300/hr overtime</div>
+      </div>
+      <label class="toggle">
+        <input type="checkbox" id="mod-night" onchange="calc()">
+        <div class="toggle-track"></div>
+        <div class="toggle-thumb"></div>
+      </label>
+    </div>
+
+    <div class="toggle-row">
+      <div class="toggle-info">
+        <div class="toggle-name">Equipment Mix (own/rent)</div>
+        <div class="toggle-desc">+18% — subcontracted gear markup</div>
+      </div>
+      <label class="toggle">
+        <input type="checkbox" id="mod-rental" onchange="calc()">
+        <div class="toggle-track"></div>
+        <div class="toggle-thumb"></div>
+      </label>
+    </div>
+
+    <div class="section-label">Travel</div>
+    <div class="field-row full">
+      <label class="field"><span>Travel / Fuel Add-on ($)</span>
+        <input type="number" id="travelFee" value="0" min="0" step="50" onchange="calc()">
+      </label>
+    </div>
+
+  </div>
+
+  <!-- RIGHT: QUOTE -->
+  <div class="quote-panel">
+
+    <div class="quote-header">
+      <div>
+        <h2 id="quoteTitle">Quote Preview</h2>
+        <div class="meta" id="quoteMeta">Select services and fill in details to generate</div>
+      </div>
+      <div class="btn-row">
+        <button class="btn btn-outline" onclick="window.print()">🖨 Print</button>
+        <button class="btn btn-primary" onclick="copyQuote()">📋 Copy Quote</button>
+      </div>
+    </div>
+
+    <!-- Client card -->
+    <div class="client-card" id="clientCard" style="display:none">
+      <div class="field"><div class="key">Client</div><div class="val" id="qClient">—</div></div>
+      <div class="field"><div class="key">Event Date</div><div class="val" id="qDate">—</div></div>
+      <div class="field"><div class="key">Venue</div><div class="val" id="qVenue">—</div></div>
+      <div class="field"><div class="key">Guests</div><div class="val" id="qGuests">—</div></div>
+      <div class="field"><div class="key">Duration</div><div class="val" id="qHours">—</div></div>
+      <div class="field"><div class="key">Flags</div><div class="val" id="qFlags">—</div></div>
+    </div>
+
+    <!-- Rate editor -->
+    <details class="rate-editor" id="rateEditor">
+      <summary>⚙ Adjust Base Rates</summary>
+      <div class="rate-grid">
+        <div class="rate-field"><label>DJ / hr</label><input type="number" class="price-edit" id="rate-dj" value="225" onchange="calc()"></div>
+        <div class="rate-field"><label>DJ Setup flat</label><input type="number" class="price-edit" id="rate-djsetup" value="300" onchange="calc()"></div>
+        <div class="rate-field"><label>Uplight / fixture</label><input type="number" class="price-edit" id="rate-up" value="50" onchange="calc()"></div>
+        <div class="rate-field"><label>Photo Booth flat</label><input type="number" class="price-edit" id="rate-photo" value="1200" onchange="calc()"></div>
+        <div class="rate-field"><label>Stage / Riser</label><input type="number" class="price-edit" id="rate-stage" value="800" onchange="calc()"></div>
+        <div class="rate-field"><label>Generator</label><input type="number" class="price-edit" id="rate-gen" value="600" onchange="calc()"></div>
+      </div>
+    </details>
+
+    <!-- Line items -->
+    <div class="line-items" id="lineItems">
+      <div class="empty-state">
+        <div class="icon">🎛</div>
+        <p>Select services on the left to build your quote</p>
+      </div>
+    </div>
+
+    <!-- Total -->
+    <div class="total-block">
+      <div>
+        <div class="label">ESTIMATED TOTAL</div>
+        <div class="amount" id="grandTotal">$0</div>
+      </div>
+      <div style="text-align:right">
+        <div class="range-hint" id="rangeHint"></div>
+        <div style="font-size:11px; color:var(--muted); margin-top:6px;">Taxes / permits not included</div>
+      </div>
+    </div>
+
+    <div id="internalNoteBox" style="display:none; background:var(--surface); border:1px solid var(--border); border-radius:var(--radius); padding:14px 18px; font-size:12px; color:var(--muted);">
+      <strong style="color:var(--text)">Internal Notes:</strong> <span id="internalNoteText"></span>
+    </div>
+
+  </div>
+</div>
+
+<script>
+// ─── Pricing Tables ────────────────────────────────────────────────────────
+
+function soundPrice(guests, outdoor) {
+  let base;
+  if (guests <= 100)       base = 500;
+  else if (guests <= 250)  base = 800;
+  else if (guests <= 500)  base = 1100;
+  else if (guests <= 750)  base = 1500;
+  else if (guests <= 1000) base = 1900;
+  else                     base = 2400;
+  return outdoor ? Math.round(base * 1.25) : base;
+}
+
+function ledPrice(guests) {
+  if (guests <= 150)      return 950;
+  if (guests <= 400)      return 1400;
+  if (guests <= 750)      return 1850;
+  return 2400;
+}
+
+function bistroPrice(guests) {
+  if (guests <= 200)      return 700;
+  if (guests <= 400)      return 1000;
+  if (guests <= 700)      return 1350;
+  return 1750;
+}
+
+function fmtCurrency(n) {
+  return '$' + Math.round(n).toLocaleString('en-US');
+}
+
+function fmtDate(str) {
+  if (!str) return '—';
+  const d = new Date(str + 'T00:00:00');
+  return d.toLocaleDateString('en-US', { weekday: 'short', year: 'numeric', month: 'short', day: 'numeric' });
+}
+
+function syncSlider(id, valId) {
+  const v = document.getElementById(id).value;
+  const el = document.getElementById(valId);
+  if (id === 'hours') el.textContent = v + ' hrs';
+  else el.textContent = v;
+}
+
+// ─── Card toggle visual ────────────────────────────────────────────────────
+
+document.querySelectorAll('.service-card').forEach(card => {
+  card.addEventListener('click', () => {
+    const cb = card.querySelector('input[type=checkbox]');
+    cb.checked = !cb.checked;
+    card.classList.toggle('active', cb.checked);
+    calc();
+  });
+});
+
+// ─── Main calc ─────────────────────────────────────────────────────────────
+
+function calc() {
+  const guests   = parseInt(document.getElementById('guests').value);
+  const hours    = parseFloat(document.getElementById('hours').value);
+  const uplights = parseInt(document.getElementById('uplightQty').value);
+  const outdoor  = document.getElementById('mod-outdoor').checked;
+  const holiday  = document.getElementById('mod-holiday').checked;
+  const night    = document.getElementById('mod-night').checked;
+  const rental   = document.getElementById('mod-rental').checked;
+  const travel   = parseFloat(document.getElementById('travelFee').value) || 0;
+
+  const djRate   = parseFloat(document.getElementById('rate-dj').value) || 225;
+  const djSetup  = parseFloat(document.getElementById('rate-djsetup').value) || 300;
+  const upRate   = parseFloat(document.getElementById('rate-up').value) || 50;
+  const photoRate= parseFloat(document.getElementById('rate-photo').value) || 1200;
+  const stageRate= parseFloat(document.getElementById('rate-stage').value) || 800;
+  const genRate  = parseFloat(document.getElementById('rate-gen').value) || 600;
+
+  const svcs = {
+    dj:     document.getElementById('svc-dj').checked,
+    sound:  document.getElementById('svc-sound').checked,
+    led:    document.getElementById('svc-led').checked,
+    up:     document.getElementById('svc-up').checked,
+    bistro: document.getElementById('svc-bistro').checked,
+    photo:  document.getElementById('svc-photo').checked,
+    stage:  document.getElementById('svc-stage').checked,
+    gen:    document.getElementById('svc-gen').checked,
+  };
+
+  const items = [];
+
+  if (svcs.dj) {
+    const p = (djRate * hours) + djSetup;
+    items.push({ icon: '🎧', name: 'DJ Performance', sub: `${hours} hrs × $${djRate}/hr + $${djSetup} setup`, price: p });
+  }
+  if (svcs.sound) {
+    const p = soundPrice(guests, outdoor);
+    items.push({ icon: '🔊', name: 'Sound System', sub: `${guests} guests · ${outdoor ? 'outdoor-grade' : 'indoor'}`, price: p });
+  }
+  if (svcs.led) {
+    const p = ledPrice(guests);
+    items.push({ icon: '💡', name: 'LED Package', sub: `Moving heads + wash bars · ${guests} guests`, price: p });
+  }
+  if (svcs.up) {
+    const p = uplights * upRate;
+    items.push({ icon: '🌟', name: 'Uplighting', sub: `${uplights} fixtures × $${upRate}`, price: p });
+  }
+  if (svcs.bistro) {
+    const p = bistroPrice(guests);
+    items.push({ icon: '✨', name: 'Bistro / String Lights', sub: `Café atmosphere · ${guests} guests`, price: p });
+  }
+  if (svcs.photo) {
+    items.push({ icon: '📸', name: 'Photo Booth', sub: '4-hour flat rate, props included', price: photoRate });
+  }
+  if (svcs.stage) {
+    items.push({ icon: '🎪', name: 'Stage / Riser', sub: 'Setup, breakdown, rental', price: stageRate });
+  }
+  if (svcs.gen) {
+    items.push({ icon: '⚡', name: 'Generator Rental', sub: 'Outdoor power supply', price: genRate });
+  }
+
+  const subtotal = items.reduce((s, i) => s + i.price, 0);
+
+  // Surcharges
+  const surcharges = [];
+
+  if (outdoor && !svcs.sound) {
+    // outdoor already in sound; if no sound, charge outdoor
+    const oc = Math.round(subtotal * 0.10);
+    surcharges.push({ name: 'Outdoor Surcharge', sub: '+10% — weather, extra rigging', amount: oc, type: 'outdoor' });
+  }
+
+  if (holiday) {
+    const hc = Math.round(subtotal * 0.15);
+    surcharges.push({ name: 'Holiday Surcharge', sub: '+15% — peak date premium', amount: hc, type: 'holiday' });
+  }
+
+  if (night) {
+    const nightExtra = Math.round(Math.max(hours - 5, 1) * 300);
+    surcharges.push({ name: 'Late Night Overtime', sub: `${Math.max(hours - 5, 1)} hr(s) × $300`, amount: nightExtra, type: 'night' });
+  }
+
+  if (rental) {
+    const rc = Math.round(subtotal * 0.18);
+    surcharges.push({ name: 'Equipment Rental Markup', sub: '+18% — subcontracted gear', amount: rc, type: 'rental' });
+  }
+
+  if (travel > 0) {
+    surcharges.push({ name: 'Travel / Fuel', sub: 'Estimated transport cost', amount: travel, type: 'travel' });
+  }
+
+  const surchargeTotal = surcharges.reduce((s, x) => s + x.amount, 0);
+  const grand = subtotal + surchargeTotal;
+
+  // ─── Render ───────────────────────────────────────────────────────────────
+
+  const container = document.getElementById('lineItems');
+
+  if (items.length === 0) {
+    container.innerHTML = `<div class="empty-state"><div class="icon">🎛</div><p>Select services on the left to build your quote</p></div>`;
+    document.getElementById('grandTotal').textContent = '$0';
+    document.getElementById('rangeHint').textContent = '';
+    return;
+  }
+
+  let html = '';
+
+  items.forEach(item => {
+    html += `
+      <div class="line-item editable">
+        <span class="li-icon">${item.icon}</span>
+        <div style="flex:1">
+          <div class="li-name">${item.name}</div>
+          <div class="li-sub">${item.sub}</div>
+        </div>
+        <div class="li-price-wrap">
+          <input class="price-edit" type="number" value="${Math.round(item.price)}" onchange="calc()" style="pointer-events:auto" title="Override price">
+        </div>
+      </div>`;
+  });
+
+  if (surcharges.length > 0) {
+    html += `<div class="line-item" style="background:rgba(255,255,255,0.02)">
+      <span class="li-icon">—</span>
+      <div style="flex:1"><div class="li-name" style="color:var(--muted); font-size:12px">SUBTOTAL</div></div>
+      <div class="li-price">${fmtCurrency(subtotal)}</div>
+    </div>`;
+
+    surcharges.forEach(s => {
+      const badge = s.type === 'holiday' ? 'badge-holiday' : s.type === 'outdoor' ? 'badge-outdoor' : s.type === 'night' ? 'badge-night' : '';
+      html += `<div class="line-item surcharge">
+        <span class="li-icon">＋</span>
+        <div style="flex:1">
+          <div class="li-name">${s.name} <span class="badge ${badge}">${s.type}</span></div>
+          <div class="li-sub">${s.sub}</div>
+        </div>
+        <div class="li-price">${fmtCurrency(s.amount)}</div>
+      </div>`;
+    });
+  }
+
+  container.innerHTML = html;
+
+  document.getElementById('grandTotal').textContent = fmtCurrency(grand);
+  document.getElementById('rangeHint').textContent = `Range: ${fmtCurrency(grand * 0.92)} – ${fmtCurrency(grand * 1.08)}`;
+
+  // Client card
+  const fn = document.getElementById('firstName').value;
+  const ln = document.getElementById('lastName').value;
+  const clientName = [fn, ln].filter(Boolean).join(' ') || '—';
+  const dateVal = document.getElementById('eventDate').value;
+  const venueVal = document.getElementById('venue').value || '—';
+
+  document.getElementById('clientCard').style.display = 'grid';
+  document.getElementById('qClient').textContent = clientName;
+  document.getElementById('qDate').textContent = fmtDate(dateVal);
+  document.getElementById('qVenue').textContent = venueVal;
+  document.getElementById('qGuests').textContent = guests + ' guests';
+  document.getElementById('qHours').textContent = hours + ' hours';
+
+  const flags = [];
+  if (outdoor) flags.push('<span class="badge badge-outdoor">outdoor</span>');
+  if (holiday) flags.push('<span class="badge badge-holiday">holiday</span>');
+  if (night)   flags.push('<span class="badge badge-night">late night</span>');
+  document.getElementById('qFlags').innerHTML = flags.length ? flags.join(' ') : '—';
+
+  document.getElementById('quoteTitle').textContent = clientName !== '—' ? `Quote — ${clientName}` : 'Quote Preview';
+  document.getElementById('quoteMeta').textContent = `${fmtDate(dateVal)} · ${venueVal !== '—' ? venueVal : ''} · ${guests} guests · ${hours} hrs`;
+
+  const noteText = document.getElementById('notes').value;
+  if (noteText) {
+    document.getElementById('internalNoteBox').style.display = 'block';
+    document.getElementById('internalNoteText').textContent = noteText;
+  } else {
+    document.getElementById('internalNoteBox').style.display = 'none';
+  }
+}
+
+// ─── Copy Quote ────────────────────────────────────────────────────────────
+
+function copyQuote() {
+  const fn = document.getElementById('firstName').value;
+  const ln = document.getElementById('lastName').value;
+  const name = [fn, ln].filter(Boolean).join(' ') || 'Client';
+  const dateVal = document.getElementById('eventDate').value;
+  const venue = document.getElementById('venue').value || 'Venue TBD';
+  const guests = document.getElementById('guests').value;
+  const hours = document.getElementById('hours').value;
+  const total = document.getElementById('grandTotal').textContent;
+  const range = document.getElementById('rangeHint').textContent;
+
+  const items = document.querySelectorAll('.line-item');
+  let lines = '';
+  items.forEach(item => {
+    const name = item.querySelector('.li-name')?.textContent?.trim();
+    const price = item.querySelector('.li-price')?.textContent?.trim() || item.querySelector('.price-edit')?.value;
+    if (name && price) lines += `  ${name}: ${typeof price === 'string' ? price : '$' + parseInt(price).toLocaleString()}\n`;
+  });
+
+  const text = `EVENT QUOTE
+──────────────────────────────────────
+Client: ${name}
+Date: ${fmtDate(dateVal)}
+Venue: ${venue}
+Guests: ${guests}  |  Duration: ${hours} hrs
+
+SERVICES & PRICING
+──────────────────────────────────────
+${lines}
+──────────────────────────────────────
+TOTAL: ${total}
+${range}
+
+Taxes, permits, and gratuity not included.
+Valid for 7 days from issue date.
+`;
+
+  navigator.clipboard.writeText(text).then(() => {
+    const btn = document.querySelector('.btn-primary');
+    btn.textContent = '✓ Copied!';
+    setTimeout(() => btn.textContent = '📋 Copy Quote', 2000);
+  });
+}
+
+// ─── Pre-fill Amy's inquiry ─────────────────────────────────────────────────
+
+(function prefill() {
+  document.getElementById('firstName').value = 'Amy';
+  document.getElementById('lastName').value = 'Kaplan';
+  document.getElementById('eventDate').value = '2026-07-04';
+  document.getElementById('venue').value = 'Coronado Condominium';
+  document.getElementById('notes').value = 'Outdoor pool deck. Community HOA event. 750 residents. Looking for DJ + entertainment + nice lighting. Confirmed: DJ, LED, Uplighting, Bistro.';
+
+  // Check services
+  ['svc-dj','svc-sound','svc-led','svc-up','svc-bistro'].forEach(id => {
+    document.getElementById(id).checked = true;
+    document.getElementById('card-' + id.replace('svc-','')).classList.add('active');
+  });
+
+  // Set sliders
+  document.getElementById('guests').value = 750;
+  document.getElementById('guestVal').textContent = '750';
+  document.getElementById('hours').value = 5;
+  document.getElementById('hourVal').textContent = '5 hrs';
+  document.getElementById('uplightQty').value = 28;
+  document.getElementById('uplightVal').textContent = '28';
+
+  // Modifiers
+  document.getElementById('mod-outdoor').checked = true;
+  document.getElementById('mod-holiday').checked = true;
+  document.getElementById('mod-rental').checked = true;
+
+  calc();
+})();
+
+</script>
+</body>
+</html>

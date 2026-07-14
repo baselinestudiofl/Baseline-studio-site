@@ -1,0 +1,751 @@
+function getDB(key) { try { return JSON.parse(localStorage.getItem('bs_' + key)) || []; } catch (e) { return []; } }
+function setDB(key, data) { localStorage.setItem('bs_' + key, JSON.stringify(data)); }
+function genId() { return Date.now().toString(36) + Math.random().toString(36).substr(2); }
+
+function initData() {
+  if (!localStorage.getItem('bs_users')) {
+    setDB('users', [
+      { id: 'u1', email: 'admin@baselinestudiofl.com', password: 'admin123', name: 'Baseline Admin', role: 'master', active: true, phone: '(786)302-6056' },
+      { id: 'u2', email: 'dj@baselinestudiofl.com', password: 'dj123', name: 'DJ Team', role: 'dj', active: true, phone: '(786)302-6056' },
+      { id: 'u3', email: 'events@baselinestudiofl.com', password: 'events123', name: 'Event Team', role: 'event-architect', active: true, phone: '(786)302-6056' }
+    ]);
+  }
+  if (!localStorage.getItem('bs_vendors')) {
+    setDB('vendors', [
+      { id: genId(), name: 'Addison', category: 'venue', contact: 'Management', email: 'events@addisonmiamibeach.com', phone: '(305)674-6000' },
+      { id: genId(), name: 'Ritz Carlton Bal Harbour', category: 'venue', contact: 'Banquets', email: 'banquets@ritzcarlton.com', phone: '(305)455-5400' },
+      { id: genId(), name: 'Sarah Photography', category: 'photographer', contact: 'Sarah', email: 'sarah@sarahphotography.com', phone: '(305)555-0100' }
+    ]);
+  }
+  if (!localStorage.getItem('bs_clients')) {
+    setDB('clients', [
+      { id: genId(), name: 'Maria & Carlos Rodriguez', email: 'maria@email.com', phone: '(305)555-1001', type: 'private', notes: '' },
+      { id: genId(), name: 'Apex Corporation', email: 'events@apexcorp.com', phone: '(305)555-2001', type: 'corporate', notes: '' }
+    ]);
+  }
+  if (!localStorage.getItem('bs_events')) {
+    const clients = getDB('clients');
+    setDB('events', [
+      {
+        id: genId(), name: 'Rodriguez Wedding', type: 'wedding', date: '2026-05-15', startTime: '18:00', endTime: '23:00',
+        clientId: clients[0].id, clientName: clients[0].name, clientEmail: clients[0].email, clientPhone: clients[0].phone,
+        venueName: 'Addison', venueAddress: '1111 Lincoln Road, Miami Beach, FL', venueContact: 'Management', venuePhone: '(305)674-6000',
+        status: 'booked', basePrice: 3800, depositAmount: 1900, depositPaid: true, balancePaid: false,
+        services: ['DJ & Entertainment', 'Live Sound & Audio', 'Uplighting'], staff: ['u2'], portalPassword: 'WD8K2M',
+        timeline: [], vendors: [], music: [], documents: [], notes: ''
+      },
+      {
+        id: genId(), name: 'Apex Corp Gala', type: 'corporate', date: '2026-04-22', startTime: '19:00', endTime: '23:00',
+        clientId: clients[1].id, clientName: clients[1].name, clientEmail: clients[1].email, clientPhone: clients[1].phone,
+        venueName: 'Ritz Carlton Bal Harbour', venueAddress: '10295 Collins Ave, Bal Harbour, FL 33154', venueContact: 'Banquets', venuePhone: '(305)455-5400',
+        status: 'proposal', basePrice: 5200, depositAmount: 2600, depositPaid: false, balancePaid: false,
+        services: ['DJ & Entertainment', 'LED Video Wall'], staff: ['u3'], portalPassword: 'CG5P9X',
+        timeline: [], vendors: [], music: [], documents: [], notes: ''
+      }
+    ]);
+  }
+  if (!localStorage.getItem('bs_templates')) {
+    setDB('templates', [
+      { id: genId(), name: 'DJ Services Agreement', content: 'DJ SERVICES AGREEMENT\n\nThis Agreement is between Baseline Studio and {{client_name}}.\n\nEvent Date: {{event_date}}\nLocation: {{venue_name}}\n\nServices: {{services_list}}\nTotal Investment: ${{total_price}}\n\nPayment Terms: Deposit due upon signing, balance 10 days prior.\nCancellation: 90+ days full refund, 30-90 days 50% forfeited, <30 days all fees forfeited.\nOvertime: $200/hour\n\nBaseline Studio | (786) 302-6056 | Hello@baselinestudiofl.com' },
+      { id: genId(), name: 'Full Production Agreement', content: 'FULL EVENT PRODUCTION AGREEMENT\n\nClient: {{client_name}}\nEvent: {{event_type}} - {{event_date}}\nVenue: {{venue_name}}\n\nServices: {{services_list}}\nTotal Investment: ${{total_price}}\nDeposit (50%): ${{deposit_amount}}\n\nCancellation Policy:\n- 90+ days: Full refund\n- 30-90 days: 50% retained\n- <30 days: All fees retained\n\nBaseline Studio | (786) 302-6056' },
+      { id: genId(), name: 'Event Proposal', content: 'EVENT PROPOSAL\n\nDear {{client_name}},\n\nThank you for considering Baseline Studio for your {{event_type}} on {{event_date}} at {{venue_name}}.\n\nServices: {{services_list}}\nTotal Investment: ${{total_price}}\nDeposit: ${{deposit_amount}}\n\nNext Steps:\n1. Review proposal\n2. Confirm details\n3. Sign agreement\n4. Pay deposit\n\nBaseline Studio | (786) 302-6056 | Hello@baselinestudiofl.com' }
+    ]);
+  }
+}
+
+function switchSection(sectionId) {
+  document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
+  document.getElementById(sectionId).classList.add('active');
+  document.querySelectorAll('.nav-link').forEach(l => l.classList.remove('active'));
+  event.target.closest('.nav-link').classList.add('active');
+
+  const titles = { dashboard: 'Dashboard', pipeline: 'Pipeline', events: 'Events', clients: 'Clients', vendors: 'Vendors & Venues', documents: 'Documents', accounts: 'Accounts', reports: 'Reports' };
+  document.getElementById('pageTitle').textContent = titles[sectionId];
+
+  if (sectionId === 'dashboard') renderDashboard();
+  if (sectionId === 'pipeline') renderPipeline();
+  if (sectionId === 'events') renderEvents();
+  if (sectionId === 'clients') renderClients();
+  if (sectionId === 'vendors') renderVendors();
+  if (sectionId === 'documents') renderDocuments();
+  if (sectionId === 'accounts') renderAccounts();
+  if (sectionId === 'reports') renderReports();
+}
+
+function openModal(modalId) { document.getElementById(modalId).classList.add('active'); }
+function closeModal(modalId) { document.getElementById(modalId).classList.remove('active'); }
+
+function showToast(message, type = 'info') {
+  const container = document.getElementById('toastContainer');
+  const toast = document.createElement('div');
+  toast.className = `toast ${type}`;
+  toast.textContent = message;
+  container.appendChild(toast);
+  setTimeout(() => toast.remove(), 3500);
+}
+
+function logout() {
+  localStorage.removeItem('bs_current_user');
+  window.location.href = 'login.html';
+}
+
+function renderDashboard() {
+  const events = getDB('events');
+  const clients = getDB('clients');
+  const now = new Date();
+  const thisMonth = now.getFullYear() + '-' + String(now.getMonth() + 1).padStart(2, '0');
+
+  const activeEvents = events.filter(e => ['booked', 'confirmed'].includes(e.status)).length;
+  const thisMonthEvents = events.filter(e => e.date.startsWith(thisMonth)).length;
+  const openLeads = events.filter(e => ['lead', 'proposal'].includes(e.status)).length;
+
+  let html = '';
+  [
+    { label: 'Active Events', value: activeEvents },
+    { label: 'Total Clients', value: clients.length },
+    { label: 'This Month', value: thisMonthEvents },
+    { label: 'Open Leads', value: openLeads }
+  ].forEach(s => {
+    html += `<div class="stat-card"><div class="stat-label">${s.label}</div><div class="stat-value">${s.value}</div></div>`;
+  });
+  document.getElementById('statCards').innerHTML = html;
+
+  const upcoming = events.sort((a, b) => new Date(a.date) - new Date(b.date)).slice(0, 5);
+  let tableHtml = '<table><thead><tr><th>Date</th><th>Event</th><th>Client</th><th>Venue</th><th>Status</th></tr></thead><tbody>';
+  upcoming.forEach(e => {
+    const date = new Date(e.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+    tableHtml += `<tr onclick="openEventDetail('${e.id}')"><td>${date}</td><td>${e.name}</td><td>${e.clientName}</td><td>${e.venueName}</td><td><span class="badge badge-${e.status}">${e.status}</span></td></tr>`;
+  });
+  tableHtml += '</tbody></table>';
+  document.getElementById('upcomingEventsContainer').innerHTML = upcoming.length ? tableHtml : '<div class="empty-state"><div class="empty-state-text">No upcoming events</div></div>';
+
+  const statuses = ['lead', 'proposal', 'booked', 'confirmed'];
+  let pillsHtml = '';
+  statuses.forEach(status => {
+    const count = events.filter(e => e.status === status).length;
+    pillsHtml += `<div style="padding: 8px 12px; background: var(--black-3); border: 1px solid var(--border); border-radius: 20px; display: flex; gap: 8px;"><span class="badge badge-${status}">${status}</span><strong>${count}</strong></div>`;
+  });
+  document.getElementById('pipelinePillsContainer').innerHTML = pillsHtml;
+  document.getElementById('newEventBtn').style.display = 'block';
+}
+
+function renderPipeline() {
+  const events = getDB('events');
+  const statuses = ['lead', 'proposal', 'negotiation', 'booked', 'confirmed', 'completed'];
+  let html = '';
+
+  statuses.forEach(status => {
+    const statusEvents = events.filter(e => e.status === status);
+    html += `<div class="kanban-column" data-status="${status}">
+      <div class="kanban-header"><div>${status}</div><div class="kanban-count">${statusEvents.length}</div></div>
+      <div class="kanban-items" data-status="${status}">`;
+    statusEvents.forEach(e => {
+      const date = new Date(e.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+      html += `<div class="kanban-card" draggable="true" data-event-id="${e.id}" ondragstart="dragStart(event)" ondragend="dragEnd(event)">
+        <div class="kanban-card-title">${e.name}</div>
+        <div class="kanban-card-client">${e.clientName}</div>
+        <div class="kanban-card-date">${date}</div>
+        <div class="kanban-card-footer"><div class="kanban-card-price">$${e.basePrice}</div></div>
+      </div>`;
+    });
+    html += `</div></div>`;
+  });
+
+  document.getElementById('kanbanBoard').innerHTML = html;
+  document.querySelectorAll('.kanban-items').forEach(col => {
+    col.addEventListener('dragover', dragOver);
+    col.addEventListener('drop', drop);
+  });
+  document.getElementById('newEventBtn').style.display = 'block';
+}
+
+let draggedCard = null;
+function dragStart(e) { draggedCard = e.target.closest('.kanban-card'); draggedCard.classList.add('dragging'); }
+function dragEnd(e) { if (draggedCard) draggedCard.classList.remove('dragging'); }
+function dragOver(e) { e.preventDefault(); }
+function drop(e) {
+  e.preventDefault();
+  const target = e.target.closest('.kanban-items');
+  if (target && draggedCard) {
+    target.appendChild(draggedCard);
+    const newStatus = target.dataset.status;
+    const eventId = draggedCard.dataset.eventId;
+    const events = getDB('events');
+    const event = events.find(e => e.id === eventId);
+    if (event) {
+      event.status = newStatus;
+      setDB('events', events);
+      showToast(`Moved to ${newStatus}`, 'success');
+    }
+  }
+}
+
+function renderEvents() {
+  let events = getDB('events');
+  const searchVal = document.getElementById('eventsSearch')?.value || '';
+  const typeFilter = document.getElementById('eventTypeFilter')?.value || '';
+  const statusFilter = document.getElementById('eventStatusFilter')?.value || '';
+
+  if (searchVal) events = events.filter(e => e.name.toLowerCase().includes(searchVal.toLowerCase()));
+  if (typeFilter) events = events.filter(e => e.type === typeFilter);
+  if (statusFilter) events = events.filter(e => e.status === statusFilter);
+
+  let html = '';
+  events.forEach(e => {
+    const date = new Date(e.date).toLocaleDateString();
+    html += `<tr onclick="openEventDetail('${e.id}')"><td>${e.name}</td><td><span class="badge badge-${e.type}">${e.type}</span></td><td>${date}</td><td>${e.clientName}</td><td>${e.venueName}</td><td><span class="badge badge-${e.status}">${e.status}</span></td><td>$${e.basePrice}</td><td><button class="btn btn-secondary" style="padding: 6px 10px; font-size: 12px;" onclick="event.stopPropagation(); deleteEvent('${e.id}');">Delete</button></td></tr>`;
+  });
+  document.getElementById('eventsTableBody').innerHTML = html || '<tr><td colspan="8"><div class="empty-state"><div class="empty-state-text">No events</div></div></td></tr>';
+  document.getElementById('newEventBtn').style.display = 'block';
+}
+
+function openEventDetail(eventId) {
+  const events = getDB('events');
+  const event = events.find(e => e.id === eventId);
+  if (!event) return;
+
+  let html = `<div class="modal-title">${event.name} <span class="badge badge-${event.type}">${event.type}</span></div>
+    <div class="tabs">
+      <button class="tab-btn active" onclick="switchEventTab(this, 'overview')">Overview</button>
+      <button class="tab-btn" onclick="switchEventTab(this, 'documents')">Documents</button>
+      <button class="tab-btn" onclick="switchEventTab(this, 'portal')">Portal</button>
+    </div>
+    <div id="tabOverview" class="tab-content active">${renderEventOverview(event)}</div>
+    <div id="tabDocuments" class="tab-content">${renderEventDocuments(event)}</div>
+    <div id="tabPortal" class="tab-content">${renderEventPortal(event)}</div>`;
+
+  document.getElementById('eventDetailContent').innerHTML = html;
+  window.currentEvent = event;
+  openModal('eventDetailModal');
+}
+
+function switchEventTab(btn, tabName) {
+  document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
+  document.getElementById('tab' + tabName.charAt(0).toUpperCase() + tabName.slice(1)).classList.add('active');
+}
+
+function renderEventOverview(event) {
+  return `<div class="grid-2">
+    <div>
+      <div class="form-group"><label class="form-label">Event Name</label><input type="text" class="form-input" value="${event.name}" id="editEventName"></div>
+      <div class="form-group"><label class="form-label">Type</label><select class="form-select" id="editEventType"><option value="wedding" ${event.type === 'wedding' ? 'selected' : ''}>Wedding</option><option value="quince" ${event.type === 'quince' ? 'selected' : ''}>Quince</option><option value="corporate" ${event.type === 'corporate' ? 'selected' : ''}>Corporate</option></select></div>
+      <div class="form-group"><label class="form-label">Status</label><select class="form-select" id="editEventStatus"><option value="lead" ${event.status === 'lead' ? 'selected' : ''}>Lead</option><option value="proposal" ${event.status === 'proposal' ? 'selected' : ''}>Proposal</option><option value="booked" ${event.status === 'booked' ? 'selected' : ''}>Booked</option><option value="confirmed" ${event.status === 'confirmed' ? 'selected' : ''}>Confirmed</option></select></div>
+      <div class="form-group"><label class="form-label">Date</label><input type="date" class="form-input" value="${event.date}" id="editEventDate"></div>
+      <div class="form-group"><label class="form-label">Start Time</label><input type="time" class="form-input" value="${event.startTime}" id="editEventStartTime"></div>
+      <div class="form-group"><label class="form-label">Venue</label><input type="text" class="form-input" value="${event.venueName}" id="editVenueName"></div>
+    </div>
+    <div>
+      <div class="form-group"><label class="form-label">Client Name</label><input type="text" class="form-input" value="${event.clientName}" id="editClientName"></div>
+      <div class="form-group"><label class="form-label">Client Email</label><input type="email" class="form-input" value="${event.clientEmail}" id="editClientEmail"></div>
+      <div class="form-group"><label class="form-label">Client Phone</label><input type="tel" class="form-input" value="${event.clientPhone}" id="editClientPhone"></div>
+      <div class="form-group"><label class="form-label">Base Price</label><input type="number" class="form-input" value="${event.basePrice}" id="editBasePrice"></div>
+      <div class="form-group"><label class="form-label">Deposit</label><input type="number" class="form-input" value="${event.depositAmount}" id="editDepositAmount"></div>
+      <button class="btn btn-primary" onclick="saveEventChanges('${event.id}')">Save</button>
+    </div>
+  </div>`;
+}
+
+function saveEventChanges(eventId) {
+  const events = getDB('events');
+  const event = events.find(e => e.id === eventId);
+  if (event) {
+    event.name = document.getElementById('editEventName').value;
+    event.type = document.getElementById('editEventType').value;
+    event.status = document.getElementById('editEventStatus').value;
+    event.date = document.getElementById('editEventDate').value;
+    event.startTime = document.getElementById('editEventStartTime').value;
+    event.clientName = document.getElementById('editClientName').value;
+    event.clientEmail = document.getElementById('editClientEmail').value;
+    event.clientPhone = document.getElementById('editClientPhone').value;
+    event.venueName = document.getElementById('editVenueName').value;
+    event.basePrice = parseInt(document.getElementById('editBasePrice').value);
+    event.depositAmount = parseInt(document.getElementById('editDepositAmount').value);
+    setDB('events', events);
+    showToast('Saved', 'success');
+  }
+}
+
+function renderEventDocuments(event) {
+  const templates = getDB('templates');
+  let html = '<div class="form-group"><label class="form-label">Create from Template</label><select class="form-select" id="docTemplateSelect"><option value="">Select...</option>';
+  templates.forEach(t => html += `<option value="${t.id}">${t.name}</option>`);
+  html += '</select><button class="btn btn-primary" style="margin-top: 10px;">Create</button></div>';
+  return html;
+}
+
+function renderEventPortal(event) {
+  const inviteMsg = `Hi ${event.clientName}! Your Baseline Studio portal is ready.\\nEmail: ${event.clientEmail}\\nPassword: ${event.portalPassword}`;
+  return `<div class="form-group"><label class="form-label">Email</label><input type="email" class="form-input" value="${event.clientEmail}" readonly></div>
+    <div class="form-group"><label class="form-label">Password</label><input type="text" class="form-input" value="${event.portalPassword}" readonly></div>
+    <button class="btn btn-secondary" onclick="copyToClipboard('${event.portalPassword}')">Copy Password</button>
+    <button class="btn btn-secondary" style="margin-left: 10px;">Copy Invite</button>`;
+}
+
+function copyToClipboard(text) { navigator.clipboard.writeText(text); showToast('Copied', 'success'); }
+
+function deleteEvent(eventId) {
+  const events = getDB('events');
+  const event = events.find(ev => ev.id === eventId);
+  window.confirmCallback = () => {
+    const updated = events.filter(ev => ev.id !== eventId);
+    setDB('events', updated);
+    closeModal('confirmDialog');
+    renderEvents();
+    showToast('Deleted', 'success');
+  };
+  document.getElementById('confirmTitle').textContent = 'Delete Event';
+  document.getElementById('confirmMessage').textContent = `Delete "${event.name}"?`;
+  openModal('confirmDialog');
+}
+
+function handleConfirm() { if (window.confirmCallback) { window.confirmCallback(); window.confirmCallback = null; } }
+
+function renderClients() {
+  let clients = getDB('clients');
+  const searchVal = document.getElementById('clientsSearch')?.value || '';
+  if (searchVal) clients = clients.filter(c => c.name.toLowerCase().includes(searchVal.toLowerCase()));
+
+  const events = getDB('events');
+  let html = '';
+  clients.forEach(c => {
+    const eventCount = events.filter(e => e.clientId === c.id).length;
+    html += `<tr onclick="openClientDetail('${c.id}')"><td>${c.name}</td><td>${c.email}</td><td>${c.phone}</td><td>${c.type}</td><td>${eventCount}</td><td><button class="btn btn-secondary" style="padding: 6px 10px; font-size: 12px;">View</button></td></tr>`;
+  });
+  document.getElementById('clientsTableBody').innerHTML = html || '<tr><td colspan="6"><div class="empty-state">No clients</div></td></tr>';
+}
+
+function openClientDetail(clientId) {
+  const clients = getDB('clients');
+  const client = clients.find(c => c.id === clientId);
+  const events = getDB('events');
+  const clientEvents = events.filter(e => e.clientId === clientId);
+
+  let html = `<div class="modal-title">${client.name}</div>
+    <div class="form-group"><label class="form-label">Email</label><input type="email" class="form-input" value="${client.email}" id="editClientEmail2"></div>
+    <div class="form-group"><label class="form-label">Phone</label><input type="tel" class="form-input" value="${client.phone}" id="editClientPhone2"></div>
+    <div class="form-group"><label class="form-label">Type</label><select class="form-select" id="editClientType"><option value="private" ${client.type === 'private' ? 'selected' : ''}>Private</option><option value="corporate" ${client.type === 'corporate' ? 'selected' : ''}>Corporate</option></select></div>
+    <button class="btn btn-primary" onclick="saveClientChanges('${clientId}')">Save</button>
+    <div class="divider"></div>
+    <h3 style="margin-bottom: 15px;">Events (${clientEvents.length})</h3>
+    ${clientEvents.length ? '<ul style="list-style: none;">' + clientEvents.map(e => `<li style="padding: 8px 0; cursor: pointer; color: var(--cyan);">${e.name} - ${new Date(e.date).toLocaleDateString()}</li>`).join('') + '</ul>' : '<div class="empty-state">No events</div>'}`;
+
+  document.getElementById('clientDetailContent').innerHTML = html;
+  openModal('clientDetailModal');
+}
+
+function saveClientChanges(clientId) {
+  const clients = getDB('clients');
+  const client = clients.find(c => c.id === clientId);
+  if (client) {
+    client.email = document.getElementById('editClientEmail2').value;
+    client.phone = document.getElementById('editClientPhone2').value;
+    client.type = document.getElementById('editClientType').value;
+    setDB('clients', clients);
+    showToast('Saved', 'success');
+    renderClients();
+  }
+}
+
+function renderVendors() {
+  let vendors = getDB('vendors');
+  const searchVal = document.getElementById('vendorsSearch')?.value || '';
+  const categoryFilter = document.getElementById('vendorCategoryFilter')?.value || '';
+
+  if (searchVal) vendors = vendors.filter(v => v.name.toLowerCase().includes(searchVal.toLowerCase()));
+  if (categoryFilter) vendors = vendors.filter(v => v.category === categoryFilter);
+
+  let html = '';
+  vendors.forEach(v => {
+    html += `<div class="vendor-card"><div class="vendor-name">${v.name}</div><div class="vendor-category">${v.category}</div><div class="vendor-contact">${v.contact}</div><div class="vendor-contact">${v.email}</div><div class="vendor-contact">${v.phone}</div><div style="margin-top: 12px;"><button class="btn btn-danger" style="padding: 6px 10px; font-size: 12px; width: 100%;" onclick="deleteVendor('${v.id}')">Delete</button></div></div>`;
+  });
+  document.getElementById('vendorsGrid').innerHTML = html || '<div class="empty-state">No vendors</div>';
+}
+
+function saveVendor(e) {
+  e.preventDefault();
+  const vendors = getDB('vendors');
+  vendors.push({
+    id: genId(),
+    name: document.getElementById('vendorName').value,
+    category: document.getElementById('vendorCategory').value,
+    contact: document.getElementById('vendorContact').value,
+    email: document.getElementById('vendorEmail').value,
+    phone: document.getElementById('vendorPhone').value
+  });
+  setDB('vendors', vendors);
+  closeModal('addVendorModal');
+  renderVendors();
+  showToast('Added', 'success');
+  document.getElementById('addVendorForm').reset();
+}
+
+function openAddVendorModal() { document.getElementById('addVendorForm').reset(); openModal('addVendorModal'); }
+
+function deleteVendor(vendorId) {
+  const vendors = getDB('vendors');
+  window.confirmCallback = () => {
+    const updated = vendors.filter(v => v.id !== vendorId);
+    setDB('vendors', updated);
+    closeModal('confirmDialog');
+    renderVendors();
+    showToast('Deleted', 'success');
+  };
+  document.getElementById('confirmTitle').textContent = 'Delete Vendor';
+  document.getElementById('confirmMessage').textContent = 'Delete this vendor?';
+  openModal('confirmDialog');
+}
+
+function renderDocuments() {
+  const templates = getDB('templates');
+  let html = '';
+  templates.forEach(t => {
+    html += `<div class="vendor-card"><div class="vendor-name">${t.name}</div><div style="color: var(--gray); font-size: 12px; margin-bottom: 15px; max-height: 60px; overflow: hidden;">${t.content.substring(0, 100)}...</div><div><button class="btn btn-danger" style="padding: 6px 10px; font-size: 12px; width: 100%;" onclick="deleteTemplate('${t.id}')">Delete</button></div></div>`;
+  });
+  document.getElementById('templatesGrid').innerHTML = html || '<div class="empty-state">No templates</div>';
+}
+
+function saveTemplate(e) {
+  e.preventDefault();
+  const templates = getDB('templates');
+  templates.push({ id: genId(), name: document.getElementById('templateName').value, content: document.getElementById('templateContent').value });
+  setDB('templates', templates);
+  closeModal('newTemplateModal');
+  renderDocuments();
+  showToast('Created', 'success');
+  document.getElementById('newTemplateForm').reset();
+}
+
+function openNewTemplateModal() { document.getElementById('newTemplateForm').reset(); openModal('newTemplateModal'); }
+
+function deleteTemplate(templateId) {
+  const templates = getDB('templates');
+  window.confirmCallback = () => {
+    const updated = templates.filter(t => t.id !== templateId);
+    setDB('templates', updated);
+    closeModal('confirmDialog');
+    renderDocuments();
+    showToast('Deleted', 'success');
+  };
+  document.getElementById('confirmTitle').textContent = 'Delete Template';
+  document.getElementById('confirmMessage').textContent = 'Delete this template?';
+  openModal('confirmDialog');
+}
+
+function renderAccounts() {
+  const users = getDB('users');
+  const currentUser = JSON.parse(localStorage.getItem('bs_current_user'));
+
+  if (!['master', 'admin'].includes(currentUser.role)) {
+    document.getElementById('accounts').innerHTML = '<div class="empty-state"><div class="empty-state-text">Access Denied</div></div>';
+    return;
+  }
+
+  let html = '';
+  users.forEach(u => {
+    html += `<tr><td>${u.name}</td><td>${u.email}</td><td><span class="badge" style="background: var(--cyan); color: var(--black);">${u.role}</span></td><td><span class="badge" style="background: ${u.active ? 'var(--success)' : 'var(--danger)'};">${u.active ? 'Active' : 'Inactive'}</span></td><td>${new Date(parseInt(u.id.substring(0, 10), 36)).toLocaleDateString()}</td><td><button class="btn btn-secondary" style="padding: 6px 10px; font-size: 12px;" onclick="toggleUserActive('${u.id}')">Toggle</button><button class="btn btn-danger" style="padding: 6px 10px; font-size: 12px;" onclick="deleteUser('${u.id}')">Delete</button></td></tr>`;
+  });
+  document.getElementById('accountsTableBody').innerHTML = html;
+}
+
+function saveAccount(e) {
+  e.preventDefault();
+  const users = getDB('users');
+  users.push({
+    id: genId(),
+    name: document.getElementById('accountName').value,
+    email: document.getElementById('accountEmail').value,
+    password: document.getElementById('accountPassword').value,
+    phone: document.getElementById('accountPhone').value,
+    role: document.getElementById('accountRole').value,
+    active: true
+  });
+  setDB('users', users);
+  closeModal('addAccountModal');
+  renderAccounts();
+  showToast('Created', 'success');
+  document.getElementById('addAccountForm').reset();
+}
+
+function openAddAccountModal() { document.getElementById('addAccountForm').reset(); openModal('addAccountModal'); }
+
+function toggleUserActive(userId) {
+  const users = getDB('users');
+  const user = users.find(u => u.id === userId);
+  if (user) { user.active = !user.active; setDB('users', users); renderAccounts(); showToast(user.active ? 'Activated' : 'Deactivated', 'success'); }
+}
+
+function deleteUser(userId) {
+  const users = getDB('users');
+  window.confirmCallback = () => {
+    const updated = users.filter(u => u.id !== userId);
+    setDB('users', updated);
+    closeModal('confirmDialog');
+    renderAccounts();
+    showToast('Deleted', 'success');
+  };
+  document.getElementById('confirmTitle').textContent = 'Delete User';
+  document.getElementById('confirmMessage').textContent = 'Delete this user?';
+  openModal('confirmDialog');
+}
+
+function renderReports() {
+  const events = getDB('events');
+
+  let totalBilled = events.reduce((sum, e) => sum + e.basePrice, 0);
+  let collected = events.filter(e => e.depositPaid && e.balancePaid).reduce((sum, e) => sum + e.basePrice, 0);
+  let outstanding = totalBilled - collected;
+
+  let html = '';
+  [
+    { label: 'Total Billed', value: '$' + totalBilled },
+    { label: 'Collected', value: '$' + collected },
+    { label: 'Outstanding', value: '$' + outstanding }
+  ].forEach(s => {
+    html += `<div class="stat-card"><div class="stat-label">${s.label}</div><div class="stat-value" style="font-size: 24px;">${s.value}</div></div>`;
+  });
+  document.getElementById('reportsStats').innerHTML = html;
+
+  const typeChart = {};
+  events.forEach(e => { typeChart[e.type] = (typeChart[e.type] || 0) + 1; });
+  let typeHtml = '<ul style="list-style: none;">';
+  Object.entries(typeChart).forEach(([type, count]) => {
+    typeHtml += `<li style="padding: 10px; border-bottom: 1px solid var(--border); display: flex; justify-content: space-between;"><span>${type}</span><strong>${count}</strong></li>`;
+  });
+  document.getElementById('typeChart').innerHTML = typeHtml + '</ul>';
+
+  const statusChart = {};
+  events.forEach(e => { statusChart[e.status] = (statusChart[e.status] || 0) + 1; });
+  let statusHtml = '<ul style="list-style: none;">';
+  Object.entries(statusChart).forEach(([status, count]) => {
+    statusHtml += `<li style="padding: 10px; border-bottom: 1px solid var(--border); display: flex; justify-content: space-between;"><span class="badge badge-${status}">${status}</span><strong>${count}</strong></li>`;
+  });
+  document.getElementById('statusChart').innerHTML = statusHtml + '</ul>';
+}
+
+function openNewEventModal() {
+  const steps = [
+    { title: 'Type', content: renderEventTypeStep() },
+    { title: 'Basics', content: renderEventBasicsStep() },
+    { title: 'Client', content: renderEventClientStep() },
+    { title: 'Venue', content: renderEventVenueStep() },
+    { title: 'Services', content: renderEventServicesStep() }
+  ];
+
+  let html = '';
+  steps.forEach((step, idx) => {
+    html += `<div id="wizardStep${idx}" class="wizard-step" style="${idx === 0 ? '' : 'display:none;'}"><div style="font-size: 13px; color: var(--gray); margin-bottom: 15px;">Step ${idx + 1} of ${steps.length}</div>${step.content}</div>`;
+  });
+  html += `<div style="display: flex; gap: 10px; justify-content: flex-end; margin-top: 20px;"><button class="btn btn-secondary" id="wizardBack" onclick="wizardPrevStep()" style="display:none;">Back</button><button class="btn btn-primary" id="wizardNext" onclick="wizardNextStep()">Next</button></div>`;
+
+  document.getElementById('eventWizardSteps').innerHTML = html;
+  window.currentWizardStep = 0;
+  window.wizardData = {};
+  openModal('newEventModal');
+}
+
+function renderEventTypeStep() {
+  const types = [
+    { value: 'wedding', label: 'Wedding', icon: '💒' },
+    { value: 'quince', label: 'Quince', icon: '👑' },
+    { value: 'corporate', label: 'Corporate', icon: '🏢' }
+  ];
+
+  let html = '<div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 15px;">';
+  types.forEach(t => {
+    html += `<div style="background: var(--black-4); border: 2px solid transparent; padding: 20px; border-radius: 8px; cursor: pointer; text-align: center; transition: all 0.2s;" onclick="selectEventType('${t.value}', this)" class="event-type-tile"><div style="font-size: 32px; margin-bottom: 10px;">${t.icon}</div><div style="font-weight: 600;">${t.label}</div></div>`;
+  });
+  html += '</div>';
+  return html;
+}
+
+function selectEventType(type, el) {
+  document.querySelectorAll('.event-type-tile').forEach(t => t.style.borderColor = 'transparent');
+  el.style.borderColor = 'var(--cyan)';
+  window.wizardData.type = type;
+}
+
+function renderEventBasicsStep() {
+  return `<div class="form-group"><label class="form-label">Event Name</label><input type="text" class="form-input" id="wizardEventName" placeholder="e.g., Smith Wedding"></div><div class="form-group"><label class="form-label">Event Date</label><input type="date" class="form-input" id="wizardEventDate"></div><div class="grid-2"><div class="form-group"><label class="form-label">Start Time</label><input type="time" class="form-input" id="wizardStartTime"></div><div class="form-group"><label class="form-label">End Time</label><input type="time" class="form-input" id="wizardEndTime"></div></div>`;
+}
+
+function renderEventClientStep() {
+  const clients = getDB('clients');
+  let html = `<div class="form-group"><label class="form-label">Client</label><select class="form-select" id="wizardClientSelect" onchange="selectWizardClient(this.value)"><option value="new">+ New Client</option>`;
+  clients.forEach(c => { html += `<option value="${c.id}">${c.name}</option>`; });
+  html += `</select></div><div id="wizardClientForm"><div class="form-group"><label class="form-label">Name</label><input type="text" class="form-input" id="wizardClientName"></div><div class="form-group"><label class="form-label">Email</label><input type="email" class="form-input" id="wizardClientEmail"></div><div class="form-group"><label class="form-label">Phone</label><input type="tel" class="form-input" id="wizardClientPhone"></div></div>`;
+  return html;
+}
+
+function selectWizardClient(clientId) {
+  const form = document.getElementById('wizardClientForm');
+  if (clientId === 'new') {
+    form.style.display = 'block';
+  } else {
+    const clients = getDB('clients');
+    const client = clients.find(c => c.id === clientId);
+    if (client) {
+      window.wizardData.clientId = clientId;
+      window.wizardData.clientName = client.name;
+      window.wizardData.clientEmail = client.email;
+      window.wizardData.clientPhone = client.phone;
+      form.style.display = 'none';
+    }
+  }
+}
+
+function renderEventVenueStep() {
+  const vendors = getDB('vendors').filter(v => v.category === 'venue');
+  let html = `<div class="form-group"><label class="form-label">Venue</label><select class="form-select" id="wizardVenueSelect" onchange="selectWizardVenue(this.value)"><option value="new">+ Add New Venue</option>`;
+  vendors.forEach(v => { html += `<option value="${v.id}">${v.name}</option>`; });
+  html += `</select></div><div id="wizardVenueForm"><div class="form-group"><label class="form-label">Venue Name</label><input type="text" class="form-input" id="wizardVenueName"></div><div class="form-group"><label class="form-label">Address</label><input type="text" class="form-input" id="wizardVenueAddress"></div></div>`;
+  return html;
+}
+
+function selectWizardVenue(venueId) {
+  const form = document.getElementById('wizardVenueForm');
+  if (venueId === 'new') {
+    form.style.display = 'block';
+  } else {
+    const vendors = getDB('vendors');
+    const venue = vendors.find(v => v.id === venueId);
+    if (venue) {
+      window.wizardData.venueName = venue.name;
+      window.wizardData.venueAddress = venue.contact;
+      form.style.display = 'none';
+    }
+  }
+}
+
+function renderEventServicesStep() {
+  return `<div class="form-group"><label class="form-label">Services</label><div class="checkbox-group"><label><input type="checkbox" class="wizard-service" value="DJ & Entertainment"> DJ & Entertainment</label><label><input type="checkbox" class="wizard-service" value="Live Sound & Audio"> Live Sound & Audio</label><label><input type="checkbox" class="wizard-service" value="Uplighting"> Uplighting</label><label><input type="checkbox" class="wizard-service" value="LED Video Wall"> LED Video Wall</label></div></div><div class="form-group"><label class="form-label">Base Price</label><input type="number" class="form-input" id="wizardBasePrice" placeholder="2500"></div><div class="form-group"><label class="form-label">Deposit (50%)</label><input type="number" class="form-input" id="wizardDepositAmount" placeholder="1250"></div>`;
+}
+
+function wizardNextStep() {
+  if (window.currentWizardStep === 0) {
+    if (!window.wizardData.type) { showToast('Select event type', 'error'); return; }
+  }
+  if (window.currentWizardStep === 1) {
+    window.wizardData.name = document.getElementById('wizardEventName').value;
+    window.wizardData.date = document.getElementById('wizardEventDate').value;
+    window.wizardData.startTime = document.getElementById('wizardStartTime').value;
+    window.wizardData.endTime = document.getElementById('wizardEndTime').value;
+    if (!window.wizardData.name || !window.wizardData.date) { showToast('Fill all fields', 'error'); return; }
+  }
+  if (window.currentWizardStep === 4) {
+    window.wizardData.services = Array.from(document.querySelectorAll('.wizard-service:checked')).map(c => c.value);
+    window.wizardData.basePrice = parseInt(document.getElementById('wizardBasePrice').value) || 2500;
+    window.wizardData.depositAmount = parseInt(document.getElementById('wizardDepositAmount').value) || 1250;
+    createEventFromWizard();
+    return;
+  }
+
+  window.currentWizardStep++;
+  updateWizardDisplay();
+}
+
+function wizardPrevStep() {
+  if (window.currentWizardStep > 0) {
+    window.currentWizardStep--;
+    updateWizardDisplay();
+  }
+}
+
+function updateWizardDisplay() {
+  for (let i = 0; i < 5; i++) {
+    const el = document.getElementById('wizardStep' + i);
+    if (el) el.style.display = i === window.currentWizardStep ? 'block' : 'none';
+  }
+  document.getElementById('wizardBack').style.display = window.currentWizardStep > 0 ? 'block' : 'none';
+  document.getElementById('wizardNext').textContent = window.currentWizardStep === 4 ? 'Create Event' : 'Next';
+}
+
+function createEventFromWizard() {
+  const events = getDB('events');
+  const clients = getDB('clients');
+
+  let clientId = window.wizardData.clientId;
+  if (!clientId) {
+    const newClient = {
+      id: genId(),
+      name: document.getElementById('wizardClientName').value,
+      email: document.getElementById('wizardClientEmail').value,
+      phone: document.getElementById('wizardClientPhone').value,
+      type: 'private',
+      notes: ''
+    };
+    clients.push(newClient);
+    clientId = newClient.id;
+    window.wizardData.clientName = newClient.name;
+    window.wizardData.clientEmail = newClient.email;
+    window.wizardData.clientPhone = newClient.phone;
+    setDB('clients', clients);
+  }
+
+  let venueName = window.wizardData.venueName;
+  if (!venueName) {
+    venueName = document.getElementById('wizardVenueName').value;
+    window.wizardData.venueName = venueName;
+    window.wizardData.venueAddress = document.getElementById('wizardVenueAddress').value;
+  }
+
+  const password = Math.random().toString(36).substring(2, 8).toUpperCase();
+  const newEvent = {
+    id: genId(),
+    name: window.wizardData.name,
+    type: window.wizardData.type,
+    date: window.wizardData.date,
+    startTime: window.wizardData.startTime,
+    endTime: window.wizardData.endTime,
+    clientId: clientId,
+    clientName: window.wizardData.clientName,
+    clientEmail: window.wizardData.clientEmail,
+    clientPhone: window.wizardData.clientPhone,
+    venueName: venueName,
+    venueAddress: window.wizardData.venueAddress || '',
+    venueContact: '',
+    venuePhone: '',
+    status: 'lead',
+    basePrice: window.wizardData.basePrice,
+    depositAmount: window.wizardData.depositAmount,
+    depositPaid: false,
+    balancePaid: false,
+    services: window.wizardData.services,
+    staff: [],
+    portalPassword: password,
+    timeline: [],
+    vendors: [],
+    music: [],
+    documents: [],
+    notes: ''
+  };
+
+  events.push(newEvent);
+  setDB('events', events);
+  closeModal('newEventModal');
+  renderDashboard();
+  showToast('Event created!', 'success');
+}
+
+window.addEventListener('DOMContentLoaded', function() {
+  initData();
+  const currentUser = JSON.parse(localStorage.getItem('bs_current_user'));
+
+  document.getElementById('userAvatar').textContent = currentUser.name.charAt(0);
+  document.getElementById('userName').textContent = currentUser.name;
+  document.getElementById('userRole').textContent = currentUser.role.replace(/-/g, ' ');
+
+  if (['master', 'admin'].includes(currentUser.role)) {
+    document.getElementById('accountsNav').style.display = 'flex';
+  }
+
+  document.getElementById('eventsSearch')?.addEventListener('input', renderEvents);
+  document.getElementById('eventTypeFilter')?.addEventListener('change', renderEvents);
+  document.getElementById('eventStatusFilter')?.addEventListener('change', renderEvents);
+  document.getElementById('clientsSearch')?.addEventListener('input', renderClients);
+  document.getElementById('vendorsSearch')?.addEventListener('input', renderVendors);
+  document.getElementById('vendorCategoryFilter')?.addEventListener('change', renderVendors);
+
+  renderDashboard();
+});

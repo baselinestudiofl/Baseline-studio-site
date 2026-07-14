@@ -1,0 +1,397 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+<link rel="canonical" href="https://www.baselinestudiofl.com/service-dancefloor-lighting">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Dance Floor Lighting Miami | Moving Heads for Events | Baseline Studio</title>
+  <meta name="description" content="Professional dance floor lighting for weddings and events in Miami — moving heads, LED beams, wash lights. Make any dance floor unforgettable. South Florida.">
+  <link rel="stylesheet" href="fonts/fonts.css">
+  <link rel="stylesheet" href="style.css?v=2">
+  <style>
+    .svc-detail { padding: 80px 48px 100px; max-width: 1300px; margin: 0 auto; display: grid; grid-template-columns: 1.4fr 1fr; gap: 80px; align-items: start; }
+    .svc-body { font-size: 16px; font-weight: 300; color: rgba(255,255,255,0.55); line-height: 1.9; }
+    .svc-body p { margin-bottom: 20px; }
+    .svc-body strong { color: var(--white); font-weight: 500; }
+    .svc-sidebar {}
+    .svc-specs-box { background: var(--black-2); border: 1px solid var(--rule); padding: 36px; margin-bottom: 24px; }
+    .specs-title { font-family: var(--font-cond); font-size: 12px; font-weight: 700; letter-spacing: 2px; text-transform: uppercase; color: var(--cyan); margin-bottom: 20px; }
+    .specs-list { list-style: none; }
+    .specs-list li { padding: 10px 0; border-bottom: 1px solid var(--rule); font-size: 13px; color: rgba(255,255,255,0.55); display: flex; gap: 10px; align-items: flex-start; }
+    .specs-list li:last-child { border-bottom: none; }
+    .specs-list li::before { content: '—'; color: var(--cyan); flex-shrink: 0; font-weight: 700; }
+    .svc-cta-box { background: var(--cyan-dim); border: 1px solid var(--rule-lit); padding: 36px; }
+    .svc-cta-box h3 { font-family: var(--font-cond); font-size: 20px; font-weight: 800; letter-spacing: -0.5px; color: var(--white); margin-bottom: 10px; }
+    .svc-cta-box p { font-size: 14px; font-weight: 300; color: rgba(255,255,255,0.55); line-height: 1.7; margin-bottom: 24px; }
+    .use-cases { padding: 0 48px 100px; max-width: 1300px; margin: 0 auto; }
+    .use-cases-title { font-family: var(--font-cond); font-size: clamp(28px, 3vw, 42px); font-weight: 800; letter-spacing: -1.5px; color: var(--white); margin-bottom: 40px; }
+    .use-cases-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 2px; }
+    .use-case-card { padding: 40px 36px; background: var(--black-2); }
+    .uc-icon { font-size: 24px; margin-bottom: 16px; display: block; opacity: 0.7; }
+    .uc-name { font-family: var(--font-cond); font-size: 18px; font-weight: 700; color: var(--white); margin-bottom: 10px; }
+    .uc-desc { font-size: 13px; font-weight: 300; color: rgba(255,255,255,0.55); line-height: 1.75; }
+    .related-services { padding: 60px 48px; background: var(--black-2); border-top: 1px solid var(--rule); }
+    .related-inner { max-width: 1300px; margin: 0 auto; }
+    .related-title { font-family: var(--font-cond); font-size: 13px; font-weight: 700; letter-spacing: 2px; text-transform: uppercase; color: var(--cyan); margin-bottom: 28px; }
+    .related-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 2px; }
+    .related-card { padding: 28px 28px; background: var(--black-3); text-decoration: none; display: block; transition: background 0.25s; }
+    .related-card:hover { background: var(--black-4); }
+    .related-card-name { font-family: var(--font-cond); font-size: 16px; font-weight: 700; color: var(--white); margin-bottom: 6px; transition: color 0.2s; }
+    .related-card:hover .related-card-name { color: var(--cyan); }
+    .related-card-desc { font-size: 12px; font-weight: 300; color: rgba(255,255,255,0.55); }
+    @media (max-width: 900px) {
+      .svc-detail { grid-template-columns: 1fr; gap: 40px; padding: 60px 24px 70px; }
+      .use-cases { padding: 0 24px 70px; }
+      .use-cases-grid { grid-template-columns: 1fr 1fr; }
+      .related-services { padding: 48px 24px; }
+      .related-grid { grid-template-columns: 1fr 1fr; }
+    }
+    @media (max-width: 600px) {
+      .use-cases-grid { grid-template-columns: 1fr; }
+      .related-grid { grid-template-columns: 1fr; }
+    }
+    /* From the Blog section */
+    .from-the-blog { padding: 60px 48px; background: #0a0a0a; border-top: 1px solid var(--rule); }
+    .ftb-inner { max-width: 960px; margin: 0 auto; }
+    .ftb-label { font-family: var(--font-condensed); font-size: 0.78rem; letter-spacing: .12em; text-transform: uppercase; color: var(--gold); margin-bottom: 24px; }
+    .ftb-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; }
+    .blog-link-card { display: block; padding: 24px 20px; background: var(--black-2); border: 1px solid var(--rule); border-radius: 4px; text-decoration: none; transition: border-color .2s; }
+    .blog-link-card:hover { border-color: var(--gold); }
+    .blc-title { font-size: 0.95rem; color: rgba(255,255,255,0.88); line-height: 1.5; margin-bottom: 12px; }
+    .blc-arrow { font-size: 0.82rem; color: var(--gold); }
+    @media (max-width: 768px) { .ftb-grid { grid-template-columns: 1fr; } .from-the-blog { padding: 40px 24px; } }
+    </style>
+<!-- Google Analytics — deferred until after page load to avoid blocking LCP -->
+<script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  window.addEventListener('load', function() {
+    var s = document.createElement('script');
+    s.src = 'https://www.googletagmanager.com/gtag/js?id=G-420BHQKJE5';
+    s.async = true;
+    document.head.appendChild(s);
+    s.onload = function() { gtag('js', new Date()); gtag('config', 'G-420BHQKJE5'); };
+  });
+</script>
+<link rel="icon" href="favicon.ico" sizes="any">
+<link rel="icon" href="favicon-32x32.png" type="image/png" sizes="32x32">
+<link rel="icon" href="favicon-16x16.png" type="image/png" sizes="16x16">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "FAQPage",
+  "mainEntity": [
+    {
+      "@type": "Question",
+      "name": "How much does dance floor lighting cost for an event in Miami?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "Dance floor lighting in Miami typically ranges from $500 to $2,000+ depending on the number of moving heads, fixture type, and event duration. Baseline Studio provides custom quotes based on your venue size and the look you're going for."
+      }
+    },
+    {
+      "@type": "Question",
+      "name": "What is a moving head light and why does it matter?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "Moving head fixtures are motorized lights that pan, tilt, and change color in response to the music. They create dynamic beams, chase patterns, and wash effects that standard par cans can't replicate. For dance floors, moving heads are what separate a professional setup from a rental package."
+      }
+    },
+    {
+      "@type": "Question",
+      "name": "Do the lights sync to the music?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "Yes. Our lighting technician or DJ programs the fixtures to respond to the beat and energy of the music in real time using a lighting controller. The light show builds with the music and hits on key moments — drops, build-ups, and peak energy points."
+      }
+    },
+    {
+      "@type": "Question",
+      "name": "What's included in a dance floor lighting package?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "A typical package includes 4–8 moving head fixtures, trussing or floor stands, a DMX controller, power distribution, full setup, and on-site operation. We also add wash lights, strobes, or laser effects depending on the package tier and your venue's permissions."
+      }
+    },
+    {
+      "@type": "Question",
+      "name": "Can dance floor lighting be added to an existing DJ package?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "Absolutely — most clients add dance floor lighting to their DJ or sound package. Baseline Studio handles all the production as a single team, so there's no coordination between separate vendors. Everything is programmed and operated together for a cohesive result."
+      }
+    }
+  ]
+}
+</script>
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "Service",
+  "name": "Dance Floor Lighting",
+  "serviceType": "Dance Floor Lighting",
+  "description": "Dynamic dance floor lighting for weddings and parties in Miami. Moving heads, strobes, lasers, and effect lighting to keep the energy high all night.",
+  "keywords": "dance floor lighting Miami, wedding dance floor lights Miami, party lighting Miami",
+  "url": "https://www.baselinestudiofl.com/service-dancefloor-lighting",
+  "provider": {
+    "@id": "https://www.baselinestudiofl.com/#organization"
+  },
+  "areaServed": {
+    "@type": "State",
+    "name": "Florida",
+    "containsPlace": [
+      {
+        "@type": "County",
+        "name": "Miami-Dade County"
+      },
+      {
+        "@type": "County",
+        "name": "Broward County"
+      },
+      {
+        "@type": "County",
+        "name": "Palm Beach County"
+      }
+    ]
+  }
+}
+</script>
+</head>
+<body>
+  <div class="scroll-progress" id="sp"></div>
+  <nav>
+    <div class="nav-inner">
+      <a href="/" class="nav-logo">
+        <img src="logo-full.webp" alt="Baseline Studio" style="height:44px;width:auto;" width="281" height="88">
+      </a>
+      <ul class="nav-links">
+        <li><a href="/">Home</a></li>
+        <li><a href="services.html">Services</a></li>
+        <li><a href="weddings">Weddings</a></li>
+        <li><a href="corporate">Corporate</a></li>
+
+        <li><a href="blog">Blog</a></li>
+        <li><a href="faq">FAQ</a></li>
+        <li><a href="login.html" style="font-size:12px;opacity:0.5;">Client Portal</a></li>
+        <li><a href="contact" class="nav-cta">Get a Quote</a></li>
+      </ul>
+      <button class="hamburger" id="hamburger" aria-label="Menu"><span></span><span></span><span></span></button>
+    </div>
+  </nav>
+  <div class="mobile-menu" id="mobile-menu">
+    <a href="/">Home</a>
+    <a href="services.html">Services</a>
+    <a href="weddings">Weddings</a>
+    <a href="corporate">Corporate</a>
+    <a href="blog">Blog</a>
+    <a href="faq">FAQ</a>
+    <a href="login.html" style="opacity:0.5;font-size:12px;">Client Portal</a>
+    <a href="contact" style="color:var(--cyan);font-weight:600;">Get a Quote</a>
+  </div>
+  <section class="page-hero " style="background-image: url('https://images.unsplash.com/photo-1745470554004-8b55f450b528?auto=format&fit=crop&w=1200&q=75&fm=webp');">
+    <div class="page-hero-glow"></div>
+    <div class="page-hero-inner">
+      <div class="section-eyebrow reveal">Lighting</div>
+      <h1 class="page-hero-title reveal reveal-delay-1">Dance Floor Lighting Miami —<br><em>a dance floor worth dancing on.</em></h1>
+      <p class="page-hero-body reveal reveal-delay-2">Moving heads, LED beams, wash lights above the dance floor. The kind of lighting that makes people feel like they're actually somewhere — not just a party in a banquet hall. That difference usually comes from what's in the rig overhead.</p>
+      <div class="page-hero-ctas reveal reveal-delay-3">
+        <a href="contact" class="btn-primary">Get a Quote</a>
+        <a href="contact" class="btn-ghost">Get a Quote</a>
+      </div>
+    </div>
+  </section>
+  <div class="svc-detail">
+    <div>
+      <div class="svc-body reveal"><p>Dancefloor lighting is what takes a reception from 'nice event' to 'where did the time go.' When the lights are moving, the colors are shifting, and everything is synced to the music — people stay on the floor.</p><p>We rig moving heads on truss or venue points above the dance floor. During dinner, they're warm and ambient. When the dancing starts, they come alive — sweeping beams, color shifts, strobe effects dialed to taste. We control all of it in real time.</p><p>We work with your DJ's setup to sync effects to music cues. First dance, grand entrance, high-energy moments — the lighting responds to what's happening on the floor, not the other way around.</p></div>
+    </div>
+    <div class="svc-sidebar">
+      <div class="svc-specs-box reveal reveal-delay-1">
+        <div class="specs-title">What's Included</div>
+        <ul class="specs-list"><li>Moving head fixtures (beam/wash)</li><li>LED bar and strip lighting</li><li>DMX-controlled via lighting board</li><li>Real-time operation during event</li><li>Custom programming pre-event</li><li>Music-reactive capability</li><li>Truss or venue rigging as needed</li><li>Setup, operation, and breakdown</li></ul>
+      </div>
+      <div class="svc-cta-box reveal reveal-delay-2">
+        <h3>Ready to book?</h3>
+        <p>Tell us about your event and we'll put together a custom quote. Usually within 24 hours.</p>
+        <a href="contact" class="btn-primary" style="display:inline-block;">Get a Quote</a>
+      </div>
+    </div>
+  </div>
+  <div class="use-cases">
+    <div class="section-eyebrow reveal" style="margin-bottom:16px;">Perfect For</div>
+    <h2 class="use-cases-title reveal reveal-delay-1">Where this service shines.</h2>
+    <div class="use-cases-grid"><div class="use-case-card reveal reveal-delay-0">
+      <span class="uc-icon"></span>
+      <div class="uc-name">Reception Dancing</div>
+      <p class="uc-desc">From the first song to the last, the lights build energy with the room. Guests dance longer when the floor feels alive.</p>
+    </div><div class="use-case-card reveal reveal-delay-1">
+      <span class="uc-icon"></span>
+      <div class="uc-name">High-Energy Events</div>
+      <p class="uc-desc">Corporate parties, quinceañeras, birthdays — any event where people are expected to dance deserves lighting that earns it.</p>
+    </div><div class="use-case-card reveal reveal-delay-2">
+      <span class="uc-icon"></span>
+      <div class="uc-name">Live Performances</div>
+      <p class="uc-desc">We've lit performances for bands, DJs, and live acts at events across South Florida. Stage wash, beam effects, and audience lighting all covered.</p>
+    </div></div>
+  </div>
+  <div class="related-services">
+    <div class="related-inner">
+      <div class="related-title">Often Booked Together</div>
+      <div class="related-grid"><a href="service-uplighting.html" class="related-card">
+      <div class="related-card-name">Uplighting</div>
+      <div class="related-card-desc">Walls and perimeter</div>
+    </a><a href="service-dj.html" class="related-card">
+      <div class="related-card-name">DJ & Entertainment</div>
+      <div class="related-card-desc">Music and lighting together</div>
+    </a><a href="service-stage-lighting.html" class="related-card">
+      <div class="related-card-name">Stage Lighting</div>
+      <div class="related-card-desc">For performances and speeches</div>
+    </a><a href="service-fx.html" class="related-card">
+      <div class="related-card-name">Special Effects</div>
+      <div class="related-card-desc">Add CO2 and sparks to the mix</div>
+    </a></div>
+    </div>
+  </div>
+  <div class="related-services" style="background:#080808;">
+    <div class="related-inner">
+      <div class="related-title">We Serve All Of South Florida</div>
+      <div class="related-grid">
+        <a href="event-production-coral-gables.html" class="related-card"><div class="related-card-name">Coral Gables</div><div class="related-card-desc">Wedding &amp; corporate events</div></a>
+        <a href="event-production-brickell.html" class="related-card"><div class="related-card-name">Brickell</div><div class="related-card-desc">Downtown Miami luxury venues</div></a>
+        <a href="event-production-aventura.html" class="related-card"><div class="related-card-name">Aventura</div><div class="related-card-desc">Mitzvahs, weddings &amp; galas</div></a>
+        <a href="event-production-fort-lauderdale.html" class="related-card"><div class="related-card-name">Fort Lauderdale</div><div class="related-card-desc">Broward County events</div></a>
+      </div>
+    </div>
+  </div>
+
+    <!-- FAQ Section -->
+    <section class="faq-section" style="max-width:820px;margin:0 auto;padding:80px 24px;">
+      <h2 style="font-size:clamp(1.6rem,3vw,2.2rem);margin-bottom:40px;">Frequently Asked Questions</h2>
+      <details style="border-bottom:1px solid rgba(255,255,255,.12);padding:20px 0;">
+        <summary style="font-weight:600;cursor:pointer;font-size:1.05rem;">How much does dance floor lighting cost for an event in Miami?</summary>
+        <p style="margin-top:14px;opacity:.8;line-height:1.7;">Dance floor lighting in Miami typically ranges from $500 to $2,000+ depending on the number of moving heads, fixture type, and event duration. Baseline Studio provides custom quotes based on your venue size and the look you're going for.</p>
+      </details>
+      <details style="border-bottom:1px solid rgba(255,255,255,.12);padding:20px 0;">
+        <summary style="font-weight:600;cursor:pointer;font-size:1.05rem;">What is a moving head light and why does it matter?</summary>
+        <p style="margin-top:14px;opacity:.8;line-height:1.7;">Moving head fixtures are motorized lights that pan, tilt, and change color in response to the music. They create dynamic beams, chase patterns, and wash effects that standard par cans can't replicate. For dance floors, moving heads are what separate a professional setup from a rental package.</p>
+      </details>
+      <details style="border-bottom:1px solid rgba(255,255,255,.12);padding:20px 0;">
+        <summary style="font-weight:600;cursor:pointer;font-size:1.05rem;">Do the lights sync to the music?</summary>
+        <p style="margin-top:14px;opacity:.8;line-height:1.7;">Yes. Our lighting technician or DJ programs the fixtures to respond to the beat and energy of the music in real time using a lighting controller. The light show builds with the music and hits on key moments — drops, build-ups, and peak energy points.</p>
+      </details>
+      <details style="border-bottom:1px solid rgba(255,255,255,.12);padding:20px 0;">
+        <summary style="font-weight:600;cursor:pointer;font-size:1.05rem;">What's included in a dance floor lighting package?</summary>
+        <p style="margin-top:14px;opacity:.8;line-height:1.7;">A typical package includes 4–8 moving head fixtures, trussing or floor stands, a DMX controller, power distribution, full setup, and on-site operation. We also add wash lights, strobes, or laser effects depending on the package tier and your venue's permissions.</p>
+      </details>
+      <details style="padding:20px 0;">
+        <summary style="font-weight:600;cursor:pointer;font-size:1.05rem;">Can dance floor lighting be added to an existing DJ package?</summary>
+        <p style="margin-top:14px;opacity:.8;line-height:1.7;">Absolutely — most clients add dance floor lighting to their DJ or sound package. Baseline Studio handles all the production as a single team, so there's no coordination between separate vendors. Everything is programmed and operated together for a cohesive result.</p>
+      </details>
+    </section>
+
+
+<section class="from-the-blog">
+  <div class="ftb-inner">
+    <div class="ftb-label">From the Blog</div>
+    <div class="ftb-grid">
+        <a href="blog/uplighting-guide-south-florida-event-venues.html" class="blog-link-card">
+          <div class="blc-title">Uplighting Guide: Transforming South Florida Event Venues</div>
+          <div class="blc-arrow">Read &rarr;</div>
+        </a>
+        <a href="blog/dancing-on-cloud-effect-miami.html" class="blog-link-card">
+          <div class="blc-title">Dancing on a Cloud: What It Is and How It Works</div>
+          <div class="blc-arrow">Read &rarr;</div>
+        </a>
+        <a href="blog/wedding-day-timeline-dj-breakdown.html" class="blog-link-card">
+          <div class="blc-title">Your Wedding Day Timeline: A DJ's Hour-by-Hour Breakdown</div>
+          <div class="blc-arrow">Read &rarr;</div>
+        </a>
+    </div>
+  </div>
+</section>
+<div class="cta-strip">
+    <h2 class="cta-strip-title reveal">Want this at your event?</h2>
+    <p class="cta-strip-sub reveal reveal-delay-1">Call or text us at (786) 302-6056, or send an inquiry and we'll get back to you fast.</p>
+    <div class="cta-strip-btns reveal reveal-delay-2">
+      <a href="contact" class="btn-primary">Get a Quote</a>
+      <a href="services.html" class="btn-ghost">All Services</a>
+    </div>
+  </div>
+  <footer>
+    <div class="footer-inner">
+      <div class="footer-top">
+        <div>
+          <div class="footer-brand-name">Baseline Studio</div>
+          <p class="footer-brand-tagline">South Florida's event production crew for weddings, corporate events, and everything in between. Fully insured. Always prepared.</p>
+          <div class="footer-contact-line"><a href="tel:7863026056" onclick="gtag('event','phone_call',{'event_category':'contact','event_label':'service_dancefloor_lighting'});">(786) 302-6056</a></div>
+          <div class="footer-contact-line"><a href="mailto:Hello@baselinestudiofl.com">Hello@baselinestudiofl.com</a></div>
+          <div class="footer-contact-line"><a href="https://instagram.com/baselinestudiofl" target="_blank" rel="noopener">@baselinestudiofl</a></div>
+        </div>
+        <div class="footer-col">
+          <div class="footer-col-label">Navigate</div>
+          <ul>
+            <li><a href="weddings">Weddings</a></li>
+            <li><a href="corporate">Corporate</a></li>
+            <li><a href="services.html">Services</a></li>
+
+            <li><a href="blog">Blog</a></li>
+            <li><a href="faq">FAQ</a></li>
+            <li><a href="about">About</a></li>
+            <li><a href="contact">Contact</a></li>
+          </ul>
+        </div>
+        <div class="footer-col">
+          <div class="footer-col-label">South Florida Markets</div>
+          <ul>
+            <li><a href="event-production-coral-gables.html">Coral Gables</a></li>
+            <li><a href="event-production-brickell.html">Brickell</a></li>
+            <li><a href="event-production-aventura.html">Aventura</a></li>
+            <li><a href="event-production-fort-lauderdale.html">Fort Lauderdale</a></li>
+            <li><a href="event-production-doral.html">Doral</a></li>
+            <li><a href="event-production-hialeah.html">Hialeah</a></li>
+            <li><a href="event-production-kendall.html">Kendall</a></li>
+            <li><a href="event-production-hollywood-fl.html">Hollywood, FL</a></li>
+          </ul>
+        </div>
+        <div class="footer-col">
+          <div class="footer-col-label">Venue Partners</div>
+          <ul>
+            <li><a href="venue/bath-club-miami.html">The Bath Club Miami</a></li>
+            <li><a href="venue/ritz-carlton-bal-harbour.html">Ritz Carlton Bal Harbour</a></li>
+            <li><a href="venue/hilton-miami-beach-resort.html">Hilton Miami Beach Resort</a></li>
+          </ul>
+        </div>
+        <div class="footer-col">
+          <div class="footer-col-label">Resources</div>
+          <ul>
+            <li><a href="blog">Blog</a></li>
+            <li><a href="faq">FAQ</a></li>
+            <li><a href="login.html">Client Portal</a></li>
+          </ul>
+        </div>
+      </div>
+      <div class="footer-bottom">
+        <p>&copy; 2026 Baseline Studio LLC. All rights reserved. Miami, Florida.</p>
+        <div class="footer-bottom-links">
+          <a href="login.html">Client Portal</a>
+          <a href="sitemap.xml">Sitemap</a>
+        </div>
+      </div>
+    </div>
+  </footer>
+  <script>
+    window.addEventListener('scroll',function(){var sh=document.documentElement.scrollHeight-window.innerHeight;if(sh>0)document.getElementById('sp').style.width=(window.scrollY/sh*100)+'%';},{passive:true});
+    var hb=document.getElementById('hamburger'),mm=document.getElementById('mobile-menu');
+    hb.addEventListener('click',function(){mm.classList.toggle('active');});
+    mm.querySelectorAll('a').forEach(function(a){a.addEventListener('click',function(){mm.classList.remove('active');});});
+    var els=document.querySelectorAll('.reveal');
+    var ob=new IntersectionObserver(function(en){en.forEach(function(e){if(e.isIntersecting){e.target.classList.add('active');ob.unobserve(e.target);}});},{threshold:0.06,rootMargin:'0px 0px -30px 0px'});
+    els.forEach(function(el){ob.observe(el);});
+    function rv(){els.forEach(function(el){var r=el.getBoundingClientRect();if(r.top<window.innerHeight&&r.bottom>0)el.classList.add('active');});}
+    rv();window.addEventListener('scroll',rv,{passive:true});
+    setTimeout(function(){els.forEach(function(el){el.classList.add('active');});},3000);
+    document.querySelectorAll('.accordion-header').forEach(function(h){h.addEventListener('click',function(){var it=h.parentElement,was=it.classList.contains('active');document.querySelectorAll('.accordion-item').forEach(function(i){i.classList.remove('active');});if(!was)it.classList.add('active');});});
+    (function(){var its=document.querySelectorAll('.nav-item.has-dropdown');its.forEach(function(it){var lk=it.querySelector(':scope > a');if(lk){var ar=document.createElement('span');ar.className='services-toggle-arrow';ar.textContent=' ';lk.appendChild(ar);lk.addEventListener('click',function(e){e.preventDefault();var op=it.classList.contains('open');its.forEach(function(d){d.classList.remove('open');});if(!op)it.classList.add('open');});}});document.addEventListener('click',function(e){if(!e.target.closest('.nav-item.has-dropdown'))its.forEach(function(d){d.classList.remove('open');});});})();
+  </script>
+</body>
+</html>

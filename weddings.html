@@ -1,0 +1,692 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+<link rel="canonical" href="https://www.baselinestudiofl.com/weddings">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Wedding DJ & Event Production Miami FL | Baseline Studio</title>
+  <meta name="description" content="Miami wedding DJ, ceremony sound, uplighting, cold spark fountains, dancing on cloud, and live musicians. Full-service wedding production across South Florida.">
+  <meta property="og:title" content="Wedding Event Production | Baseline Studio Miami">
+  <meta property="og:description" content="Your wedding, handled. DJ, lighting, special effects, and full production for South Florida weddings.">
+  <link rel="stylesheet" href="fonts/fonts.css">
+  <link rel="stylesheet" href="style.css?v=2">
+  <style>
+    /*  WEDDING-SPECIFIC STYLES  */
+    .wedding-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 2px;
+      margin-top: 60px;
+    }
+    .wedding-card {
+      padding: 48px 40px;
+      background: var(--black-2);
+      border-bottom: 1px solid var(--rule);
+      position: relative;
+      transition: background 0.3s;
+    }
+    .wedding-card:hover { background: var(--black-3); }
+    .wedding-card::after {
+      content: '';
+      position: absolute;
+      bottom: 0; left: 0;
+      width: 0; height: 2px;
+      background: var(--cyan);
+      transition: width 0.35s cubic-bezier(0.16,1,0.3,1);
+    }
+    .wedding-card:hover::after { width: 100%; }
+    .wc-icon { font-size: 28px; margin-bottom: 20px; display: block; opacity: 0.7; }
+    .wc-name {
+      font-family: var(--font-cond);
+      font-size: 20px;
+      font-weight: 700;
+      color: var(--white);
+      margin-bottom: 12px;
+    }
+    .wc-desc {
+      font-size: 14px;
+      font-weight: 300;
+      color: rgba(255,255,255,0.55);
+      line-height: 1.8;
+    }
+    .wc-link {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      margin-top: 18px;
+      font-family: var(--font-cond);
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: 1.5px;
+      text-transform: uppercase;
+      text-decoration: none;
+      color: var(--cyan);
+      transition: gap 0.2s;
+    }
+    .wc-link:hover { gap: 10px; }
+    .wc-link::after { content: '→'; }
+    /* Process */
+    .process-section { padding: 100px 48px; }
+    .process-inner { max-width: 1300px; margin: 0 auto; }
+    .process-header {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 60px;
+      align-items: end;
+      margin-bottom: 64px;
+      padding-bottom: 48px;
+      border-bottom: 1px solid var(--rule);
+    }
+    .process-title {
+      font-family: var(--font-cond);
+      font-size: clamp(32px, 4vw, 52px);
+      font-weight: 800;
+      letter-spacing: -2px;
+      line-height: 1.05;
+      color: var(--white);
+    }
+    .process-intro { font-size: 15px; font-weight: 300; color: rgba(255,255,255,0.55); line-height: 1.8; }
+    .steps-grid {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 40px;
+    }
+    .step-item { position: relative; }
+    .step-num {
+      font-family: var(--font-cond);
+      font-size: 60px;
+      font-weight: 800;
+      color: var(--cyan);
+      opacity: 0.12;
+      line-height: 1;
+      margin-bottom: 16px;
+    }
+    .step-title {
+      font-family: var(--font-cond);
+      font-size: 20px;
+      font-weight: 700;
+      color: var(--white);
+      margin-bottom: 12px;
+    }
+    .step-desc { font-size: 14px; font-weight: 300; color: rgba(255,255,255,0.55); line-height: 1.8; }
+    /* Experience strip */
+    .experience-strip {
+      padding: 60px 48px;
+      background: var(--black-3);
+      border-top: 1px solid var(--rule);
+      border-bottom: 1px solid var(--rule);
+    }
+    .experience-inner {
+      max-width: 1300px;
+      margin: 0 auto;
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 80px;
+      align-items: center;
+    }
+    .experience-title {
+      font-family: var(--font-cond);
+      font-size: clamp(30px, 3.5vw, 46px);
+      font-weight: 800;
+      letter-spacing: -1.5px;
+      line-height: 1.1;
+      color: var(--white);
+      margin-bottom: 16px;
+    }
+    .experience-body { font-size: 15px; font-weight: 300; color: rgba(255,255,255,0.55); line-height: 1.8; }
+    .experience-list { list-style: none; }
+    .experience-list li {
+      padding: 12px 0;
+      border-bottom: 1px solid var(--rule);
+      font-size: 14px;
+      color: rgba(255,255,255,0.55);
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+    .experience-list li:last-child { border-bottom: none; }
+    .experience-list li::before { content: ''; color: var(--cyan); font-weight: 700; font-size: 12px; }
+    @media (max-width: 900px) {
+      .wedding-grid { grid-template-columns: 1fr 1fr; }
+      .steps-grid { grid-template-columns: 1fr 1fr; gap: 32px; }
+      .process-header { grid-template-columns: 1fr; }
+      .process-section { padding: 70px 24px; }
+      .experience-strip { padding: 60px 24px; }
+      .experience-inner { grid-template-columns: 1fr; gap: 48px; }
+    }
+    @media (max-width: 600px) {
+      .wedding-grid { grid-template-columns: 1fr; }
+      .steps-grid { grid-template-columns: 1fr; }
+    }
+  
+    /* From the Blog section */
+    .from-the-blog { padding: 60px 48px; background: #0a0a0a; border-top: 1px solid var(--rule); }
+    .ftb-inner { max-width: 960px; margin: 0 auto; }
+    .ftb-label { font-family: var(--font-condensed); font-size: 0.78rem; letter-spacing: .12em; text-transform: uppercase; color: var(--gold); margin-bottom: 24px; }
+    .ftb-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; }
+    .blog-link-card { display: block; padding: 24px 20px; background: var(--black-2); border: 1px solid var(--rule); border-radius: 4px; text-decoration: none; transition: border-color .2s; }
+    .blog-link-card:hover { border-color: var(--gold); }
+    .blc-title { font-size: 0.95rem; color: rgba(255,255,255,0.88); line-height: 1.5; margin-bottom: 12px; }
+    .blc-arrow { font-size: 0.82rem; color: var(--gold); }
+    @media (max-width: 768px) { .ftb-grid { grid-template-columns: 1fr; } .from-the-blog { padding: 40px 24px; } }
+    </style>
+<!-- Google Analytics — deferred until after page load to avoid blocking LCP -->
+<script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  window.addEventListener('load', function() {
+    var s = document.createElement('script');
+    s.src = 'https://www.googletagmanager.com/gtag/js?id=G-420BHQKJE5';
+    s.async = true;
+    document.head.appendChild(s);
+    s.onload = function() { gtag('js', new Date()); gtag('config', 'G-420BHQKJE5'); };
+  });
+</script>
+<link rel="icon" href="favicon.ico" sizes="any">
+<link rel="icon" href="favicon-32x32.png" type="image/png" sizes="32x32">
+<link rel="icon" href="favicon-16x16.png" type="image/png" sizes="16x16">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "LocalBusiness",
+  "@id": "https://www.baselinestudiofl.com/#organization",
+  "name": "Baseline Studio",
+  "aggregateRating": {
+    "@type": "AggregateRating",
+    "ratingValue": "5",
+    "reviewCount": "1",
+    "bestRating": "5",
+    "worstRating": "1"
+  }
+}
+</script>
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "Review",
+  "itemReviewed": {
+    "@id": "https://www.baselinestudiofl.com/#organization"
+  },
+  "author": {
+    "@type": "Person",
+    "name": "Alex & Maria S."
+  },
+  "reviewRating": {
+    "@type": "Rating",
+    "ratingValue": "5",
+    "bestRating": "5"
+  },
+  "reviewBody": "We can't even count how many guests told us the DJ was incredible. The dance floor was packed from the first song until the venue lights came on."
+}
+</script>
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "Review",
+  "itemReviewed": {
+    "@id": "https://www.baselinestudiofl.com/#organization"
+  },
+  "author": {
+    "@type": "Person",
+    "name": "Yael & David S."
+  },
+  "reviewRating": {
+    "@type": "Rating",
+    "ratingValue": "5",
+    "bestRating": "5"
+  },
+  "reviewBody": "The cold spark fountains during our first dance were unbelievable. Every photo from that moment is perfect. Our photographer literally sent us a thank you."
+}
+</script>
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "Review",
+  "itemReviewed": {
+    "@id": "https://www.baselinestudiofl.com/#organization"
+  },
+  "author": {
+    "@type": "Person",
+    "name": "Rachel & Joseph W."
+  },
+  "reviewRating": {
+    "@type": "Rating",
+    "ratingValue": "5",
+    "bestRating": "5"
+  },
+  "reviewBody": "They handled everything: sound, lighting, the DJ, and the fog effect. One crew, no drama. We didn't have to think about it once during the reception."
+}
+</script>
+</head>
+<body>
+  <div class="scroll-progress" id="scrollProgress"></div>
+
+  <nav>
+    <div class="nav-inner">
+      <a href="/" class="nav-logo">
+        <img src="logo-full.webp" alt="Baseline Studio" style="height:44px;width:auto;" width="281" height="88">
+      </a>
+      <ul class="nav-links">
+        <li><a href="/">Home</a></li>
+        <li><a href="services.html">Services</a></li>
+        <li><a href="weddings" class="active">Weddings</a></li>
+        <li><a href="corporate">Corporate</a></li>
+
+        <li><a href="blog">Blog</a></li>
+        <li><a href="faq">FAQ</a></li>
+        <li><a href="login.html" style="font-size:12px;opacity:0.5;">Client Portal</a></li>
+        <li><a href="contact" class="nav-cta">Get a Quote</a></li>
+      </ul>
+      <button class="hamburger" id="hamburger" aria-label="Menu">
+        <span></span><span></span><span></span>
+      </button>
+    </div>
+  </nav>
+
+  <div class="mobile-menu" id="mobile-menu">
+    <a href="/">Home</a>
+    <a href="services.html">Services</a>
+    <a href="weddings">Weddings</a>
+    <a href="corporate">Corporate</a>
+    <a href="blog">Blog</a>
+    <a href="faq">FAQ</a>
+    <a href="login.html" style="opacity:0.5;font-size:12px;">Client Portal</a>
+    <a href="contact" style="color:var(--cyan);font-weight:600;">Get a Quote</a>
+  </div>
+
+  <!-- HERO -->
+  <!-- Hero photo: wedding reception dancing at night — swap with your own photo when ready -->
+  <section class="page-hero page-hero--video">
+    <!-- Wedding hero — self-hosted video background (desktop only) -->
+    <div class="vimeo-bg-wrap">
+      <video id="wedding-bg-video" autoplay muted loop playsinline></video>
+    </div>
+    <script>
+      (function() {
+        var v = document.getElementById('wedding-bg-video');
+        v.src = window.matchMedia('(min-width:769px)').matches ? 'weddings-bg.mp4' : 'weddings-bg-mobile.mp4';
+        v.addEventListener('canplay', function() { v.style.opacity = '1'; }, { once: true });
+        setTimeout(function() { v.style.opacity = '1'; }, 2000);
+      })();
+    </script>
+    <div class="page-hero-glow"></div>
+    <div class="page-hero-inner">
+      <div class="section-eyebrow">Weddings</div>
+      <h1 class="page-hero-title">
+        Your wedding.<br>
+        <em>Done right.</em>
+      </h1>
+      <p class="page-hero-body">
+        You've spent months on every detail. The ceremony mics, the reception DJ, the lighting, the effects, the run of show: that's all us. One crew, one contact, and we've all worked together before. You focus on the night. We'll make sure it goes exactly the way you planned.
+      </p>
+      <div class="page-hero-ctas reveal reveal-delay-3">
+        <a href="contact" class="btn-primary">Check Your Date</a>
+        <a href="contact" class="btn-ghost">Talk to Us</a>
+      </div>
+    </div>
+  </section>
+
+  <!-- MARQUEE -->
+  <div class="marquee-wrap">
+    <div class="marquee-track">
+      <span class="marquee-item">Ceremony Sound</span>
+      <span class="marquee-dot"></span>
+      <span class="marquee-item">Reception DJ</span>
+      <span class="marquee-dot"></span>
+      <span class="marquee-item">Uplighting</span>
+      <span class="marquee-dot"></span>
+      <span class="marquee-item">Bistro String Lights</span>
+      <span class="marquee-dot"></span>
+      <span class="marquee-item">Cold Spark Fountains</span>
+      <span class="marquee-dot"></span>
+      <span class="marquee-item">Dancing on Cloud</span>
+      <span class="marquee-dot"></span>
+      <span class="marquee-item">Live Musicians</span>
+      <span class="marquee-dot"></span>
+      <span class="marquee-item">LED Video Walls</span>
+      <span class="marquee-dot"></span>
+      <span class="marquee-item">Ceremony Sound</span>
+      <span class="marquee-dot"></span>
+      <span class="marquee-item">Reception DJ</span>
+      <span class="marquee-dot"></span>
+      <span class="marquee-item">Uplighting</span>
+      <span class="marquee-dot"></span>
+      <span class="marquee-item">Bistro String Lights</span>
+      <span class="marquee-dot"></span>
+      <span class="marquee-item">Cold Spark Fountains</span>
+      <span class="marquee-dot"></span>
+      <span class="marquee-item">Dancing on Cloud</span>
+      <span class="marquee-dot"></span>
+      <span class="marquee-item">Live Musicians</span>
+      <span class="marquee-dot"></span>
+      <span class="marquee-item">LED Video Walls</span>
+      <span class="marquee-dot"></span>
+    </div>
+  </div>
+
+  <!-- WEDDING SERVICES -->
+  <section style="padding: 100px 48px; max-width: 1300px; margin: 0 auto;">
+    <div style="margin-bottom: 16px;" class="reveal">
+      <div class="section-eyebrow">What We Bring</div>
+    </div>
+    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 40px; align-items: end; margin-bottom: 0; padding-bottom: 0;" class="reveal reveal-delay-1">
+      <h2 style="font-family: var(--font-cond); font-size: clamp(34px, 4vw, 52px); font-weight: 800; letter-spacing: -2px; line-height: 1.05; color: var(--white);">Complete wedding<br>production.</h2>
+      <p style="font-size: 15px; font-weight: 300; color: rgba(255,255,255,0.55); line-height: 1.8;">Most couples end up with four different vendors, four different contacts, four different people who've never worked together before. We're one crew that does all of it, and we actually talk to each other. We've worked venues across South Florida: The Addison, The Bath Club, Ritz-Carlton Bal Harbour, The Carillon, Lavan, and more. If your venue is on that list, we already know how it runs.</p>
+    </div>
+    <div class="wedding-grid">
+      <div class="wedding-card reveal">
+        <span class="wc-icon"></span>
+        <div class="wc-name">Ceremony Sound</div>
+        <p class="wc-desc">Your vows deserve to be heard. Not competing with traffic or a borrowed Bluetooth speaker. We run mics for the officiant, a lav for the processional, and monitor the whole thing so you never hear feedback.</p>
+        <a href="service-audio.html" class="wc-link">Learn More</a>
+      </div>
+      <div class="wedding-card reveal reveal-delay-1">
+        <span class="wc-icon"></span>
+        <div class="wc-name">Reception DJ</div>
+        <p class="wc-desc">We read the room. Cocktail hour builds into dinner, dinner builds into the dance floor. By the time the party starts, nobody's leaving. We know when to push the energy and when to let it breathe. Your guests won't notice the DJ is working. They'll just notice they haven't sat down in two hours.</p>
+        <a href="service-dj.html" class="wc-link">Learn More</a>
+      </div>
+      <div class="wedding-card reveal reveal-delay-2">
+        <span class="wc-icon"></span>
+        <div class="wc-name">Uplighting</div>
+        <p class="wc-desc">Color-wash your venue walls in any shade you choose. We dial in your exact color before the first guest arrives. Your photographer will thank you. Every photo looks like a completely different venue when the lighting is done right.</p>
+        <a href="service-uplighting.html" class="wc-link">Learn More</a>
+      </div>
+      <div class="wedding-card reveal reveal-delay-3">
+        <span class="wc-icon"></span>
+        <div class="wc-name">Bistro String Lights</div>
+        <p class="wc-desc">Warm Edison bulbs suspended overhead. The romantic garden look everyone saves on Pinterest. Our fixtures are rated for South Florida weather: humidity, salt air, and yes, the afternoon storm nobody planned for.</p>
+        <a href="service-lighting.html" class="wc-link">Learn More</a>
+      </div>
+      <div class="wedding-card reveal reveal-delay-4">
+        <span class="wc-icon"></span>
+        <div class="wc-name">Cold Spark Fountains</div>
+        <p class="wc-desc">That moment when everyone's phones come out. Indoor-safe, completely dramatic, and your photographer loves us for it. Perfect for first dances, grand entrances, and cake cuts. Safe enough to stand right next to them.</p>
+        <a href="service-cold-spark.html" class="wc-link">Learn More</a>
+      </div>
+      <div class="wedding-card reveal reveal-delay-5">
+        <span class="wc-icon"></span>
+        <div class="wc-name">Dancing on Cloud</div>
+        <p class="wc-desc">Walking on actual clouds during your first dance. We get the fog exactly right, low enough to stay at knee height so your photographer can still shoot your faces. It's subtle, it's stunning, and it never suffocates the room.</p>
+        <a href="service-dancing-on-cloud.html" class="wc-link">Learn More</a>
+      </div>
+    </div>
+  </section>
+
+  <!-- EXPERIENCE STRIP -->
+  <div class="experience-strip">
+    <div class="experience-inner">
+      <div>
+        <div class="section-eyebrow reveal">Why It Matters</div>
+        <h2 class="experience-title reveal reveal-delay-1">We've seen enough<br>weddings to know<br>exactly what can go sideways.</h2>
+        <p class="experience-body reveal reveal-delay-2">Ceremony mics that weren't tested. A DJ who didn't get the updated run of show. Fog that triggered the venue's smoke alarm. We've heard every story, and none of them happen with us. We load in hours before your guests arrive, test everything twice, and have a backup for everything that matters. Most of the venues you're looking at, we know their load-in windows, their noise curfews, and which rooms need more gear to fill right.</p>
+      </div>
+      <ul class="experience-list reveal">
+        <li>Mics tested and preset before ceremony starts</li>
+        <li>Backup DJ gear on every single event, no exceptions</li>
+        <li>Direct coordination with your planner and venue</li>
+        <li>Song cues confirmed and rehearsed in advance</li>
+        <li>Weather contingency plan for every outdoor setup</li>
+        <li>Fully insured. Venue approval is never a problem</li>
+        <li>Familiar with venues across South Florida. We know how they run</li>
+      </ul>
+    </div>
+  </div>
+
+  <!-- HOW IT WORKS -->
+  <section class="process-section" style="background: var(--black);">
+    <div class="process-inner">
+      <div class="process-header">
+        <div>
+          <div class="section-eyebrow reveal">The Process</div>
+          <h2 class="process-title reveal reveal-delay-1">How we make<br>your wedding happen.</h2>
+        </div>
+        <p class="process-intro reveal">From the first conversation to the last song of the night. Here's what working with us actually looks like.</p>
+      </div>
+      <div class="steps-grid">
+        <div class="step-item reveal">
+          <div class="step-num">01</div>
+          <div class="step-title">Discovery Call</div>
+          <p class="step-desc">We learn about your wedding: venue, timeline, vibe, must-play songs, the things that matter to you. This isn't a generic intake form. We actually talk.</p>
+        </div>
+        <div class="step-item reveal reveal-delay-1">
+          <div class="step-num">02</div>
+          <div class="step-title">Custom Proposal</div>
+          <p class="step-desc">You get a detailed proposal: exactly what's included, what it costs, and why we're recommending it. No surprises later. Just clear numbers you can plan around.</p>
+        </div>
+        <div class="step-item reveal reveal-delay-2">
+          <div class="step-num">03</div>
+          <div class="step-title">Planning &amp; Prep</div>
+          <p class="step-desc">Songs locked in, lighting design finalized, run of show drafted. We reach out to your planner and venue directly, so on the day nobody's guessing, nobody's improvising, and you're not playing middle man between vendors.</p>
+        </div>
+        <div class="step-item reveal reveal-delay-3">
+          <div class="step-num">04</div>
+          <div class="step-title">Your Wedding Day</div>
+          <p class="step-desc">We're there hours before your guests. Gear's up, tested, and ready before cocktail hour. You won't be chasing us down for anything. We already know the cues, the timeline, the plan. Just enjoy the night.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- TESTIMONIALS -->
+  <section class="testimonials-section">
+    <div class="section-eyebrow reveal">Real Couples</div>
+    <h2 class="testimonials-title reveal reveal-delay-1">What our wedding<br>clients say.</h2>
+    <div class="testimonials-grid">
+      <div class="testimonial-card reveal">
+        <div class="testimonial-stars"></div>
+        <p class="testimonial-text">"We can't even count how many guests told us the DJ was incredible. The dance floor was packed from the first song until the venue lights came on."</p>
+        <div class="testimonial-author">Alex &amp; Maria S.</div>
+      </div>
+      <div class="testimonial-card reveal reveal-delay-1">
+        <div class="testimonial-stars"></div>
+        <p class="testimonial-text">"The cold spark fountains during our first dance were unbelievable. Every photo from that moment is perfect. Our photographer literally sent us a thank you."</p>
+        <div class="testimonial-author">Yael &amp; David S.</div>
+      </div>
+      <div class="testimonial-card reveal reveal-delay-2">
+        <div class="testimonial-stars"></div>
+        <p class="testimonial-text">"They handled everything: sound, lighting, the DJ, and the fog effect. One crew, no drama. We didn't have to think about it once during the reception."</p>
+        <div class="testimonial-author">Rachel &amp; Joseph W.</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- FAQ -->
+  <section class="faq-section">
+    <div class="faq-inner">
+      <div class="section-eyebrow reveal">FAQ</div>
+      <h2 class="faq-title reveal reveal-delay-1">Wedding questions,<br>answered honestly.</h2>
+      <p class="faq-subtitle reveal reveal-delay-2">If something isn't covered here, just reach out. We're easy to get in touch with.</p>
+      <div class="accordion">
+        <div class="accordion-item reveal">
+          <div class="accordion-header">
+            <span class="accordion-question">Do you provide MCs for weddings?</span>
+            <span class="accordion-toggle">+</span>
+          </div>
+          <div class="accordion-content">
+            <p>Yes. Our DJs handle full MC duties, including grand entrance, first dance, toasts, all of it, or play a supporting role if you have a coordinator running the flow. Either way, we get the run of show ahead of time so we're never winging announcements or killing the energy with an awkward pause.</p>
+          </div>
+        </div>
+        <div class="accordion-item reveal reveal-delay-1">
+          <div class="accordion-header">
+            <span class="accordion-question">Can you do both the ceremony and reception?</span>
+            <span class="accordion-toggle">+</span>
+          </div>
+          <div class="accordion-content">
+            <p>That's actually how most of our weddings work. We set up ceremony mics and audio first, cover cocktail hour, then flip into full reception mode: DJ, lighting, effects, the whole thing. One crew the entire night means no handoff, no "the other vendor said..." conversations. Everything just flows.</p>
+          </div>
+        </div>
+        <div class="accordion-item reveal reveal-delay-2">
+          <div class="accordion-header">
+            <span class="accordion-question">Are cold sparks and fog safe indoors?</span>
+            <span class="accordion-toggle">+</span>
+          </div>
+          <div class="accordion-content">
+            <p>Cold sparks don't produce real heat. It's a visual effect, not actual fire. You can stand right next to them. Dancing on cloud uses a low-lying water-based fog that stays at knee height and clears out fast. It won't trigger smoke alarms, won't bother guests with asthma, and looks incredible on camera. We've used both in all kinds of South Florida venues: ballrooms, rooftops, outdoor tents. Zero issues.</p>
+          </div>
+        </div>
+        <div class="accordion-item reveal reveal-delay-3">
+          <div class="accordion-header">
+            <span class="accordion-question">How far in advance should I book for my wedding?</span>
+            <span class="accordion-toggle">+</span>
+          </div>
+          <div class="accordion-content">
+            <p>Wedding season in South Florida runs October through April. For peak season dates, 4–6 months out is the sweet spot. Summer weddings have more flexibility. Either way, once you have your date, reach out. Popular weekends fill quickly.</p>
+          </div>
+        </div>
+        <div class="accordion-item reveal reveal-delay-4">
+          <div class="accordion-header">
+            <span class="accordion-question">What if it rains during an outdoor ceremony?</span>
+            <span class="accordion-toggle">+</span>
+          </div>
+          <div class="accordion-content">
+            <p>We plan for it. All our outdoor equipment is weather-rated, and we always discuss contingency plans in advance: a tent plan, an indoor backup space, or just knowing how quickly we can move gear under cover, an indoor backup space, or just knowing how quickly we can move gear under cover. South Florida weather is unpredictable, but we're not.</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- CTA -->
+  <section style="background:#111; padding:3rem 0;">
+  <div style="max-width:1100px;margin:0 auto;padding:0 2rem;">
+    <p style="font-size:.75rem;letter-spacing:.12em;text-transform:uppercase;color:#888;margin-bottom:1rem;">Build Your Package</p>
+    <h2 style="font-size:1.75rem;font-weight:700;color:#fff;margin-bottom:1.5rem;">Every wedding service, in one place.</h2>
+    <p style="color:#aaa;max-width:640px;margin-bottom:2rem;line-height:1.7;">Baseline Studio handles the full production stack for Miami weddings, from the ceremony sound to the last song of the reception. Mix and match services or let us build a custom package.</p>
+    <div style="display:flex;flex-wrap:wrap;gap:.75rem;">
+      <a href="service-dj.html" style="display:inline-block;padding:.55rem 1.1rem;border:1px solid #333;border-radius:4px;color:#ddd;font-size:.85rem;text-decoration:none;">Wedding DJ</a>
+      <a href="service-audio.html" style="display:inline-block;padding:.55rem 1.1rem;border:1px solid #333;border-radius:4px;color:#ddd;font-size:.85rem;text-decoration:none;">Live Sound</a>
+      <a href="service-uplighting.html" style="display:inline-block;padding:.55rem 1.1rem;border:1px solid #333;border-radius:4px;color:#ddd;font-size:.85rem;text-decoration:none;">Uplighting</a>
+      <a href="service-cold-spark.html" style="display:inline-block;padding:.55rem 1.1rem;border:1px solid #333;border-radius:4px;color:#ddd;font-size:.85rem;text-decoration:none;">Cold Spark Fountains</a>
+      <a href="service-dancing-on-cloud.html" style="display:inline-block;padding:.55rem 1.1rem;border:1px solid #333;border-radius:4px;color:#ddd;font-size:.85rem;text-decoration:none;">Dancing on Cloud</a>
+      <a href="service-lighting.html" style="display:inline-block;padding:.55rem 1.1rem;border:1px solid #333;border-radius:4px;color:#ddd;font-size:.85rem;text-decoration:none;">Bistro String Lights</a>
+      <a href="service-dancefloor-lighting.html" style="display:inline-block;padding:.55rem 1.1rem;border:1px solid #333;border-radius:4px;color:#ddd;font-size:.85rem;text-decoration:none;">Dancefloor Lighting</a>
+      <a href="service-live-musicians.html" style="display:inline-block;padding:.55rem 1.1rem;border:1px solid #333;border-radius:4px;color:#ddd;font-size:.85rem;text-decoration:none;">Live Musicians</a>
+      <a href="service-fx.html" style="display:inline-block;padding:.55rem 1.1rem;border:1px solid #333;border-radius:4px;color:#ddd;font-size:.85rem;text-decoration:none;">All Special Effects</a>
+    </div>
+  </div>
+</section>
+
+<section class="from-the-blog">
+  <div class="ftb-inner">
+    <div class="ftb-label">From the Blog</div>
+    <div class="ftb-grid">
+        <a href="blog/how-much-does-a-wedding-dj-cost-miami.html" class="blog-link-card">
+          <div class="blc-title">How Much Does a Wedding DJ Cost in Miami?</div>
+          <div class="blc-arrow">Read &rarr;</div>
+        </a>
+        <a href="blog/best-wedding-venues-miami-production.html" class="blog-link-card">
+          <div class="blc-title">Best Miami Wedding Venues for DJ & Production</div>
+          <div class="blc-arrow">Read &rarr;</div>
+        </a>
+        <a href="blog/wedding-day-timeline-dj-breakdown.html" class="blog-link-card">
+          <div class="blc-title">Your Wedding Day Timeline: A DJ's Hour-by-Hour Breakdown</div>
+          <div class="blc-arrow">Read &rarr;</div>
+        </a>
+    </div>
+  </div>
+</section>
+<div class="cta-strip">
+    <div class="section-eyebrow reveal" style="justify-content:center; margin-bottom:16px;">Your Date</div>
+    <h2 class="cta-strip-title reveal reveal-delay-1">Ready to check availability?</h2>
+    <p class="cta-strip-sub reveal reveal-delay-2">Tell us your date and we'll let you know if we're open, and what we can put together for you.</p>
+    <div class="cta-strip-btns reveal reveal-delay-3">
+      <a href="contact" class="btn-primary">Get a Wedding Quote</a>
+      <a href="contact" class="btn-ghost">Get a Quote</a>
+    </div>
+  </div>
+
+  <!-- FOOTER -->
+  <footer>
+    <div class="footer-inner">
+      <div class="footer-top">
+        <div>
+          <div class="footer-brand-name">Baseline Studio</div>
+          <p class="footer-brand-tagline">South Florida's event production crew for weddings, corporate events, and everything in between. Fully insured. Always prepared.</p>
+          <div class="footer-contact-line"><a href="tel:7863026056" onclick="gtag('event','phone_call',{'event_category':'contact','event_label':'weddings'});">(786) 302-6056</a></div>
+          <div class="footer-contact-line"><a href="mailto:Hello@baselinestudiofl.com">Hello@baselinestudiofl.com</a></div>
+          <div class="footer-contact-line"><a href="https://instagram.com/baselinestudiofl" target="_blank" rel="noopener">@baselinestudiofl</a></div>
+        </div>
+        <div class="footer-col">
+          <div class="footer-col-label">Navigate</div>
+          <ul>
+            <li><a href="weddings">Weddings</a></li>
+            <li><a href="corporate">Corporate</a></li>
+            <li><a href="services.html">Services</a></li>
+
+            <li><a href="blog">Blog</a></li>
+            <li><a href="faq">FAQ</a></li>
+            <li><a href="about">About</a></li>
+            <li><a href="contact">Contact</a></li>
+          </ul>
+        </div>
+        <div class="footer-col">
+          <div class="footer-col-label">South Florida Markets</div>
+          <ul>
+            <li><a href="event-production-coral-gables.html">Coral Gables</a></li>
+            <li><a href="event-production-brickell.html">Brickell</a></li>
+            <li><a href="event-production-aventura.html">Aventura</a></li>
+            <li><a href="event-production-fort-lauderdale.html">Fort Lauderdale</a></li>
+            <li><a href="event-production-doral.html">Doral</a></li>
+            <li><a href="event-production-hialeah.html">Hialeah</a></li>
+            <li><a href="event-production-kendall.html">Kendall</a></li>
+            <li><a href="event-production-hollywood-fl.html">Hollywood, FL</a></li>
+          </ul>
+        </div>
+        <div class="footer-col">
+          <div class="footer-col-label">Venue Partners</div>
+          <ul>
+            <li><a href="venue/bath-club-miami.html">The Bath Club Miami</a></li>
+            <li><a href="venue/ritz-carlton-bal-harbour.html">Ritz Carlton Bal Harbour</a></li>
+            <li><a href="venue/hilton-miami-beach-resort.html">Hilton Miami Beach Resort</a></li>
+          </ul>
+        </div>
+        <div class="footer-col">
+          <div class="footer-col-label">Resources</div>
+          <ul>
+            <li><a href="blog">Blog</a></li>
+            <li><a href="faq">FAQ</a></li>
+            <li><a href="login.html">Client Portal</a></li>
+          </ul>
+        </div>
+      </div>
+      <div class="footer-bottom">
+        <p>&copy; 2026 Baseline Studio LLC. All rights reserved. Miami, Florida.</p>
+        <div class="footer-bottom-links">
+          <a href="login.html">Client Portal</a>
+          <a href="sitemap.xml">Sitemap</a>
+        </div>
+      </div>
+    </div>
+  </footer>
+
+  <script>
+    window.addEventListener('scroll', function() {
+      var sh = document.documentElement.scrollHeight - window.innerHeight;
+      document.getElementById('scrollProgress').style.width = (window.scrollY / sh * 100) + '%';
+    }, { passive: true });
+    var hamburger = document.getElementById('hamburger');
+    var mobileMenu = document.getElementById('mobile-menu');
+    hamburger.addEventListener('click', function() { mobileMenu.classList.toggle('active'); });
+    mobileMenu.querySelectorAll('a').forEach(function(a) { a.addEventListener('click', function() { mobileMenu.classList.remove('active'); }); });
+    var revealEls = document.querySelectorAll('.reveal');
+    var obs = new IntersectionObserver(function(entries) {
+      entries.forEach(function(e) { if (e.isIntersecting) { e.target.classList.add('active'); obs.unobserve(e.target); } });
+    }, { threshold: 0.06, rootMargin: '0px 0px -30px 0px' });
+    revealEls.forEach(function(el) { obs.observe(el); });
+    function revealNow() { revealEls.forEach(function(el) { var r = el.getBoundingClientRect(); if (r.top < window.innerHeight && r.bottom > 0) el.classList.add('active'); }); }
+    revealNow();
+    window.addEventListener('scroll', revealNow, { passive: true });
+    setTimeout(function() { revealEls.forEach(function(el) { el.classList.add('active'); }); }, 3000);
+    document.querySelectorAll('.accordion-header').forEach(function(h) {
+      h.addEventListener('click', function() {
+        var item = h.parentElement;
+        var was = item.classList.contains('active');
+        document.querySelectorAll('.accordion-item').forEach(function(i) { i.classList.remove('active'); });
+        if (!was) item.classList.add('active');
+      });
+    });
+  </script>
+</body>
+</html>

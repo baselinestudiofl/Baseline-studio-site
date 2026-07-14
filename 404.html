@@ -1,0 +1,303 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Page Not Found — Baseline Studio</title>
+  <meta name="robots" content="noindex">
+  <link rel="stylesheet" href="fonts/fonts.css">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --black: #050505;
+      --black-2: #111;
+      --white: #f5f5f5;
+      --gray: rgba(255,255,255,0.45);
+      --cyan: #1fa3e0;
+      --gold: #c9a84c;
+      --rule: rgba(255,255,255,0.07);
+      --gutter: clamp(1.5rem, 5vw, 4rem);
+      --font-head: 'Anton', sans-serif;
+      --font-condensed: 'Barlow Condensed', sans-serif;
+      --font-body: 'Barlow', sans-serif;
+    }
+
+    html, body { height: 100%; }
+
+    body {
+      background: var(--black);
+      color: var(--white);
+      font-family: var(--font-body), sans-serif;
+      font-weight: 400;
+      -webkit-font-smoothing: antialiased;
+      display: flex;
+      flex-direction: column;
+      min-height: 100vh;
+    }
+
+    a { color: inherit; text-decoration: none; }
+
+    /* NAV */
+    nav {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      z-index: 100;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 var(--gutter);
+      height: 72px;
+      background: rgba(5,5,5,0.92);
+      backdrop-filter: blur(12px);
+      border-bottom: 1px solid var(--rule);
+    }
+
+    .nav-logo img { height: 40px; width: auto; display: block; }
+
+    .nav-links {
+      display: flex;
+      align-items: center;
+      gap: 2rem;
+      font-family: var(--font-condensed);
+      font-size: 0.82rem;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+    }
+
+    .nav-links a { color: rgba(255,255,255,0.7); transition: color 0.2s; }
+    .nav-links a:hover { color: var(--white); }
+
+    .nav-cta {
+      background: var(--cyan);
+      color: var(--black) !important;
+      padding: 0.5rem 1.2rem;
+      border-radius: 2px;
+      font-weight: 700;
+    }
+
+    /* 404 HERO */
+    .error-hero {
+      flex: 1;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 72px var(--gutter) 0;
+      text-align: center;
+    }
+
+    .error-inner {
+      max-width: 600px;
+    }
+
+    .error-code {
+      font-family: var(--font-head);
+      font-size: clamp(6rem, 20vw, 12rem);
+      line-height: 1;
+      color: var(--black-2);
+      letter-spacing: -0.02em;
+      user-select: none;
+      margin-bottom: 1.5rem;
+    }
+
+    .error-label {
+      font-family: var(--font-condensed);
+      font-size: 0.78rem;
+      letter-spacing: 0.15em;
+      text-transform: uppercase;
+      color: var(--gold);
+      margin-bottom: 1rem;
+    }
+
+    .error-title {
+      font-family: var(--font-head);
+      font-size: clamp(1.8rem, 5vw, 2.8rem);
+      text-transform: uppercase;
+      letter-spacing: 0.02em;
+      margin-bottom: 1rem;
+    }
+
+    .error-sub {
+      font-size: 1rem;
+      color: rgba(255,255,255,0.6);
+      line-height: 1.7;
+      margin-bottom: 2.5rem;
+    }
+
+    .btn-row {
+      display: flex;
+      gap: 1rem;
+      justify-content: center;
+      flex-wrap: wrap;
+    }
+
+    .btn-primary {
+      display: inline-block;
+      background: var(--cyan);
+      color: var(--black);
+      padding: 0.9rem 2rem;
+      font-family: var(--font-condensed);
+      font-weight: 700;
+      font-size: 0.85rem;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      border-radius: 2px;
+      transition: background 0.2s;
+    }
+    .btn-primary:hover { background: #28b5f5; }
+
+    .btn-ghost {
+      display: inline-block;
+      border: 1px solid rgba(255,255,255,0.2);
+      color: rgba(255,255,255,0.7);
+      padding: 0.9rem 2rem;
+      font-family: var(--font-condensed);
+      font-weight: 600;
+      font-size: 0.85rem;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      border-radius: 2px;
+      transition: border-color 0.2s, color 0.2s;
+    }
+    .btn-ghost:hover { border-color: rgba(255,255,255,0.5); color: var(--white); }
+
+    /* QUICK LINKS */
+    .quick-links {
+      padding: 3rem var(--gutter);
+      border-top: 1px solid var(--rule);
+      background: var(--black-2);
+    }
+
+    .ql-inner {
+      max-width: 800px;
+      margin: 0 auto;
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+      gap: 1rem;
+      text-align: left;
+    }
+
+    .ql-link {
+      display: block;
+      padding: 1.2rem 1rem;
+      border: 1px solid var(--rule);
+      border-radius: 4px;
+      font-family: var(--font-condensed);
+      font-size: 0.82rem;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: rgba(255,255,255,0.65);
+      transition: border-color 0.2s, color 0.2s;
+    }
+    .ql-link:hover { border-color: var(--cyan); color: var(--cyan); }
+
+    .ql-label {
+      font-family: var(--font-condensed);
+      font-size: 0.7rem;
+      letter-spacing: 0.15em;
+      text-transform: uppercase;
+      color: var(--gray);
+      text-align: center;
+      margin-bottom: 1.5rem;
+    }
+
+    /* FOOTER */
+    footer {
+      background: #030303;
+      padding: 2rem var(--gutter);
+      border-top: 1px solid var(--rule);
+    }
+
+    .footer-inner {
+      max-width: 1200px;
+      margin: 0 auto;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      flex-wrap: wrap;
+      gap: 1rem;
+    }
+
+    .footer-copy {
+      font-size: 0.8rem;
+      color: var(--gray);
+    }
+
+    .footer-contact {
+      font-size: 0.8rem;
+      color: var(--gray);
+    }
+
+    .footer-contact a { color: var(--cyan); }
+  </style>
+</head>
+<body>
+
+<nav>
+  <a href="/" class="nav-logo">
+    <img src="logo-full.webp" alt="Baseline Studio" width="281" height="88">
+  </a>
+  <div class="nav-links">
+    <a href="weddings">Weddings</a>
+    <a href="corporate">Corporate</a>
+    <a href="services.html">Services</a>
+    <a href="blog">Blog</a>
+    <a href="contact" class="nav-cta">Get a Quote</a>
+  </div>
+</nav>
+
+<main class="error-hero">
+  <div class="error-inner">
+    <div class="error-code">404</div>
+    <p class="error-label">Page Not Found</p>
+    <h1 class="error-title">This page doesn't exist</h1>
+    <p class="error-sub">The link might be broken, or the page may have moved. Head back to the homepage or find what you're looking for below.</p>
+    <div class="btn-row">
+      <a href="/" class="btn-primary">Back to Home</a>
+      <a href="contact" class="btn-ghost">Get a Quote</a>
+    </div>
+  </div>
+</main>
+
+<section class="quick-links">
+  <p class="ql-label">Or go directly to</p>
+  <div class="ql-inner">
+    <a href="weddings" class="ql-link">Weddings</a>
+    <a href="corporate" class="ql-link">Corporate Events</a>
+    <a href="services.html" class="ql-link">All Services</a>
+    <a href="service-dj" class="ql-link">DJ Services</a>
+    <a href="service-lighting" class="ql-link">Lighting</a>
+    <a href="service-cold-spark" class="ql-link">Cold Sparks</a>
+    <a href="blog" class="ql-link">Blog</a>
+    <a href="faq" class="ql-link">FAQ</a>
+    <a href="contact" class="ql-link">Contact</a>
+  </div>
+</section>
+
+<footer>
+  <div class="footer-inner">
+    <p class="footer-copy">© 2026 Baseline Studio LLC · Miami, FL · Fully Insured</p>
+    <p class="footer-contact">
+      <a href="tel:7863026056">(786) 302-6056</a> &nbsp;·&nbsp;
+      <a href="mailto:Hello@baselinestudiofl.com">Hello@baselinestudiofl.com</a>
+    </p>
+  </div>
+</footer>
+
+<!-- Google Analytics — deferred until after page load to avoid blocking LCP -->
+<script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  window.addEventListener('load', function() {
+    var s = document.createElement('script');
+    s.src = 'https://www.googletagmanager.com/gtag/js?id=G-420BHQKJE5';
+    s.async = true;
+    document.head.appendChild(s);
+    s.onload = function() { gtag('js', new Date()); gtag('config', 'G-420BHQKJE5'); };
+  });
+</script>
+
+</body>
+</html>

@@ -1,0 +1,4089 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Baseline Studio - Your Event</title>
+  <script src="portal-supabase.js?v=11"></script>
+  <script src="lighting-preview.js?v=2"></script>
+  <link rel="stylesheet" href="fonts/fonts.css">
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    :root {
+      --dark-bg: #08080e;
+      --card-bg: #111118;
+      --border-color: rgba(255, 255, 255, 0.07);
+      --cyan: #1FA3E0;
+      --cyan-dark: #1585b8;
+      --cyan-light: rgba(31, 163, 224, 0.1);
+      --white: #ffffff;
+      --gray: #888888;
+      --gray-light: rgba(255, 255, 255, 0.8);
+      --success: #2ecc71;
+      --warning: #f39c12;
+      --font-head: 'Anton', Impact, sans-serif;
+      --font-body: 'Barlow', system-ui, sans-serif;
+      --font-condensed: 'Barlow Condensed', 'Barlow', system-ui, sans-serif;
+      --glow-cyan: 0 0 32px rgba(31,163,224,0.35);
+      --card-shadow: 0 4px 40px rgba(0,0,0,0.55), 0 1px 0 rgba(255,255,255,0.04) inset;
+    }
+
+    html, body {
+      width: 100%;
+      height: 100%;
+    }
+
+    body {
+      font-family: var(--font-body);
+      background: var(--dark-bg);
+      color: var(--white);
+      line-height: 1.6;
+    }
+
+    #app {
+      display: flex;
+      flex-direction: column;
+      height: 100vh;
+      overflow: hidden;
+    }
+
+    /* Top Navigation */
+    .top-nav {
+      background: var(--card-bg);
+      border-bottom: 1px solid var(--border-color);
+      padding: 16px 24px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      height: 70px;
+      flex-shrink: 0;
+      z-index: 100;
+    }
+
+    .nav-left {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      font-family: var(--font-head);
+      font-size: 16px;
+      font-weight: bold;
+      cursor: pointer;
+    }
+
+    .nav-center {
+      flex: 1;
+      text-align: center;
+      font-family: var(--font-head);
+      font-size: 20px;
+      color: var(--white);
+    }
+
+    .nav-right {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+    }
+
+    .profile-avatar {
+      width: 36px;
+      height: 36px;
+      border-radius: 50%;
+      background: var(--cyan);
+      color: var(--dark-bg);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: 700;
+      font-size: 14px;
+      cursor: pointer;
+      position: relative;
+      transition: background 0.3s;
+    }
+
+    .profile-avatar:hover {
+      background: var(--cyan-dark);
+    }
+
+    .nav-right {
+      position: relative;
+    }
+
+    .profile-menu {
+      position: absolute;
+      top: calc(100% + 10px);
+      right: 0;
+      background: rgba(17, 17, 24, 0.92);
+      backdrop-filter: blur(16px);
+      -webkit-backdrop-filter: blur(16px);
+      border: 1px solid rgba(31, 163, 224, 0.2);
+      border-radius: 10px;
+      padding: 6px;
+      display: none;
+      z-index: 500;
+      min-width: 200px;
+      box-shadow: 0 8px 32px rgba(0,0,0,0.6), 0 0 0 1px rgba(255,255,255,0.04);
+      transform: translateY(-6px);
+      opacity: 0;
+      transition: opacity 0.18s ease, transform 0.18s ease;
+    }
+
+    .profile-menu.active {
+      display: block;
+      animation: menuSlideIn 0.18s ease forwards;
+    }
+
+    @keyframes menuSlideIn {
+      from { opacity: 0; transform: translateY(-6px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+
+    .profile-menu-header {
+      padding: 10px 12px 8px;
+      border-bottom: 1px solid rgba(255,255,255,0.07);
+      margin-bottom: 4px;
+    }
+
+    .profile-menu-name {
+      font-weight: 600;
+      font-size: 13px;
+      color: var(--white);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .profile-menu-event {
+      font-size: 11px;
+      color: var(--cyan);
+      margin-top: 2px;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .profile-menu button {
+      width: 100%;
+      text-align: left;
+      padding: 9px 12px;
+      background: transparent;
+      border: none;
+      color: rgba(255,255,255,0.85);
+      cursor: pointer;
+      border-radius: 6px;
+      font-size: 13px;
+      font-family: var(--font-body);
+      transition: background 0.15s, color 0.15s;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .profile-menu button:hover {
+      background: var(--cyan-light);
+      color: var(--white);
+    }
+
+    .profile-menu button.danger:hover {
+      background: rgba(231, 76, 60, 0.12);
+      color: #e74c3c;
+    }
+
+    /* Password change modal */
+    .pw-modal-backdrop {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,0.7);
+      backdrop-filter: blur(4px);
+      z-index: 1000;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .pw-modal-backdrop.active {
+      display: flex;
+    }
+
+    .pw-modal {
+      background: #111118;
+      border: 1px solid rgba(31,163,224,0.2);
+      border-radius: 14px;
+      padding: 28px 24px;
+      width: 340px;
+      max-width: 90vw;
+      box-shadow: 0 16px 48px rgba(0,0,0,0.7);
+      animation: scaleIn 0.18s ease forwards;
+    }
+
+    @keyframes scaleIn {
+      from { transform: scale(0.92); opacity: 0; }
+      to   { transform: scale(1);    opacity: 1; }
+    }
+
+    .pw-modal h3 {
+      font-family: var(--font-head);
+      font-size: 18px;
+      margin-bottom: 18px;
+    }
+
+    .pw-modal label {
+      display: block;
+      font-size: 12px;
+      color: var(--gray);
+      margin-bottom: 4px;
+      margin-top: 14px;
+    }
+
+    .pw-modal input {
+      width: 100%;
+      background: rgba(255,255,255,0.05);
+      border: 1px solid rgba(255,255,255,0.12);
+      border-radius: 6px;
+      color: var(--white);
+      padding: 9px 12px;
+      font-size: 14px;
+      font-family: var(--font-body);
+      outline: none;
+      transition: border-color 0.2s;
+    }
+
+    .pw-modal input:focus { border-color: var(--cyan); }
+
+    .pw-modal-actions {
+      display: flex;
+      gap: 10px;
+      margin-top: 20px;
+    }
+
+    .pw-modal-actions button {
+      flex: 1;
+      padding: 10px;
+      border-radius: 6px;
+      border: none;
+      cursor: pointer;
+      font-size: 13px;
+      font-weight: 600;
+      font-family: var(--font-body);
+      transition: background 0.2s;
+    }
+
+    .pw-btn-save {
+      background: var(--cyan);
+      color: var(--dark-bg);
+    }
+
+    .pw-btn-save:hover { background: var(--cyan-dark); }
+
+    .pw-btn-cancel {
+      background: rgba(255,255,255,0.07);
+      color: var(--white);
+    }
+
+    .pw-btn-cancel:hover { background: rgba(255,255,255,0.12); }
+
+    .logout-btn {
+      padding: 8px 16px;
+      background: var(--cyan);
+      color: var(--dark-bg);
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+      font-weight: 600;
+      font-size: 13px;
+      transition: background 0.3s;
+    }
+
+    .logout-btn:hover {
+      background: var(--cyan-dark);
+    }
+
+    /* Tab Bar */
+    .tab-bar {
+      background: var(--card-bg);
+      border-bottom: 1px solid var(--border-color);
+      display: flex;
+      overflow-x: auto;
+      gap: 0;
+      padding: 0 24px;
+      flex-shrink: 0;
+      height: 52px;
+    }
+
+    .tab-bar::-webkit-scrollbar {
+      height: 4px;
+    }
+
+    .tab-bar::-webkit-scrollbar-thumb {
+      background: var(--cyan-light);
+      border-radius: 2px;
+    }
+
+    .tab {
+      padding: 16px 20px;
+      white-space: nowrap;
+      cursor: pointer;
+      font-size: 14px;
+      font-weight: 500;
+      border-bottom: 3px solid transparent;
+      transition: all 0.3s;
+      color: var(--gray);
+      flex-shrink: 0;
+    }
+
+    .tab:hover {
+      color: var(--white);
+    }
+
+    .tab.active {
+      color: var(--cyan);
+      border-bottom-color: var(--cyan);
+    }
+
+    /* ── G: 21st.dev-style interaction polish ────────────────────────────── */
+
+    /* Animated tab underline — slides between tabs */
+    .tab-bar {
+      position: relative;
+    }
+    .tab-ink {
+      position: absolute;
+      bottom: 0;
+      height: 3px;
+      background: var(--cyan);
+      border-radius: 2px 2px 0 0;
+      transition: left 0.25s cubic-bezier(0.4,0,0.2,1), width 0.25s cubic-bezier(0.4,0,0.2,1);
+      pointer-events: none;
+    }
+
+    /* Card hover lift */
+    .card {
+      transition: box-shadow 0.2s, transform 0.2s;
+    }
+    .card:hover {
+      box-shadow: 0 8px 32px rgba(0,0,0,0.4);
+      transform: translateY(-1px);
+    }
+
+    /* Skeleton shimmer */
+    @keyframes shimmer {
+      0%   { background-position: -600px 0; }
+      100% { background-position: 600px 0; }
+    }
+    .skeleton {
+      background: linear-gradient(90deg, rgba(255,255,255,0.04) 25%, rgba(255,255,255,0.09) 50%, rgba(255,255,255,0.04) 75%);
+      background-size: 600px 100%;
+      animation: shimmer 1.4s infinite;
+      border-radius: 6px;
+    }
+    .skeleton-line { height: 14px; margin-bottom: 10px; }
+    .skeleton-line.wide { width: 85%; }
+    .skeleton-line.med  { width: 60%; }
+    .skeleton-line.short{ width: 35%; }
+
+    /* Scale-in modals (pw modal uses .pw-modal already has scaleIn; apply to all modals) */
+    .card {
+      animation: cardIn 0.22s ease forwards;
+    }
+    @keyframes cardIn {
+      from { transform: translateY(10px) scale(0.98); }
+      to   { transform: translateY(0)   scale(1);    }
+    }
+
+    /* Number ticker */
+    .ticker {
+      display: inline-block;
+      transition: transform 0.4s cubic-bezier(0.4,0,0.2,1);
+    }
+
+    /* ── Quick-add chips with inline expand ──────────────────────────────── */
+    .qc-chip {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 6px 12px;
+      background: rgba(31,163,224,0.07);
+      border: 1px solid rgba(31,163,224,0.2);
+      color: rgba(255,255,255,0.7);
+      border-radius: 20px;
+      font-size: 12px;
+      font-family: var(--font-body);
+      cursor: pointer;
+      transition: background 0.15s, border-color 0.15s, color 0.15s, border-radius 0.2s;
+      white-space: nowrap;
+      vertical-align: middle;
+    }
+    .qc-chip:hover {
+      background: rgba(31,163,224,0.15);
+      border-color: rgba(31,163,224,0.45);
+      color: #fff;
+    }
+    .qc-chip.expanded {
+      background: rgba(31,163,224,0.1);
+      border-color: rgba(31,163,224,0.45);
+      border-radius: 10px;
+      padding: 4px 6px 4px 12px;
+      cursor: default;
+      gap: 8px;
+      color: rgba(255,255,255,0.9);
+    }
+    .qc-chip.expanded:hover { background: rgba(31,163,224,0.1); }
+    .qc-time-badge {
+      font-size: 10px;
+      color: #1FA3E0;
+      font-weight: 600;
+      font-variant-numeric: tabular-nums;
+      letter-spacing: .02em;
+    }
+    .qc-time-input {
+      width: 96px;
+      background: rgba(255,255,255,0.06);
+      border: 1px solid rgba(255,255,255,0.12);
+      border-radius: 6px;
+      padding: 3px 7px;
+      color: #1FA3E0;
+      font-size: 12px;
+      font-family: var(--font-body);
+      margin-bottom: 0;
+      transition: border-color 0.15s, box-shadow 0.15s;
+    }
+    .qc-time-input:focus {
+      outline: none;
+      border-color: rgba(31,163,224,0.5);
+      box-shadow: 0 0 0 2px rgba(31,163,224,0.12);
+      background: rgba(31,163,224,0.06);
+    }
+    .qc-confirm {
+      background: rgba(31,163,224,0.18);
+      border: 1px solid rgba(31,163,224,0.4);
+      color: #1FA3E0;
+      border-radius: 6px;
+      padding: 3px 9px;
+      font-size: 13px;
+      cursor: pointer;
+      font-family: var(--font-body);
+      transition: all 0.15s;
+      white-space: nowrap;
+    }
+    .qc-confirm:hover {
+      background: rgba(31,163,224,0.32);
+      border-color: #1FA3E0;
+      color: #fff;
+    }
+    .qc-cancel {
+      background: none;
+      border: none;
+      color: rgba(255,255,255,0.25);
+      font-size: 14px;
+      cursor: pointer;
+      padding: 2px 4px;
+      line-height: 1;
+      font-family: var(--font-body);
+      transition: color 0.15s;
+    }
+    .qc-cancel:hover { color: rgba(255,255,255,0.6); }
+
+    /* ── Timeline rows — refined ─────────────────────────────────────────── */
+    .tl-row {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      padding: 10px 12px;
+      border-radius: 8px;
+      position: relative;
+      transition: background 0.15s;
+      margin-bottom: 2px;
+    }
+    .tl-row:hover { background: rgba(255,255,255,0.03); }
+    .tl-row:hover .tl-delete { opacity: 1; }
+    .tl-dot {
+      position: absolute;
+      left: -20px;
+      top: 50%;
+      transform: translateY(-50%);
+      width: 9px;
+      height: 9px;
+      border-radius: 50%;
+      background: #1FA3E0;
+      box-shadow: 0 0 7px rgba(31,163,224,0.55);
+      flex-shrink: 0;
+    }
+    .tl-time {
+      font-size: 13px;
+      font-weight: 600;
+      color: #1FA3E0;
+      min-width: 62px;
+      font-variant-numeric: tabular-nums;
+      cursor: pointer;
+      padding: 2px 6px;
+      border-radius: 5px;
+      border: 1px solid transparent;
+      transition: border-color 0.15s, background 0.15s;
+      white-space: nowrap;
+    }
+    .tl-time:hover {
+      border-color: rgba(31,163,224,0.3);
+      background: rgba(31,163,224,0.07);
+    }
+    .tl-time-edit {
+      width: 90px;
+      padding: 2px 6px;
+      border-radius: 5px;
+      border: 1px solid rgba(31,163,224,0.4);
+      background: rgba(31,163,224,0.07);
+      color: #1FA3E0;
+      font-size: 13px;
+      font-family: var(--font-body);
+      margin-bottom: 0;
+    }
+    .tl-label {
+      flex: 1;
+      color: rgba(255,255,255,0.85);
+      font-size: 14px;
+    }
+    .tl-delete {
+      opacity: 0;
+      background: none;
+      border: none;
+      color: rgba(255,255,255,0.3);
+      font-size: 18px;
+      cursor: pointer;
+      padding: 0 4px;
+      line-height: 1;
+      transition: color 0.15s, opacity 0.15s;
+    }
+    .tl-delete:hover { color: #e74c3c; }
+
+    /* Mouse-tracked spotlight on cards */
+    .card {
+      --x: 50%;
+      --y: 50%;
+      background-image: radial-gradient(circle 220px at var(--x) var(--y), rgba(31,163,224,0.06) 0%, transparent 70%);
+    }
+
+    /* Main Content */
+    .content-area {
+      flex: 1;
+      overflow-y: auto;
+      overflow-x: hidden;
+      padding: 40px 24px;
+    }
+
+    .content-area::-webkit-scrollbar {
+      width: 8px;
+    }
+
+    .content-area::-webkit-scrollbar-track {
+      background: transparent;
+    }
+
+    .content-area::-webkit-scrollbar-thumb {
+      background: var(--border-color);
+      border-radius: 4px;
+    }
+
+    .content-area::-webkit-scrollbar-thumb:hover {
+      background: var(--gray);
+    }
+
+    .tab-content {
+      display: none;
+      max-width: 1200px;
+      margin: 0 auto;
+      width: 100%;
+    }
+
+    .tab-content.active {
+      display: block;
+      animation: fadeIn 0.3s;
+    }
+
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(10px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    /* Cards & Components */
+    .card {
+      background: var(--card-bg);
+      border: 1px solid var(--border-color);
+      border-radius: 10px;
+      padding: 24px;
+      margin-bottom: 20px;
+      box-shadow: 0 2px 20px rgba(0, 0, 0, 0.4);
+      box-sizing: border-box;
+      width: 100%;
+      max-width: 100%;
+      overflow: hidden;
+    }
+    /* Enhancements form fix */
+    .enhancement-section { border-bottom: 1px solid rgba(255,255,255,0.07); padding-bottom: 16px; margin-bottom: 16px; }
+    .enhancement-section:last-of-type { border-bottom: none; }
+    .enhancement-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 10px; }
+    .enhancement-color-row { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+    .enhancement-color-row input[type="color"] { width: 36px; height: 36px; border-radius: 6px; border: none; cursor: pointer; padding: 2px; background: transparent; flex-shrink: 0; }
+    .enhancement-color-row input[type="text"] { flex: 1; min-width: 80px; max-width: 120px; }
+    .enhancement-checkbox { display: flex; align-items: center; gap: 10px; cursor: pointer; margin-bottom: 10px; }
+    .enhancement-options { padding: 12px; background: rgba(255,255,255,0.03); border-radius: 8px; margin-bottom: 4px; }
+    .enhancement-options label { font-size: 12px; color: var(--gray); display: block; margin-bottom: 6px; margin-top: 10px; }
+    .enhancement-options label:first-child { margin-top: 0; }
+    .enhancement-options input[type="text"],
+    .enhancement-options textarea { width: 100%; box-sizing: border-box; background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.1); color: #fff; border-radius: 6px; padding: 8px; font-family: inherit; font-size: 13px; }
+    .enhancement-options textarea { resize: vertical; }
+
+    .card.hero {
+      background: linear-gradient(135deg, rgba(31, 163, 224, 0.1) 0%, rgba(31, 163, 224, 0.05) 100%);
+      border: 2px solid var(--cyan);
+      padding: 32px;
+    }
+
+    h1 {
+      font-family: var(--font-head);
+      font-size: 48px;
+      line-height: 1;
+      margin-bottom: 12px;
+      color: var(--white);
+    }
+
+    h2 {
+      font-family: var(--font-head);
+      font-size: 24px;
+      margin-bottom: 16px;
+      color: var(--white);
+    }
+
+    h3 {
+      font-family: var(--font-head);
+      font-size: 18px;
+      margin-bottom: 12px;
+      color: var(--white);
+    }
+
+    p {
+      color: var(--gray-light);
+      margin-bottom: 12px;
+    }
+
+    .countdown-number {
+      font-family: var(--font-head);
+      font-size: 72px;
+      color: var(--cyan);
+      line-height: 1;
+      margin: 16px 0;
+    }
+
+    .countdown-label {
+      font-size: 14px;
+      color: var(--gray);
+      text-transform: uppercase;
+      letter-spacing: 1px;
+    }
+
+    .badge {
+      display: inline-block;
+      padding: 6px 14px;
+      border-radius: 20px;
+      font-size: 12px;
+      font-weight: 600;
+      margin-right: 8px;
+      margin-bottom: 8px;
+    }
+
+    .badge-type {
+      background: var(--cyan-light);
+      color: var(--cyan);
+    }
+
+    .badge-status {
+      background: rgba(46, 204, 113, 0.2);
+      color: var(--success);
+    }
+
+    .badge-status.due {
+      background: rgba(243, 156, 18, 0.2);
+      color: var(--warning);
+    }
+
+    .status-row {
+      display: flex;
+      gap: 12px;
+      margin-top: 12px;
+      flex-wrap: wrap;
+    }
+
+    .team-card {
+      background: var(--card-bg);
+      border: 1px solid var(--border-color);
+      border-radius: 8px;
+      padding: 16px;
+      margin-bottom: 12px;
+    }
+
+    .team-member {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .team-avatar {
+      width: 40px;
+      height: 40px;
+      border-radius: 50%;
+      background: var(--cyan);
+      color: var(--dark-bg);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: 600;
+      font-size: 16px;
+      flex-shrink: 0;
+    }
+
+    .team-info {
+      flex: 1;
+    }
+
+    .team-name {
+      font-weight: 600;
+      color: var(--white);
+    }
+
+    .team-role {
+      font-size: 12px;
+      color: var(--gray);
+    }
+
+    /* Help Section */
+    .help-section {
+      background: var(--cyan-light);
+      border: 1px solid var(--cyan);
+      border-radius: 10px;
+      padding: 24px;
+      margin-bottom: 20px;
+    }
+
+    .help-section h3 {
+      color: var(--cyan);
+      margin-bottom: 8px;
+    }
+
+    .help-section p {
+      margin: 8px 0;
+      color: var(--white);
+    }
+
+    .help-phone {
+      font-family: 'Courier New', monospace;
+      font-size: 18px;
+      font-weight: 600;
+      color: var(--cyan);
+      margin: 12px 0;
+    }
+
+    /* Tabs within sections */
+    .sub-tabs {
+      display: flex;
+      gap: 12px;
+      margin-bottom: 24px;
+      border-bottom: 1px solid var(--border-color);
+      padding-bottom: 0;
+    }
+
+    .sub-tab {
+      padding: 12px 16px;
+      background: transparent;
+      border: none;
+      color: var(--gray);
+      cursor: pointer;
+      font-weight: 500;
+      font-size: 13px;
+      border-bottom: 2px solid transparent;
+      transition: all 0.3s;
+    }
+
+    .sub-tab:hover {
+      color: var(--white);
+    }
+
+    .sub-tab.active {
+      color: var(--cyan);
+      border-bottom-color: var(--cyan);
+    }
+
+    .sub-content {
+      display: none;
+    }
+
+    .sub-content.active {
+      display: block;
+    }
+
+    /* Forms — 21st.dev glass aesthetic */
+    input, textarea, select {
+      width: 100%;
+      background: rgba(255,255,255,0.04);
+      border: 1px solid rgba(255,255,255,0.09);
+      color: var(--white);
+      padding: 11px 14px;
+      border-radius: 8px;
+      font-family: var(--font-body);
+      font-size: 14px;
+      margin-bottom: 12px;
+      transition: border-color 0.2s, box-shadow 0.2s, background 0.2s;
+    }
+
+    input:hover, textarea:hover, select:hover {
+      border-color: rgba(255,255,255,0.16);
+      background: rgba(255,255,255,0.06);
+    }
+
+    input:focus, textarea:focus, select:focus {
+      outline: none;
+      border-color: rgba(31,163,224,0.6);
+      background: rgba(31,163,224,0.04);
+      box-shadow: 0 0 0 3px rgba(31,163,224,0.12);
+    }
+
+    /* Override for non-text inputs — must not inherit width:100% or box styling */
+    input[type="checkbox"],
+    input[type="radio"] {
+      width: auto;
+      flex-shrink: 0;
+      padding: 0;
+      margin-bottom: 0;
+      background: transparent;
+      border: none;
+      box-shadow: none;
+      accent-color: var(--cyan);
+    }
+
+    input[type="time"] {
+      padding: 8px 10px;
+      margin-bottom: 0;
+    }
+
+    input::placeholder, textarea::placeholder {
+      color: rgba(255,255,255,0.25);
+    }
+
+    select option {
+      background: #111;
+    }
+
+    textarea {
+      resize: vertical;
+      min-height: 80px;
+    }
+
+    .form-group {
+      margin-bottom: 20px;
+    }
+
+    .form-label {
+      display: block;
+      font-weight: 500;
+      margin-bottom: 8px;
+      color: var(--white);
+      font-size: 14px;
+    }
+
+    .form-row {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 16px;
+    }
+
+    @media (max-width: 768px) {
+      .form-row {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    .color-inputs {
+      display: grid;
+      grid-template-columns: 60px 1fr;
+      gap: 12px;
+      align-items: flex-end;
+      margin-bottom: 12px;
+    }
+
+    input[type="color"] {
+      width: 60px;
+      height: 44px;
+      padding: 4px;
+      cursor: pointer;
+    }
+
+    /* Buttons — 21st.dev refined */
+    button, .btn {
+      padding: 10px 18px;
+      border: none;
+      border-radius: 8px;
+      cursor: pointer;
+      font-family: var(--font-body);
+      font-weight: 600;
+      font-size: 13px;
+      transition: all 0.18s cubic-bezier(0.4,0,0.2,1);
+      letter-spacing: 0.01em;
+    }
+
+    .btn-primary {
+      background: var(--cyan);
+      color: #07111a;
+      box-shadow: 0 0 0 0 rgba(31,163,224,0);
+    }
+
+    .btn-primary:hover {
+      background: #29b3f0;
+      box-shadow: 0 4px 16px rgba(31,163,224,0.3);
+      transform: translateY(-1px);
+    }
+
+    .btn-primary:active {
+      transform: translateY(0);
+    }
+
+    .btn-secondary {
+      background: rgba(31,163,224,0.07);
+      border: 1px solid rgba(31,163,224,0.3);
+      color: var(--cyan);
+    }
+
+    .btn-secondary:hover {
+      background: rgba(31,163,224,0.15);
+      border-color: rgba(31,163,224,0.55);
+    }
+
+    .btn-small {
+      padding: 6px 12px;
+      font-size: 12px;
+      border-radius: 6px;
+    }
+
+    .btn-danger {
+      background: transparent;
+      border: 1px solid rgba(244, 67, 54, 0.5);
+      color: rgba(244, 67, 54, 0.8);
+      padding: 6px 12px;
+      font-size: 12px;
+    }
+
+    .btn-danger:hover {
+      background: rgba(244, 67, 54, 0.1);
+    }
+
+    /* Vendor List */
+    .vendor-card {
+      background: var(--dark-bg);
+      border: 1px solid var(--border-color);
+      border-radius: 8px;
+      padding: 16px;
+      margin-bottom: 12px;
+      display: flex;
+      justify-content: space-between;
+      align-items: start;
+    }
+
+    .vendor-suggestion {
+      padding: 10px 14px;
+      cursor: pointer;
+      font-size: 13px;
+      border-bottom: 1px solid rgba(255,255,255,0.05);
+      display: flex;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 4px;
+    }
+    .vendor-suggestion:last-child { border-bottom: none; }
+    .vendor-suggestion:hover { background: rgba(31,163,224,0.08); }
+
+    .vendor-info {
+      flex: 1;
+    }
+
+    .vendor-name {
+      font-weight: 600;
+      color: var(--white);
+      margin-bottom: 4px;
+    }
+
+    .vendor-type {
+      font-size: 12px;
+      color: var(--gray);
+      margin-bottom: 8px;
+    }
+
+    .vendor-detail {
+      font-size: 13px;
+      color: var(--gray-light);
+      margin: 2px 0;
+    }
+
+    .vendor-actions {
+      display: flex;
+      gap: 8px;
+    }
+
+    /* Timeline */
+    .timeline {
+      position: relative;
+      padding-left: 40px;
+    }
+
+    .timeline-item {
+      position: relative;
+      margin-bottom: 24px;
+    }
+
+    .timeline-item::before {
+      content: '';
+      position: absolute;
+      left: -32px;
+      top: 6px;
+      width: 16px;
+      height: 16px;
+      background: var(--cyan);
+      border-radius: 50%;
+      border: 3px solid var(--card-bg);
+    }
+
+    .timeline-badge {
+      display: inline-block;
+      background: var(--cyan);
+      color: var(--dark-bg);
+      padding: 4px 12px;
+      border-radius: 12px;
+      font-size: 12px;
+      font-weight: 600;
+      margin-bottom: 8px;
+    }
+
+    .timeline-content {
+      background: var(--dark-bg);
+      border: 1px solid var(--border-color);
+      border-radius: 8px;
+      padding: 12px 16px;
+      color: var(--gray-light);
+    }
+
+    /* Messages */
+    .message-thread {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      margin-bottom: 20px;
+      max-height: 400px;
+      overflow-y: auto;
+      padding: 16px;
+      background: var(--dark-bg);
+      border-radius: 8px;
+      border: 1px solid var(--border-color);
+    }
+
+    .message {
+      display: flex;
+      gap: 12px;
+      animation: slideIn 0.3s;
+    }
+
+    @keyframes slideIn {
+      from { opacity: 0; transform: translateY(10px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    .message.team {
+      justify-content: flex-start;
+    }
+
+    .message.client {
+      justify-content: flex-end;
+    }
+
+    .message-avatar {
+      width: 28px;
+      height: 28px;
+      border-radius: 50%;
+      background: var(--cyan);
+      color: var(--dark-bg);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: 600;
+      font-size: 12px;
+      flex-shrink: 0;
+    }
+
+    .message.client .message-avatar {
+      order: 2;
+    }
+
+    .message-bubble {
+      max-width: 65%;
+      padding: 10px 14px;
+      border-radius: 8px;
+      word-wrap: break-word;
+      font-size: 14px;
+    }
+
+    .message.team .message-bubble {
+      background: var(--card-bg);
+      border: 1px solid var(--border-color);
+      color: var(--gray-light);
+    }
+
+    .message.client .message-bubble {
+      background: var(--cyan);
+      color: var(--dark-bg);
+    }
+
+    .message-time {
+      font-size: 11px;
+      color: var(--gray);
+      margin-top: 4px;
+    }
+
+    .message-input-area {
+      display: flex;
+      gap: 12px;
+      margin-top: 16px;
+    }
+
+    .message-input-area textarea {
+      margin: 0;
+      flex: 1;
+      min-height: 60px;
+    }
+
+    /* Checkboxes */
+    .checkbox-group {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+      margin-bottom: 16px;
+    }
+
+    .checkbox-item {
+      display: flex;
+      align-items: flex-start;
+      gap: 8px;
+    }
+
+    .checkbox-item input[type="checkbox"] {
+      width: auto;
+      margin: 3px 0 0 0;
+      cursor: pointer;
+    }
+
+    .checkbox-label {
+      cursor: pointer;
+      font-size: 14px;
+      color: var(--gray-light);
+    }
+
+    /* Utility */
+    .empty-state {
+      text-align: center;
+      padding: 40px 20px;
+      color: var(--gray);
+    }
+
+    .empty-state h2 {
+      font-size: 24px;
+      margin-bottom: 12px;
+      color: var(--white);
+    }
+
+    .divider {
+      height: 1px;
+      background: var(--border-color);
+      margin: 20px 0;
+    }
+
+    /* Responsive */
+    @media (max-width: 768px) {
+      .top-nav {
+        padding: 12px 16px;
+        height: auto;
+        flex-wrap: wrap;
+        gap: 8px;
+      }
+
+      .nav-center {
+        width: 100%;
+        order: 3;
+        font-size: 16px;
+        padding: 8px 0;
+      }
+
+      .nav-left, .nav-right {
+        flex: 1;
+      }
+
+      h1 {
+        font-size: 32px;
+      }
+
+      h2 {
+        font-size: 20px;
+      }
+
+      .countdown-number {
+        font-size: 48px;
+      }
+
+      .tab-bar {
+        padding: 0 12px;
+      }
+
+      .tab {
+        padding: 12px 12px;
+        font-size: 12px;
+      }
+
+      .content-area {
+        padding: 24px 16px;
+      }
+
+      .card {
+        padding: 16px;
+      }
+
+      .form-row {
+        grid-template-columns: 1fr;
+      }
+
+      .checkbox-group {
+        grid-template-columns: 1fr;
+      }
+
+      .message-bubble {
+        max-width: 85%;
+      }
+
+      /* Enhancements grid → single column */
+      .enhancement-grid {
+        grid-template-columns: 1fr;
+      }
+
+      /* Enhancement color row wraps instead of clipping */
+      .enhancement-color-row {
+        flex-wrap: wrap;
+      }
+
+      /* Enhancement options inside cards — better touch targets */
+      .enhancement-checkbox {
+        padding: 6px 0;
+      }
+
+      /* Vendor cards stack vertically on small screens */
+      .vendor-card {
+        flex-direction: column;
+        gap: 10px;
+        align-items: flex-start;
+      }
+
+      /* Nav — make the event switcher not clip */
+      #eventSwitcher {
+        max-width: 110px;
+        font-size: 11px;
+      }
+
+      /* Timeline rows — label should truncate cleanly, not overflow */
+      .tl-row {
+        gap: 10px;
+      }
+      .tl-label {
+        flex: 1;
+        min-width: 0;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+      }
+
+      /* Quick-add time badge — slightly smaller on mobile */
+      .qc-time-badge {
+        font-size: 9px;
+      }
+
+      /* QC chip confirm button — compact on mobile */
+      .qc-confirm {
+        padding: 3px 7px;
+        font-size: 12px;
+      }
+
+      /* Color input row */
+      .color-inputs {
+        grid-template-columns: 48px 1fr;
+      }
+
+      /* Form group labels */
+      .form-label {
+        font-size: 11px;
+      }
+
+      /* Stat/countdown section centering */
+      .countdown-number {
+        font-size: 44px;
+      }
+
+      /* Lighting canvas — don't let it overflow its container */
+      .lp-canvas {
+        border-radius: 8px;
+      }
+    }
+
+    /* ============================================================
+       FACELIFT — Cinema Dark / Modern Glassmorphism
+       ui-ux-pro-max: "Modern Dark (Cinema Mobile)" style applied
+       Brand: Baseline Studio cyan #1FA3E0 | Anton + Barlow fonts
+       easing: cubic-bezier(0.16,1,0.3,1) — expo.out throughout
+       ============================================================ */
+
+    /* 1. Cinematic base — no pure black, ambient cyan bloom at top */
+    body {
+      background: linear-gradient(180deg, #0b0b15 0%, #07070d 100%);
+      /* background-attachment: fixed intentionally removed — broken on iOS Safari */
+    }
+
+    body::before {
+      content: '';
+      position: fixed;
+      top: -15%;
+      left: 50%;
+      transform: translateX(-50%);
+      width: 90vw;
+      max-width: 1200px;
+      height: 55vh;
+      background: radial-gradient(ellipse, rgba(31,163,224,0.07) 0%, transparent 68%);
+      pointer-events: none;
+      z-index: 0;
+    }
+
+    #app { position: relative; z-index: 1; }
+
+    /* 2. Navigation — full glassmorphism */
+    .top-nav {
+      background: rgba(7,7,13,0.78);
+      backdrop-filter: blur(28px);
+      -webkit-backdrop-filter: blur(28px);
+      border-bottom: 1px solid rgba(255,255,255,0.06);
+      box-shadow: 0 1px 0 rgba(31,163,224,0.07), 0 16px 48px rgba(0,0,0,0.45);
+      height: 62px;
+    }
+
+    .nav-left {
+      font-size: 17px;
+      letter-spacing: 0.18em;
+      color: rgba(255,255,255,0.95);
+    }
+
+    /* 3. Tab bar — glass */
+    .tab-bar {
+      background: rgba(7,7,13,0.65);
+      backdrop-filter: blur(20px);
+      -webkit-backdrop-filter: blur(20px);
+      border-bottom: 1px solid rgba(255,255,255,0.05);
+      height: 48px;
+    }
+
+    .tab {
+      font-size: 13px;
+      font-weight: 600;
+      letter-spacing: 0.025em;
+      padding: 13px 18px;
+      transition: color 0.22s cubic-bezier(0.16,1,0.3,1);
+    }
+
+    /* 4. Cards — cinema dark with hairline top light leak */
+    .card {
+      background: rgba(16,16,26,0.82);
+      border: 1px solid rgba(255,255,255,0.07);
+      border-top-color: rgba(255,255,255,0.12);
+      border-radius: 16px;
+      padding: 28px;
+      box-shadow: 0 8px 40px rgba(0,0,0,0.55), 0 1px 0 rgba(255,255,255,0.05) inset;
+      animation: cardIn 0.3s cubic-bezier(0.16,1,0.3,1) forwards;
+    }
+
+    @keyframes cardIn {
+      from { transform: translateY(14px) scale(0.982); }
+      to   { transform: translateY(0) scale(1); }
+    }
+
+    /* 5. Hero card — dramatic cinema gradient */
+    .card.hero {
+      background: linear-gradient(135deg, rgba(31,163,224,0.15) 0%, rgba(12,12,22,0.95) 58%);
+      border-color: rgba(31,163,224,0.2);
+      border-top-color: rgba(31,163,224,0.38);
+      border-radius: 20px;
+      padding: 36px;
+      box-shadow: 0 8px 56px rgba(31,163,224,0.13), 0 1px 0 rgba(31,163,224,0.2) inset;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .card.hero::before {
+      content: '';
+      position: absolute;
+      top: -40%;
+      right: -8%;
+      width: 55%;
+      height: 160%;
+      background: radial-gradient(ellipse, rgba(31,163,224,0.13) 0%, transparent 65%);
+      pointer-events: none;
+    }
+
+    /* 6. Countdown — dramatic glow + pulsing ring */
+    .countdown-ring-wrap {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      margin-top: 24px;
+      margin-bottom: 8px;
+    }
+    .countdown-ring {
+      position: relative;
+      width: 200px;
+      height: 200px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+    }
+    .countdown-ring::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      border-radius: 50%;
+      border: 2px solid var(--countdown-color, #1FA3E0);
+      opacity: 0.45;
+      animation: ringPulse 2.4s ease-in-out infinite;
+      box-shadow: 0 0 32px var(--countdown-color, #1FA3E0), inset 0 0 24px rgba(0,0,0,0.3);
+    }
+    .countdown-ring::after {
+      content: '';
+      position: absolute;
+      inset: 14px;
+      border-radius: 50%;
+      border: 1px solid color-mix(in srgb, var(--countdown-color, #1FA3E0) 30%, transparent);
+    }
+    @keyframes ringPulse {
+      0%, 100% { transform: scale(1);   opacity: 0.45; }
+      50%       { transform: scale(1.04); opacity: 0.7;  }
+    }
+    .countdown-number {
+      font-size: 88px;
+      letter-spacing: -0.02em;
+      color: var(--countdown-color, #1FA3E0);
+      text-shadow: 0 0 56px color-mix(in srgb, var(--countdown-color, #1FA3E0) 60%, transparent),
+                   0 0 12px color-mix(in srgb, var(--countdown-color, #1FA3E0) 35%, transparent);
+      line-height: 1;
+      position: relative;
+      z-index: 1;
+    }
+    .countdown-label {
+      font-size: 10px;
+      letter-spacing: 0.22em;
+      margin-top: 16px;
+      color: color-mix(in srgb, var(--countdown-color, #1FA3E0) 70%, white);
+    }
+
+    /* 7. Headings — refined spacing */
+    h1 { font-size: 54px; letter-spacing: -0.01em; }
+    h2 { font-size: 26px; letter-spacing: 0.01em; }
+    h3 { font-size: 18px; letter-spacing: 0.01em; }
+
+    /* 8. Buttons — expo.out transitions, gradient + glow */
+    button, .btn {
+      transition: all 0.22s cubic-bezier(0.16,1,0.3,1);
+    }
+
+    .btn-primary {
+      background-image: linear-gradient(135deg, #2bbdf8 0%, #1FA3E0 55%, #1689c4 100%);
+      color: #05111b;
+      font-weight: 700;
+      letter-spacing: 0.025em;
+      box-shadow: 0 0 0 0 rgba(31,163,224,0);
+    }
+
+    .btn-primary:hover {
+      background-image: linear-gradient(135deg, #38c6fc 0%, #27b0ea 55%, #1a96cc 100%);
+      box-shadow: 0 4px 22px rgba(31,163,224,0.42), 0 0 0 1px rgba(31,163,224,0.25);
+      transform: translateY(-2px);
+    }
+
+    .btn-primary:active {
+      transform: scale(0.97) translateY(0);
+      transition-duration: 0.08s;
+    }
+
+    .btn-secondary {
+      background: rgba(31,163,224,0.07);
+      border: 1px solid rgba(31,163,224,0.22);
+    }
+
+    .btn-secondary:hover {
+      background: rgba(31,163,224,0.15);
+      border-color: rgba(31,163,224,0.48);
+      box-shadow: 0 0 0 3px rgba(31,163,224,0.07);
+    }
+
+    /* 9. Profile avatar */
+    .profile-avatar {
+      box-shadow: 0 0 0 2px rgba(31,163,224,0.35);
+      transition: all 0.22s cubic-bezier(0.16,1,0.3,1);
+    }
+
+    .profile-avatar:hover {
+      transform: scale(1.07);
+      box-shadow: 0 0 0 2px rgba(31,163,224,0.7), 0 0 18px rgba(31,163,224,0.28);
+    }
+
+    /* 10. Badges — uppercase pill */
+    .badge {
+      border-radius: 8px;
+      padding: 5px 12px;
+      font-size: 10px;
+      font-weight: 700;
+      letter-spacing: 0.07em;
+      text-transform: uppercase;
+    }
+
+    .badge-type {
+      border: 1px solid rgba(31,163,224,0.28);
+      background: rgba(31,163,224,0.1);
+    }
+
+    .badge-status { border: 1px solid rgba(46,204,113,0.28); }
+    .badge-status.due { border-color: rgba(243,156,18,0.28); }
+
+    /* 11. Team card */
+    .team-card {
+      background: rgba(255,255,255,0.022);
+      border-color: rgba(255,255,255,0.06);
+      border-radius: 12px;
+      transition: background 0.2s;
+    }
+    .team-card:hover { background: rgba(255,255,255,0.04); }
+
+    .team-avatar {
+      box-shadow: 0 0 0 2px rgba(31,163,224,0.35), 0 0 14px rgba(31,163,224,0.14);
+      font-weight: 700;
+    }
+
+    /* 12. Help section — premium glass with ambient blob */
+    .help-section {
+      background: linear-gradient(135deg, rgba(31,163,224,0.1) 0%, rgba(31,163,224,0.03) 100%);
+      border-color: rgba(31,163,224,0.2);
+      border-radius: 16px;
+      position: relative;
+      overflow: hidden;
+    }
+    .help-section::before {
+      content: '';
+      position: absolute;
+      top: -60%;
+      right: -8%;
+      width: 45%;
+      height: 220%;
+      background: radial-gradient(ellipse, rgba(31,163,224,0.1) 0%, transparent 65%);
+      pointer-events: none;
+    }
+    .help-phone {
+      font-family: var(--font-head);
+      font-size: 24px;
+      letter-spacing: 0.06em;
+      text-shadow: 0 0 22px rgba(31,163,224,0.42);
+    }
+
+    /* 13. Vendor + enhancement cards */
+    .vendor-card {
+      border-radius: 12px;
+      border-color: rgba(255,255,255,0.06);
+      background: rgba(255,255,255,0.02);
+      transition: background 0.2s, border-color 0.2s;
+    }
+    .vendor-card:hover {
+      background: rgba(255,255,255,0.038);
+      border-color: rgba(255,255,255,0.1);
+    }
+
+    /* 14. Message bubbles */
+    .message.team .message-bubble {
+      border-radius: 4px 14px 14px 14px;
+      background: rgba(255,255,255,0.04);
+      border-color: rgba(255,255,255,0.08);
+    }
+    .message.client .message-bubble {
+      border-radius: 14px 4px 14px 14px;
+      background: linear-gradient(135deg, #2bbdf8, #1FA3E0);
+    }
+
+    /* 15. Inputs — glass refinement */
+    input, textarea, select {
+      border-radius: 10px;
+      background: rgba(255,255,255,0.04);
+      border-color: rgba(255,255,255,0.09);
+    }
+    input:focus, textarea:focus, select:focus {
+      background: rgba(31,163,224,0.04);
+      border-color: rgba(31,163,224,0.52);
+      box-shadow: 0 0 0 3px rgba(31,163,224,0.1), 0 1px 0 rgba(31,163,224,0.18) inset;
+    }
+
+    /* 16. Timeline dot — cyan glow */
+    .tl-dot {
+      box-shadow: 0 0 10px rgba(31,163,224,0.7), 0 0 4px rgba(31,163,224,0.5);
+    }
+
+    /* 17. QC chips — refined pill */
+    .qc-chip {
+      border-radius: 24px;
+      font-weight: 600;
+      letter-spacing: 0.01em;
+      transition: all 0.22s cubic-bezier(0.16,1,0.3,1);
+    }
+    .qc-chip:hover {
+      transform: translateY(-1px);
+      box-shadow: 0 4px 14px rgba(31,163,224,0.14);
+      border-color: rgba(31,163,224,0.42);
+    }
+
+    /* 18. Sub-tabs */
+    .sub-tab {
+      font-weight: 600;
+      letter-spacing: 0.025em;
+      transition: color 0.2s, border-color 0.2s;
+    }
+
+    /* 19. Enhancement section dividers */
+    .enhancement-section { border-bottom-color: rgba(255,255,255,0.045); }
+
+    /* 20. Scrollbar — hairline */
+    .content-area::-webkit-scrollbar { width: 4px; }
+    .content-area::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.12); border-radius: 2px; }
+    .content-area::-webkit-scrollbar-thumb:hover { background: rgba(255,255,255,0.22); }
+
+    /* 21. Focus ring — brand-tinted */
+    :focus-visible {
+      outline: 2px solid rgba(31,163,224,0.55);
+      outline-offset: 2px;
+    }
+
+    /* 22. Empty state */
+    .empty-state { padding: 64px 20px; }
+
+    /* ═══════════════════════════════════════════════════════════════════
+       COMPREHENSIVE MOBILE PASS — no crowding, no overflow, no clipping
+       Overrides ALL previous @media blocks. Source of truth for mobile.
+       ═══════════════════════════════════════════════════════════════════ */
+    @media (max-width: 768px) {
+      /* Ambient glow — off on mobile (perf + visual noise) */
+      body::before { display: none; }
+      .card.hero::before { display: none; }
+      .help-section::before { display: none; }
+
+      /* Disable hover transforms on touch */
+      .btn-primary:hover { transform: none; box-shadow: none; }
+      .card:hover { transform: none; box-shadow: 0 2px 12px rgba(0,0,0,0.3); }
+
+      /* ── Navigation ─────────────────────────────────────────────── */
+      .top-nav {
+        padding: 0 14px;
+        height: 54px;
+        flex-wrap: nowrap; /* keep it single row — no wrapping */
+        gap: 0;
+      }
+      .nav-left { font-size: 14px; letter-spacing: 0.08em; flex-shrink: 0; }
+      .nav-center {
+        order: 0; /* keep in-line, don't drop to new row */
+        width: auto;
+        font-size: 13px;
+        text-align: center;
+        flex: 1;
+        padding: 0 8px;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+      }
+      .nav-right { gap: 10px; flex-shrink: 0; }
+      #eventSwitcher { max-width: 100px; font-size: 10px; }
+
+      /* ── Tab bar ─────────────────────────────────────────────────── */
+      .tab-bar { padding: 0 6px; height: 44px; }
+      .tab { padding: 11px 12px; font-size: 12px; letter-spacing: 0; }
+
+      /* ── Content area ─────────────────────────────────────────────── */
+      .content-area { padding: 16px 14px 24px; }
+
+      /* ── Typography ──────────────────────────────────────────────── */
+      h1 { font-size: 28px; }
+      h2 { font-size: 19px; }
+      h3 { font-size: 16px; }
+      .countdown-number { font-size: 52px; }
+      .countdown-label { font-size: 12px; }
+      .empty-state { padding: 28px 14px; }
+      .empty-state h2 { font-size: 18px; }
+
+      /* ── Cards ───────────────────────────────────────────────────── */
+      .card { padding: 14px; border-radius: 10px; }
+      .card.hero { padding: 18px; border-radius: 14px; }
+      .help-section { padding: 16px; }
+      .help-phone { font-size: 18px; }
+
+      /* ── Timeline ────────────────────────────────────────────────── */
+      .timeline-container { padding-left: 24px; }
+      .timeline-item { margin-bottom: 16px; }
+      .timeline-item::before { left: -24px; width: 12px; height: 12px; }
+
+      /* Timeline rows — allow wrapping, don't clip text */
+      .tl-row { gap: 8px; padding: 8px 10px; flex-wrap: wrap; }
+      .tl-label { flex: 1; min-width: 0; white-space: normal; overflow: visible; text-overflow: clip; font-size: 13px; }
+      .tl-time { min-width: 56px; font-size: 12px; }
+      .tl-delete { opacity: 1; font-size: 16px; } /* always visible on touch */
+      .tl-dot { left: -16px; width: 8px; height: 8px; }
+
+      /* ── Enhancements ────────────────────────────────────────────── */
+      .enhancement-grid { grid-template-columns: 1fr; }
+      .enhancement-color-row { flex-wrap: wrap; gap: 6px; }
+      .enhancement-options { padding: 10px; }
+      .enhancement-checkbox { padding: 8px 0; gap: 12px; }
+
+      /* ── Sub-tabs ────────────────────────────────────────────────── */
+      .sub-tabs {
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+        flex-wrap: nowrap;
+        gap: 0;
+        padding-bottom: 0;
+        margin-bottom: 16px;
+      }
+      .sub-tab { white-space: nowrap; font-size: 12px; padding: 10px 12px; }
+
+      /* ── Forms ───────────────────────────────────────────────────── */
+      .form-row { grid-template-columns: 1fr; gap: 0; }
+      .form-group { margin-bottom: 14px; }
+      .form-label { font-size: 12px; }
+      input, textarea, select { font-size: 16px; } /* prevent iOS zoom on focus */
+      .checkbox-group { grid-template-columns: 1fr; }
+
+      /* ── Messages / chat bubbles ─────────────────────────────────── */
+      .message-bubble { max-width: 88%; }
+
+      /* ── Status badges ───────────────────────────────────────────── */
+      .badge { font-size: 11px; padding: 4px 10px; }
+
+      /* ── Vendor cards ────────────────────────────────────────────── */
+      .vendor-card { flex-direction: column; align-items: flex-start; gap: 8px; }
+
+      /* ── QC chips / inline add ───────────────────────────────────── */
+      .qc-chip { font-size: 11px; padding: 5px 10px; }
+      .qc-confirm { padding: 4px 10px; font-size: 12px; }
+      .qc-time-input { width: 82px; }
+
+      /* ── Color inputs ────────────────────────────────────────────── */
+      .color-inputs { grid-template-columns: 40px 1fr; gap: 8px; }
+      input[type="color"] { width: 40px; height: 40px; }
+    }
+
+    @media (max-width: 390px) {
+      /* Smallest iPhones */
+      .content-area { padding: 12px 10px 20px; }
+      .card { padding: 12px; }
+      h1 { font-size: 24px; }
+      .countdown-number { font-size: 44px; }
+      .tab { padding: 10px 10px; font-size: 11px; }
+    }
+
+    /* ── Onboarding Wizard ────────────────────────────────────────────────── */
+    .ob-wrap {
+      padding: 8px 0 48px;
+      animation: obStepIn 0.38s cubic-bezier(0.16,1,0.3,1) forwards;
+    }
+    @keyframes obStepIn {
+      from { opacity: 0; transform: translateX(24px); }
+      to   { opacity: 1; transform: translateX(0); }
+    }
+
+    .ob-progress {
+      display: flex;
+      justify-content: center;
+      gap: 8px;
+      padding: 0 0 36px;
+    }
+    .ob-dot {
+      width: 6px; height: 6px;
+      border-radius: 50%;
+      background: rgba(255,255,255,0.14);
+      transition: all 0.35s cubic-bezier(0.16,1,0.3,1);
+    }
+    .ob-dot.active {
+      width: 28px;
+      border-radius: 3px;
+      background: #1FA3E0;
+      box-shadow: 0 0 10px rgba(31,163,224,0.55);
+    }
+    .ob-dot.done { background: rgba(31,163,224,0.38); }
+
+    .ob-question {
+      font-family: 'Anton', sans-serif;
+      font-size: 30px;
+      letter-spacing: 0.005em;
+      line-height: 1.12;
+      color: #fff;
+      margin-bottom: 10px;
+    }
+    .ob-sub {
+      font-size: 14px;
+      color: rgba(255,255,255,0.42);
+      margin-bottom: 28px;
+      line-height: 1.55;
+    }
+
+    .ob-chips {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      margin-bottom: 28px;
+    }
+    .ob-chip {
+      padding: 11px 20px;
+      background: rgba(255,255,255,0.05);
+      border: 1px solid rgba(255,255,255,0.1);
+      border-radius: 100px;
+      color: rgba(255,255,255,0.7);
+      font-size: 14px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.22s cubic-bezier(0.16,1,0.3,1);
+      font-family: 'Barlow', sans-serif;
+      user-select: none;
+    }
+    .ob-chip:hover {
+      background: rgba(31,163,224,0.1);
+      border-color: rgba(31,163,224,0.32);
+      color: #fff;
+      transform: translateY(-1px);
+    }
+    .ob-chip.selected {
+      background: rgba(31,163,224,0.14);
+      border-color: rgba(31,163,224,0.55);
+      color: #1FA3E0;
+      box-shadow: 0 0 0 1px rgba(31,163,224,0.18), 0 4px 14px rgba(31,163,224,0.12);
+    }
+
+    .ob-checkbox-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+      margin-bottom: 28px;
+    }
+    .ob-check-item {
+      display: flex;
+      align-items: center;
+      gap: 11px;
+      padding: 13px 14px;
+      background: rgba(255,255,255,0.04);
+      border: 1px solid rgba(255,255,255,0.08);
+      border-radius: 11px;
+      cursor: pointer;
+      transition: all 0.2s cubic-bezier(0.16,1,0.3,1);
+      font-size: 13px;
+      font-weight: 600;
+      color: rgba(255,255,255,0.6);
+      user-select: none;
+    }
+    .ob-check-item:hover {
+      background: rgba(31,163,224,0.07);
+      border-color: rgba(31,163,224,0.22);
+      color: #fff;
+    }
+    .ob-check-item.checked {
+      background: rgba(31,163,224,0.1);
+      border-color: rgba(31,163,224,0.38);
+      color: #fff;
+    }
+    .ob-check-box {
+      width: 18px; height: 18px;
+      border-radius: 5px;
+      border: 1.5px solid rgba(255,255,255,0.2);
+      flex-shrink: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 11px;
+      font-weight: 800;
+      transition: all 0.18s;
+    }
+    .ob-check-item.checked .ob-check-box {
+      background: #1FA3E0;
+      border-color: #1FA3E0;
+      color: #000;
+    }
+
+    .ob-input-large {
+      width: 100%;
+      background: rgba(255,255,255,0.05);
+      border: 1px solid rgba(255,255,255,0.1);
+      border-radius: 12px;
+      color: #fff;
+      font-size: 16px;
+      font-family: 'Barlow', sans-serif;
+      padding: 14px 16px;
+      box-sizing: border-box;
+      transition: border-color 0.2s, box-shadow 0.2s;
+      margin-bottom: 14px;
+      outline: none;
+    }
+    .ob-input-large::placeholder { color: rgba(255,255,255,0.28); }
+    .ob-input-large:focus {
+      border-color: rgba(31,163,224,0.5);
+      box-shadow: 0 0 0 3px rgba(31,163,224,0.1);
+      background: rgba(31,163,224,0.03);
+    }
+
+    .ob-textarea-large {
+      width: 100%;
+      min-height: 100px;
+      background: rgba(255,255,255,0.05);
+      border: 1px solid rgba(255,255,255,0.1);
+      border-radius: 12px;
+      color: #fff;
+      font-size: 15px;
+      font-family: 'Barlow', sans-serif;
+      padding: 14px 16px;
+      box-sizing: border-box;
+      resize: vertical;
+      line-height: 1.55;
+      outline: none;
+      transition: border-color 0.2s, box-shadow 0.2s;
+      margin-bottom: 16px;
+    }
+    .ob-textarea-large::placeholder { color: rgba(255,255,255,0.28); }
+    .ob-textarea-large:focus {
+      border-color: rgba(31,163,224,0.5);
+      box-shadow: 0 0 0 3px rgba(31,163,224,0.1);
+      background: rgba(31,163,224,0.03);
+    }
+
+    .ob-actions {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-top: 8px;
+    }
+    .ob-skip {
+      font-size: 13px;
+      color: rgba(255,255,255,0.3);
+      cursor: pointer;
+      background: none;
+      border: none;
+      font-family: 'Barlow', sans-serif;
+      transition: color 0.2s;
+      padding: 0;
+    }
+    .ob-skip:hover { color: rgba(255,255,255,0.6); }
+
+    .ob-next {
+      padding: 12px 30px;
+      background: linear-gradient(135deg, #2bbdf8 0%, #1FA3E0 60%);
+      border: none;
+      border-radius: 100px;
+      color: #05111b;
+      font-size: 15px;
+      font-weight: 700;
+      cursor: pointer;
+      font-family: 'Barlow', sans-serif;
+      letter-spacing: 0.02em;
+      transition: all 0.22s cubic-bezier(0.16,1,0.3,1);
+      box-shadow: 0 4px 18px rgba(31,163,224,0.28);
+    }
+    .ob-next:hover { transform: translateY(-2px); box-shadow: 0 6px 24px rgba(31,163,224,0.42); }
+    .ob-next:active { transform: scale(0.97); transition-duration: 0.08s; }
+
+    .ob-welcome-wrap {
+      padding: 24px 0 40px;
+      text-align: center;
+    }
+    .ob-welcome-icon { font-size: 44px; margin-bottom: 18px; }
+    .ob-welcome-title {
+      font-family: 'Anton', sans-serif;
+      font-size: 34px;
+      color: #fff;
+      margin-bottom: 14px;
+      letter-spacing: 0.01em;
+    }
+    .ob-welcome-body {
+      font-size: 15px;
+      color: rgba(255,255,255,0.48);
+      line-height: 1.65;
+      max-width: 340px;
+      margin: 0 auto 32px;
+    }
+    .ob-complete-wrap {
+      padding: 48px 0;
+      text-align: center;
+      animation: obStepIn 0.4s cubic-bezier(0.16,1,0.3,1) forwards;
+    }
+
+    @media (max-width: 768px) {
+      .ob-question { font-size: 22px; }
+      .ob-checkbox-grid { grid-template-columns: 1fr; }
+      .ob-welcome-title { font-size: 26px; }
+    }
+    @media (max-width: 390px) {
+      .ob-question { font-size: 20px; }
+      .ob-chip { font-size: 13px; padding: 10px 16px; }
+    }
+  </style>
+<!-- Google tag (gtag.js) -->
+<script async src="https://www.googletagmanager.com/gtag/js?id=G-420BHQKJE5"></script>
+<script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  gtag('js', new Date());
+  gtag('config', 'G-420BHQKJE5');
+</script>
+<link rel="icon" href="favicon.ico" sizes="any">
+<link rel="icon" href="favicon-32x32.png" type="image/png" sizes="32x32">
+<link rel="icon" href="favicon-16x16.png" type="image/png" sizes="16x16">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<link rel="stylesheet" href="fable.css">
+</head>
+<body>
+  <div id="app">
+    <!-- Top Navigation -->
+    <div class="top-nav">
+      <div class="nav-left" onclick="goHome()">
+        <span>BASELINE</span>
+      </div>
+      <div class="nav-center" id="eventNameNav" style="display:flex;align-items:center;justify-content:center;gap:8px;">
+        <span id="eventNameText">My Event</span>
+        <select id="eventSwitcher" style="display:none;background:#1a1a24;border:1px solid rgba(255,255,255,0.15);color:#fff;padding:3px 8px;border-radius:6px;font-size:11px;cursor:pointer;max-width:140px;" onchange="switchEvent(this.value)"></select>
+      </div>
+      <div class="nav-right">
+        <div class="profile-avatar" id="profileAvatar" onclick="toggleProfileMenu()">
+          <span id="profileInitial">?</span>
+        </div>
+        <div class="profile-menu" id="profileMenu">
+          <div class="profile-menu-header">
+            <div class="profile-menu-name" id="menuClientName">Loading...</div>
+            <div class="profile-menu-event" id="menuEventName"></div>
+          </div>
+          <button onclick="openChangePassword()">&#128274; Change my password</button>
+          <button class="danger" onclick="logout()">&#8594; Log out</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Password Change Modal -->
+    <div class="pw-modal-backdrop" id="pwModalBackdrop" onclick="closePwModal(event)">
+      <div class="pw-modal" id="pwModal">
+        <h3>Update Your Password</h3>
+        <label>Current password</label>
+        <input type="password" id="pwCurrent" placeholder="Current password">
+        <label>New password</label>
+        <input type="password" id="pwNew" placeholder="At least 6 characters">
+        <label>Confirm new password</label>
+        <input type="password" id="pwConfirm" placeholder="Repeat new password">
+        <div class="pw-modal-actions">
+          <button class="pw-btn-cancel" onclick="closePwModal()">Cancel</button>
+          <button class="pw-btn-save" onclick="submitChangePassword()">Update</button>
+        </div>
+        <div id="pwFeedback" style="margin-top:12px;font-size:12px;text-align:center;"></div>
+      </div>
+    </div>
+
+    <!-- Tab Bar -->
+    <div class="tab-bar" id="tabBar"></div>
+
+    <!-- Content Area -->
+    <div class="content-area" id="contentArea"></div>
+  </div>
+
+  <script>
+    // ============ UTILITIES ============
+    // getDB / setDB are provided by portal-supabase.js (Supabase-backed in-memory cache).
+    // The client portal only reads event data — no writes needed — so these are pass-throughs.
+
+    // ─── Toast notification ───────────────────────────────────────────────────
+    function showToast(msg, type) {
+      const colours = { success: '#2ecc71', error: '#e74c3c', warning: '#f39c12', info: '#1FA3E0' };
+      const t = document.createElement('div');
+      t.textContent = msg;
+      t.style.cssText = `position:fixed;bottom:24px;right:24px;z-index:9999;padding:12px 20px;border-radius:8px;font-size:13px;font-family:var(--font-body);font-weight:500;color:#fff;background:${colours[type]||colours.info};box-shadow:0 4px 20px rgba(0,0,0,0.5);opacity:0;transform:translateY(8px);transition:opacity 0.2s,transform 0.2s;pointer-events:none;`;
+      document.body.appendChild(t);
+      requestAnimationFrame(() => { t.style.opacity = '1'; t.style.transform = 'translateY(0)'; });
+      setTimeout(() => { t.style.opacity = '0'; t.style.transform = 'translateY(8px)'; setTimeout(() => t.remove(), 250); }, 3000);
+    }
+
+    // ─── 24h → 12h display ───────────────────────────────────────────────────
+    function fmt24to12(t) {
+      if (!t || t === 'TBD') return t || 'TBD';
+      const [hStr, mStr] = (t + '').split(':');
+      let h = parseInt(hStr, 10);
+      if (isNaN(h)) return t;
+      const m = (mStr || '00').padStart(2, '0');
+      const ampm = h >= 12 ? 'PM' : 'AM';
+      if (h === 0) h = 12; else if (h > 12) h -= 12;
+      return `${h}:${m} ${ampm}`;
+    }
+
+    // ─── Quick-add chip expand / confirm / cancel ─────────────────────────────
+    function expandChip(btn) {
+      if (btn.classList.contains('expanded')) return;
+      const label = btn.dataset.label || '';
+      const time  = btn.dataset.time  || '';
+      btn.classList.add('expanded');
+      btn.innerHTML = `
+        <span style="font-size:12px;font-weight:500;">${label}</span>
+        <input type="time" class="qc-time-input" value="${time}" onkeydown="if(event.key==='Enter')confirmChipAdd(this.parentElement);if(event.key==='Escape')collapseChip(this.parentElement);" onclick="event.stopPropagation();">
+        <button class="qc-confirm" onclick="confirmChipAdd(this.parentElement);">✓ Add</button>
+        <button class="qc-cancel"  onclick="collapseChip(this.parentElement);">✕</button>
+      `;
+      // Re-set data so collapseChip can restore it
+      btn.dataset.label = label;
+      btn.dataset.time  = time;
+      requestAnimationFrame(() => btn.querySelector('.qc-time-input')?.focus());
+    }
+
+    function confirmChipAdd(btn) {
+      const label    = btn.dataset.label || '';
+      const timeInput = btn.querySelector('.qc-time-input');
+      const time      = timeInput ? timeInput.value || btn.dataset.time : btn.dataset.time;
+      addSuggestedMoment(label, time);
+    }
+
+    function collapseChip(btn) {
+      const label = btn.dataset.label || '';
+      const time  = btn.dataset.time  || '';
+      btn.classList.remove('expanded');
+      btn.innerHTML = `<span>+ ${label}</span><span class="qc-time-badge">${fmt24to12(time)}</span>`;
+    }
+
+    // ─── Inline timeline time editing ─────────────────────────────────────────
+    function editTimelineTime(idx, currentTime) {
+      const row = document.querySelector(`.tl-row[data-tl-idx="${idx}"]`);
+      if (!row) return;
+      const timeEl = row.querySelector('.tl-time');
+      if (!timeEl) return;
+      const input = document.createElement('input');
+      input.type = 'time';
+      input.value = currentTime;
+      input.className = 'tl-time-edit';
+
+      const save = () => {
+        if (currentEvent.timeline && currentEvent.timeline[idx] !== undefined) {
+          currentEvent.timeline[idx].time = input.value || currentTime;
+          saveEvent();
+        }
+        renderTimeline();
+      };
+
+      input.addEventListener('blur',    save);
+      input.addEventListener('keydown', e => {
+        if (e.key === 'Enter')  { e.preventDefault(); save(); }
+        if (e.key === 'Escape') renderTimeline();
+      });
+      input.addEventListener('click', e => e.stopPropagation());
+
+      timeEl.replaceWith(input);
+      requestAnimationFrame(() => input.focus());
+    }
+
+    // ─── Number ticker (count-up animation) ──────────────────────────────────
+    function tickerCountUp(el, target, durationMs) {
+      if (!el) return;
+      if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) { el.textContent = target; return; }
+      const start = performance.now();
+      const startVal = 0;
+      function step(now) {
+        const elapsed = now - start;
+        const progress = Math.min(elapsed / (durationMs || 900), 1);
+        const ease = 1 - Math.pow(1 - progress, 3); // ease-out-cubic
+        el.textContent = Math.round(startVal + (target - startVal) * ease);
+        if (progress < 1) requestAnimationFrame(step);
+      }
+      requestAnimationFrame(step);
+    }
+
+    function formatDate(dateStr) {
+      if (!dateStr) return 'TBD';
+      const date = new Date(dateStr);
+      const options = { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' };
+      return date.toLocaleDateString('en-US', options);
+    }
+
+    function getDayCount(dateStr) {
+      if (!dateStr) return 0;
+      const eventDate = new Date(dateStr);
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      eventDate.setHours(0, 0, 0, 0);
+      const diff = eventDate - today;
+      return Math.max(0, Math.ceil(diff / (1000 * 60 * 60 * 24)));
+    }
+
+    let _menuOutsideHandler = null;
+    let _menuEscHandler = null;
+
+    function toggleProfileMenu() {
+      const menu = document.getElementById('profileMenu');
+      const isOpen = menu.classList.contains('active');
+      if (isOpen) {
+        closeProfileMenu();
+      } else {
+        menu.classList.add('active');
+        // Outside click
+        setTimeout(() => {
+          _menuOutsideHandler = (e) => {
+            if (!e.target.closest('.profile-avatar') && !e.target.closest('.profile-menu')) {
+              closeProfileMenu();
+            }
+          };
+          document.addEventListener('click', _menuOutsideHandler);
+        }, 0);
+        // Esc key
+        _menuEscHandler = (e) => { if (e.key === 'Escape') closeProfileMenu(); };
+        document.addEventListener('keydown', _menuEscHandler);
+      }
+    }
+
+    function closeProfileMenu() {
+      const menu = document.getElementById('profileMenu');
+      menu.classList.remove('active');
+      if (_menuOutsideHandler) { document.removeEventListener('click', _menuOutsideHandler); _menuOutsideHandler = null; }
+      if (_menuEscHandler) { document.removeEventListener('keydown', _menuEscHandler); _menuEscHandler = null; }
+    }
+
+    function openChangePassword() {
+      closeProfileMenu();
+      document.getElementById('pwCurrent').value = '';
+      document.getElementById('pwNew').value = '';
+      document.getElementById('pwConfirm').value = '';
+      document.getElementById('pwFeedback').textContent = '';
+      document.getElementById('pwModalBackdrop').classList.add('active');
+      setTimeout(() => document.getElementById('pwCurrent').focus(), 100);
+      // Esc closes modal
+      const onEsc = (e) => { if (e.key === 'Escape') { closePwModal(); document.removeEventListener('keydown', onEsc); } };
+      document.addEventListener('keydown', onEsc);
+    }
+
+    function closePwModal(e) {
+      if (e && e.type === 'click' && e.target !== document.getElementById('pwModalBackdrop')) return;
+      document.getElementById('pwModalBackdrop').classList.remove('active');
+    }
+
+    async function submitChangePassword() {
+      const cur  = document.getElementById('pwCurrent').value.trim();
+      const nw   = document.getElementById('pwNew').value.trim();
+      const conf = document.getElementById('pwConfirm').value.trim();
+      const fb   = document.getElementById('pwFeedback');
+      fb.style.color = '#e74c3c';
+      if (!cur) { fb.textContent = 'Enter your current password.'; return; }
+      if (nw.length < 6) { fb.textContent = 'New password must be at least 6 characters.'; return; }
+      if (nw !== conf) { fb.textContent = 'Passwords do not match.'; return; }
+      const btn = document.querySelector('.pw-btn-save');
+      btn.textContent = 'Updating...';
+      btn.disabled = true;
+      try {
+        const SUPABASE_URL  = 'https://jkdhkwcxnwpiufeyrnso.supabase.co';
+        const SUPABASE_ANON = 'sb_publishable_6xcEpHwIJi8bq4XuSyLCGg_3A30raS9';
+        const userEmail = (currentUser && currentUser.email) || '';
+        const r = await fetch(`${SUPABASE_URL}/rest/v1/rpc/change_client_password`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'apikey': SUPABASE_ANON },
+          body: JSON.stringify({ p_email: userEmail, p_old_password: cur, p_new_password: nw })
+        });
+        const result = await r.json();
+        if (result === true) {
+          // Update the session's stored password so further saves still work
+          if (window.BSPortal && BSPortal._updateSessionPw) BSPortal._updateSessionPw(nw);
+          fb.style.color = 'var(--success)';
+          fb.textContent = 'Password updated. You\'re set.';
+          setTimeout(() => document.getElementById('pwModalBackdrop').classList.remove('active'), 1800);
+        } else {
+          fb.textContent = 'Current password is incorrect.';
+        }
+      } catch(err) {
+        fb.textContent = 'Something went wrong. Try again.';
+      }
+      btn.textContent = 'Update';
+      btn.disabled = false;
+    }
+
+    function logout() {
+      BSPortal.logout(); // clears session + redirects to login
+    }
+
+    function goHome() {
+      setActiveTab('my-event');
+    }
+
+    // ============ STATE ============
+    let currentUser = null;
+    let currentEvent = null;
+    let activeTab = 'my-event';
+
+    // ============ INITIALIZATION ============
+    function init() {
+      // Check session (stored in sessionStorage by login.html via BSPortal.signInClient)
+      const sessionEvent = BSPortal.initClient(); // redirects to login if no valid session
+      if (!sessionEvent) return;
+
+      currentUser = BSPortal.getCurrentUser();
+
+      // Check role
+      if (!['client-private', 'client-corporate'].includes(currentUser.role)) {
+        window.location.href = 'login.html';
+        return;
+      }
+
+      // Event data was stored in the session at login time — no extra Supabase call needed
+      currentEvent = sessionEvent;
+
+      if (!currentEvent) {
+        renderEmptyState();
+        return;
+      }
+
+      // Normalize field names — seed sources use slightly different keys
+      currentEvent.name = currentEvent.name || currentEvent.title || currentEvent.eventName || 'My Event';
+      currentEvent.type = currentEvent.type || currentEvent.eventType || 'event';
+      currentEvent.venueName = currentEvent.venueName || currentEvent.venue || 'TBD';
+      currentEvent.date = currentEvent.date || currentEvent.eventDate || '';
+      currentEvent.basePrice = currentEvent.basePrice || currentEvent.budget || 0;
+      currentEvent.depositAmount = currentEvent.depositAmount || Math.round((currentEvent.basePrice || 0) * 0.5);
+      currentEvent.depositPaid = currentEvent.depositPaid ?? (currentEvent.paid > 0);
+      currentEvent.balancePaid = currentEvent.balancePaid ?? false;
+
+      // Set nav — show event name, plus switcher if client has multiple events
+      const allEvents = BSPortal.getClientAllEvents ? BSPortal.getClientAllEvents() : [currentEvent];
+      document.getElementById('eventNameText').textContent = currentEvent.name;
+      if (allEvents.length > 1) {
+        const sel = document.getElementById('eventSwitcher');
+        sel.style.display = 'inline-block';
+        sel.innerHTML = allEvents.map(ev => {
+          const d = ev.date || ev.eventDate || '';
+          const yr = d ? ' (' + d.slice(0,4) + ')' : '';
+          return `<option value="${ev.id}" ${ev.id === currentEvent.id ? 'selected' : ''}>${ev.name}${yr}</option>`;
+        }).join('');
+      }
+      const initial = (currentUser.firstName || currentUser.name || 'U')[0].toUpperCase();
+      document.getElementById('profileInitial').textContent = initial;
+      // Populate profile menu header
+      const displayName = currentUser.name || currentUser.email || 'Client';
+      document.getElementById('menuClientName').textContent = displayName;
+      document.getElementById('menuEventName').textContent = currentEvent.name || 'My Event';
+
+      // Show skeleton shimmer briefly while content renders
+      const contentArea = document.getElementById('contentArea');
+      contentArea.innerHTML = `
+        <div style="padding:24px;display:flex;flex-direction:column;gap:16px;">
+          <div class="skeleton skeleton-line wide" style="height:32px;"></div>
+          <div class="skeleton skeleton-line med" style="height:20px;"></div>
+          <div class="skeleton skeleton-line short" style="height:20px;"></div>
+          <div style="margin-top:8px;display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+            <div class="skeleton" style="height:120px;border-radius:12px;"></div>
+            <div class="skeleton" style="height:120px;border-radius:12px;"></div>
+          </div>
+        </div>`;
+
+      // Render tabs and content
+      requestAnimationFrame(() => {
+        renderTabs();
+        // Check Supabase-persisted flag first, then fall back to localStorage
+        // (covers cases where the RPC doesn't echo onboardingComplete back on fresh login)
+        const obDoneLocally = (() => {
+          try { return !!localStorage.getItem('bs_ob_done_' + currentEvent.id); } catch(e) { return false; }
+        })();
+        if (!currentEvent.onboardingComplete && !obDoneLocally) {
+          document.getElementById('tabBar').style.display = 'none';
+          renderOnboarding();
+        } else {
+          // Keep the flag synced on currentEvent in case it came from localStorage only
+          currentEvent.onboardingComplete = true;
+          setActiveTab('my-event');
+        }
+      });
+    }
+
+    function switchEvent(eventId) {
+      const ev = BSPortal.switchClientEvent ? BSPortal.switchClientEvent(eventId) : null;
+      if (!ev) return;
+      currentEvent = ev;
+      // Re-normalize
+      currentEvent.name = currentEvent.name || currentEvent.title || 'My Event';
+      currentEvent.type = currentEvent.type || 'event';
+      currentEvent.venueName = currentEvent.venueName || currentEvent.venue || 'TBD';
+      currentEvent.date = currentEvent.date || currentEvent.eventDate || '';
+      currentEvent.depositPaid = currentEvent.depositPaid ?? false;
+      currentEvent.balancePaid = currentEvent.balancePaid ?? false;
+      document.getElementById('eventNameText').textContent = currentEvent.name;
+      setActiveTab('my-event');
+    }
+
+    function renderEmptyState() {
+      const content = document.getElementById('contentArea');
+      content.innerHTML = `
+        <div class="empty-state">
+          <h2>We're getting your portal ready.</h2>
+          <p style="color:rgba(255,255,255,0.45);font-size:15px;margin-top:8px;">Shouldn't be long. Everything will be here soon.</p>
+          <p style="margin-top: 28px; font-size: 14px; color: rgba(255,255,255,0.35);">Questions in the meantime? Call us at <span style="color:#1FA3E0;font-weight:600;">(786) 302-6056</span></p>
+        </div>
+      `;
+    }
+
+    function renderTabs() {
+      const tabBar = document.getElementById('tabBar');
+      const tabs = [
+        { id: 'my-event', label: 'My Event' },
+        { id: 'vendors', label: 'Vendors & Venue' },
+        { id: 'timeline', label: 'Timeline' },
+        { id: 'music', label: 'Music' },
+        { id: 'enhancements', label: 'Enhancements' },
+        { id: 'invoices', label: 'Invoices' },
+        { id: 'documents', label: 'Documents' },
+        { id: 'preferences', label: 'Preferences' },
+        { id: 'messages', label: 'Messages' },
+        { id: 'settings', label: 'Settings' }
+      ];
+
+      tabBar.innerHTML = tabs.map(tab => `
+        <div class="tab" data-tab="${tab.id}" onclick="setActiveTab('${tab.id}')">
+          ${tab.label}
+        </div>
+      `).join('') + '<div class="tab-ink" id="tabInk"></div>';
+      // Position ink on initial load
+      requestAnimationFrame(() => moveTabInk(activeTab));
+    }
+
+    function moveTabInk(tabId) {
+      const ink = document.getElementById('tabInk');
+      const tab = document.querySelector(`[data-tab="${tabId}"]`);
+      if (!ink || !tab) return;
+      const bar    = tab.closest('.tab-bar');
+      const barRect = bar.getBoundingClientRect();
+      const tabRect = tab.getBoundingClientRect();
+      ink.style.left  = (tabRect.left - barRect.left + bar.scrollLeft) + 'px';
+      ink.style.width = tabRect.width + 'px';
+    }
+
+    function setActiveTab(tabId) {
+      activeTab = tabId;
+
+      // Update tab bar
+      document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+      document.querySelector(`[data-tab="${tabId}"]`).classList.add('active');
+      moveTabInk(tabId);
+
+      // Render content
+      const content = document.getElementById('contentArea');
+      content.innerHTML = '';
+
+      switch (tabId) {
+        case 'my-event':
+          renderMyEvent();
+          break;
+        case 'vendors':
+          renderVendors();
+          break;
+        case 'timeline':
+          renderTimeline();
+          break;
+        case 'music':
+          renderMusic();
+          break;
+        case 'enhancements':
+          renderEnhancements();
+          break;
+        case 'invoices':
+          renderClientInvoices();
+          break;
+        case 'documents':
+          renderClientDocuments();
+          break;
+        case 'preferences':
+          renderPreferences();
+          break;
+        case 'messages':
+          renderMessages();
+          break;
+        case 'settings':
+          renderClientSettings();
+          break;
+      }
+    }
+
+    // ============ TAB: MY EVENT ============
+    function renderMyEvent() {
+      const eventDate = currentEvent.date || currentEvent.eventDate;
+      const eventType = currentEvent.type || currentEvent.eventType || 'Event';
+      const venue = currentEvent.venueName || 'TBD';
+      const startTime = currentEvent.startTime || '6:00 PM';
+      const depositPaid = currentEvent.depositPaid;
+      const balancePaid = currentEvent.balancePaid;
+      const team = currentEvent.assignedTeam || [];
+      const dayCount = getDayCount(eventDate);
+
+      // Compute completeness for nudge banner
+      const sections = [currentEvent.venueName, currentEvent.clientVendors && currentEvent.clientVendors.length, currentEvent.clientMusic && currentEvent.clientMusic.length, currentEvent.timeline && currentEvent.timeline.length, currentEvent.clientPrefs && currentEvent.clientPrefs.vibe];
+      const filled = sections.filter(Boolean).length;
+      const pct = Math.round((filled / sections.length) * 100);
+      const showNudge = typeof dayCount === 'number' && dayCount <= 21 && dayCount >= 0 && pct < 100;
+
+      const content = document.getElementById('contentArea');
+      content.innerHTML = `
+        ${showNudge ? `
+          <div style="background:rgba(31,163,224,0.08);border:1px solid rgba(31,163,224,0.2);border-radius:10px;padding:14px 18px;margin-bottom:16px;display:flex;align-items:center;gap:12px;">
+            <div style="width:8px;height:8px;border-radius:50%;background:#1FA3E0;flex-shrink:0;box-shadow:0 0 8px rgba(31,163,224,0.6);"></div>
+            <div style="font-size:14px;color:rgba(255,255,255,0.75);">Your event is <strong style="color:#fff;">${dayCount} day${dayCount===1?'':'s'} out</strong>. We still need a few details so we can plan this right. <a href="#" onclick="setActiveTab('vendors');return false;" style="color:#1FA3E0;font-weight:600;">Fill them in here.</a></div>
+          </div>
+        ` : ''}
+        <div class="card hero">
+          <h1>${currentEvent.name || currentEvent.eventName || 'My Event'}</h1>
+          <div class="badge badge-type">${eventType}</div>
+          <div class="countdown-ring-wrap">
+            <div class="countdown-ring" id="countdownRing">
+              <div class="countdown-number" id="countdownTicker">0</div>
+            </div>
+            <div class="countdown-label">Days Until Your Event</div>
+          </div>
+        </div>
+
+        <div class="card">
+          <h3>Event Details</h3>
+          <p><strong>${formatDate(eventDate)}</strong></p>
+          <p>${startTime} | ${venue}</p>
+        </div>
+
+        <div class="card">
+          <h3>Payment Status</h3>
+          <div class="status-row">
+            <span class="badge badge-status ${depositPaid ? '' : 'due'}">
+              Deposit: ${depositPaid ? 'Paid' : 'Due'}
+            </span>
+            <span class="badge badge-status ${balancePaid ? '' : 'due'}">
+              Balance: ${balancePaid ? 'Paid' : 'Due'}
+            </span>
+          </div>
+          ${(currentEvent.package && currentEvent.total) ? `
+            <div style="margin-top:16px;padding:16px;background:rgba(255,255,255,0.03);border-radius:8px;border:1px solid rgba(255,255,255,0.06);">
+              <div style="font-size:12px;color:rgba(255,255,255,0.4);letter-spacing:0.06em;text-transform:uppercase;margin-bottom:8px;">${currentEvent.package}</div>
+              <div style="display:flex;justify-content:space-between;font-size:14px;color:rgba(255,255,255,0.6);margin-bottom:4px;"><span>Total</span><span>$${Number(currentEvent.total).toLocaleString()}</span></div>
+              <div style="display:flex;justify-content:space-between;font-size:14px;color:rgba(255,255,255,0.6);margin-bottom:8px;"><span>Paid</span><span>$${Number(currentEvent.paid||0).toLocaleString()}</span></div>
+              <div style="display:flex;justify-content:space-between;font-size:16px;font-weight:600;color:#1FA3E0;border-top:1px solid rgba(255,255,255,0.07);padding-top:8px;"><span>Balance Due</span><span>$${Math.max(0, Number(currentEvent.total) - Number(currentEvent.paid||0)).toLocaleString()}</span></div>
+            </div>
+          ` : ''}
+        </div>
+
+        <div class="card">
+          <h3>Your Baseline Studio Team</h3>
+          ${team.length > 0 ? team.map(member => `
+            <div class="team-card">
+              <div class="team-member">
+                <div class="team-avatar">${(member.name || 'BS')[0].toUpperCase()}</div>
+                <div class="team-info">
+                  <div class="team-name">${member.name || 'Team Member'}</div>
+                  <div class="team-role">${member.role || 'Event Coordinator'}</div>
+                </div>
+              </div>
+            </div>
+          `).join('') : '<p style="color:rgba(255,255,255,0.4);font-size:14px;">We\'ll have your team assigned and ready to go soon.</p>'}
+        </div>
+
+        <div class="help-section">
+          <h3>Questions?</h3>
+          <div class="help-phone">(786) 302-6056</div>
+          <p>Call us or drop a message in the Messages tab. Either way, we'll get back to you.</p>
+        </div>
+      `;
+      // Urgency color — cyan 31+, gold 8–30, magenta 0–7
+      const urgencyColor = dayCount <= 7 ? '#c0186e' : dayCount <= 30 ? '#d4930a' : '#1FA3E0';
+      const ring = document.getElementById('countdownRing');
+      if (ring) ring.style.setProperty('--countdown-color', urgencyColor);
+      // Animate countdown number with count-up ticker
+      requestAnimationFrame(() => tickerCountUp(document.getElementById('countdownTicker'), dayCount, 900));
+    }
+
+    // ============ TAB: VENDORS & VENUE ============
+    function renderVendors() {
+      const venueName = currentEvent.venueName || 'TBD';
+      const venueAddress = currentEvent.venueAddress || '';
+      const venueContact = currentEvent.venueContact || '';
+      const venuePhone = currentEvent.venuePhone || '';
+      const clientNotes = currentEvent.clientNotes || {};
+      const clientVendors = currentEvent.clientVendors || [];
+
+      const content = document.getElementById('contentArea');
+      content.innerHTML = `
+        <div class="sub-tabs">
+          <button class="sub-tab active" onclick="switchVendorTab('venue')">Venue</button>
+          <button class="sub-tab" onclick="switchVendorTab('vendors')">My Vendors</button>
+        </div>
+
+        <div id="venue-tab" class="sub-content active">
+          <div class="card">
+            <h3>Venue Information</h3>
+            <p><strong>${venueName}</strong></p>
+            ${venueAddress ? `<p>${venueAddress}</p>` : ''}
+            ${venueContact ? `<p><strong>Contact:</strong> ${venueContact}</p>` : ''}
+            ${venuePhone ? `<p><strong>Phone:</strong> ${venuePhone}</p>` : ''}
+          </div>
+
+          <div class="card">
+            <h3>Notes About Our Venue</h3>
+            <textarea id="venueNotes" placeholder="Anything we should know about this venue — layout, quirks, what works well...">${clientNotes.venue || ''}</textarea>
+            <button class="btn-primary" onclick="saveVenueNotes()">Save Notes</button>
+          </div>
+
+          <div class="card">
+            <h3>Parking & Directions</h3>
+            <textarea id="parkingNotes" placeholder="Where do guests park? Any restrictions, valet info, directions worth knowing...">${clientNotes.parking || ''}</textarea>
+            <button class="btn-primary" onclick="saveParkingNotes()">Save Parking Info</button>
+          </div>
+        </div>
+
+        <div id="vendors-tab" class="sub-content">
+          <div class="card">
+            <h3>My Vendors</h3>
+            <p>Add your vendors here and we'll handle the coordination. Less you have to think about on the day.</p>
+            ${clientVendors.length > 0 ? clientVendors.map((v, idx) => `
+              <div class="vendor-card">
+                <div class="vendor-info">
+                  <div class="vendor-name">${v.name}</div>
+                  <div class="vendor-type">${v.type}</div>
+                  ${v.contactName ? `<div class="vendor-detail"><strong>Contact:</strong> ${v.contactName}</div>` : ''}
+                  ${v.phone ? `<div class="vendor-detail"><strong>Phone:</strong> ${v.phone}</div>` : ''}
+                  ${v.email ? `<div class="vendor-detail"><strong>Email:</strong> ${v.email}</div>` : ''}
+                  ${v.notes ? `<div class="vendor-detail"><strong>Notes:</strong> ${v.notes}</div>` : ''}
+                </div>
+                <div class="vendor-actions">
+                  <button class="btn-danger" onclick="deleteVendor(${idx})">Delete</button>
+                </div>
+              </div>
+            `).join('') : '<p style="color:rgba(255,255,255,0.35);font-size:14px;margin-bottom:20px;">No vendors yet. Drop in your photographer, florist, caterer, whoever else we should know about.</p>'}
+          </div>
+
+          <div class="card">
+            <h3>Add My Vendor</h3>
+            <div class="form-group">
+              <label class="form-label">Vendor Type</label>
+              <select id="vendorType">
+                <option value="">Select Type</option>
+                <option value="Caterer">Caterer</option>
+                <option value="Photographer">Photographer</option>
+                <option value="Videographer">Videographer</option>
+                <option value="Florist">Florist</option>
+                <option value="Hair/Makeup">Hair &amp; Makeup</option>
+                <option value="Cake/Desserts">Cake / Desserts</option>
+                <option value="Transportation">Transportation</option>
+                <option value="Officiant">Officiant</option>
+                <option value="Event Planner">Event Planner</option>
+                <option value="Day-of Coordinator">Day-of Coordinator</option>
+                <option value="Band/Live Music">Band / Live Music</option>
+                <option value="Other">Other</option>
+              </select>
+            </div>
+            <div class="form-group" style="position:relative;">
+              <label class="form-label">Vendor Name</label>
+              <input type="text" id="vendorName" placeholder="Type a name — we might already know them" autocomplete="off">
+              <div id="vendorSuggestions" style="display:none;position:absolute;top:100%;left:0;right:0;background:#1a1a24;border:1px solid rgba(31,163,224,0.3);border-radius:6px;overflow:hidden;z-index:100;box-shadow:0 8px 24px rgba(0,0,0,0.5);"></div>
+            </div>
+            <div class="form-group">
+              <label class="form-label">Contact Name</label>
+              <input type="text" id="vendorContactName" placeholder="Person to contact">
+            </div>
+            <div class="form-group">
+              <label class="form-label">Phone</label>
+              <input type="tel" id="vendorPhone" placeholder="(555) 000-0000">
+            </div>
+            <div class="form-group">
+              <label class="form-label">Email</label>
+              <input type="email" id="vendorEmail" placeholder="vendor@email.com">
+            </div>
+            <div class="form-group">
+              <label class="form-label">Notes</label>
+              <textarea id="vendorNotes" placeholder="Any special arrangements or notes..."></textarea>
+            </div>
+            <button class="btn-primary" onclick="addVendor()">Add Vendor</button>
+          </div>
+        </div>
+      `;
+      // Wire typeahead after DOM is set
+      setTimeout(initVendorTypeahead, 0);
+    }
+
+    function switchVendorTab(tab) {
+      document.querySelectorAll('.sub-tab').forEach(t => t.classList.remove('active'));
+      document.querySelectorAll('.sub-content').forEach(c => c.classList.remove('active'));
+      document.querySelector(`button[onclick="switchVendorTab('${tab}')"]`).classList.add('active');
+      document.getElementById(`${tab}-tab`).classList.add('active');
+    }
+
+    function saveVenueNotes() {
+      if (!currentEvent.clientNotes) currentEvent.clientNotes = {};
+      currentEvent.clientNotes.venue = document.getElementById('venueNotes').value;
+      saveEvent();
+      showSavedPill();
+    }
+
+    function saveParkingNotes() {
+      if (!currentEvent.clientNotes) currentEvent.clientNotes = {};
+      currentEvent.clientNotes.parking = document.getElementById('parkingNotes').value;
+      saveEvent();
+      showSavedPill();
+    }
+
+    function addVendor() {
+      const type = document.getElementById('vendorType').value;
+      const name = document.getElementById('vendorName').value;
+      const contactName = document.getElementById('vendorContactName').value;
+      const phone = document.getElementById('vendorPhone').value;
+      const email = document.getElementById('vendorEmail').value;
+      const notes = document.getElementById('vendorNotes').value;
+
+      if (!type || !name) {
+        showToast('Fill in vendor type and name first.', 'warning');
+        return;
+      }
+
+      if (!currentEvent.clientVendors) currentEvent.clientVendors = [];
+      currentEvent.clientVendors.push({ type, name, contactName, phone, email, notes });
+      saveEvent();
+
+      // Auto-add to Baseline's shared vendor library (fire-and-forget)
+      if (typeof BSPortal !== 'undefined' && BSPortal.addVendorToLibrary) {
+        BSPortal.addVendorToLibrary({ name, type, contactName, phone, email });
+      }
+
+      renderVendors();
+    }
+
+    // Vendor typeahead — debounced search into Baseline's vendor library
+    let _vendorSearchTimer = null;
+    function initVendorTypeahead() {
+      const input = document.getElementById('vendorName');
+      const suggestions = document.getElementById('vendorSuggestions');
+      if (!input || !suggestions) return;
+      input.addEventListener('input', function() {
+        clearTimeout(_vendorSearchTimer);
+        const q = input.value.trim();
+        if (q.length < 2) { suggestions.style.display = 'none'; return; }
+        _vendorSearchTimer = setTimeout(async function() {
+          if (typeof BSPortal === 'undefined' || !BSPortal.searchVendors) return;
+          const results = await BSPortal.searchVendors(q);
+          if (!results.length) { suggestions.style.display = 'none'; return; }
+          suggestions.innerHTML = results.map(v => `
+            <div class="vendor-suggestion" onclick="fillVendor(${JSON.stringify(v).replace(/"/g,'&quot;')})">
+              <span>${v.name}</span>
+              <span style="font-size:11px;color:#1FA3E0;margin-left:8px;">Baseline has worked with them</span>
+              ${v.category ? `<span style="font-size:11px;color:rgba(255,255,255,0.4);margin-left:8px;">${v.category}</span>` : ''}
+            </div>`).join('');
+          suggestions.style.display = 'block';
+        }, 300);
+      });
+      document.addEventListener('click', function(e) {
+        if (!input.contains(e.target) && !suggestions.contains(e.target)) {
+          suggestions.style.display = 'none';
+        }
+      });
+    }
+
+    function fillVendor(v) {
+      const nameEl = document.getElementById('vendorName');
+      const contactEl = document.getElementById('vendorContactName');
+      const phoneEl = document.getElementById('vendorPhone');
+      const emailEl = document.getElementById('vendorEmail');
+      const typeEl = document.getElementById('vendorType');
+      const suggestions = document.getElementById('vendorSuggestions');
+      if (nameEl) nameEl.value = v.name || '';
+      if (contactEl) contactEl.value = v.contactName || '';
+      if (phoneEl) phoneEl.value = v.phone || '';
+      if (emailEl) emailEl.value = v.email || '';
+      if (typeEl && v.category) typeEl.value = v.category;
+      if (suggestions) suggestions.style.display = 'none';
+    }
+
+    function deleteVendor(idx) {
+      if (confirm('Delete this vendor?')) {
+        currentEvent.clientVendors.splice(idx, 1);
+        saveEvent();
+        renderVendors();
+      }
+    }
+
+    // ============ TAB: TIMELINE ============
+    const TIMELINE_SUGGESTIONS = {
+      wedding:  [['Guests arrive','17:30'],['Ceremony','18:00'],['Cocktail hour','18:45'],['Grand entrance','20:00'],['First dance','20:10'],['Dinner','20:30'],['Toasts','21:15'],['Parent dances','21:30'],['Open dancefloor','21:45'],['Cake cutting','22:30'],['Last song','23:55']],
+      gala:     [['Doors open','18:00'],['Cocktail reception','18:15'],['Welcome remarks','19:30'],['Dinner service','19:45'],['Program / awards','20:30'],['Live entertainment','21:15'],['Dancing','21:45'],['Event close','23:00']],
+      corporate:[['Registration','17:30'],['Networking','18:00'],['Opening remarks','19:00'],['Keynote / program','19:15'],['Dinner','20:00'],['Entertainment','21:00'],['Close','22:30']],
+      mitzvah:  [['Guests arrive','18:00'],['Grand entrance','18:30'],['Hora & candle lighting','19:00'],['Dinner','19:45'],['Games & dancing','20:30'],['Montage','21:30'],['Last song','22:45']],
+      quince:   [['Guests arrive','18:30'],['Grand entrance','19:00'],['Waltz','19:15'],['Toast','19:45'],['Dinner','20:00'],['Surprise dance','21:00'],['Open dancefloor','21:30'],['Last song','23:30']],
+      default:  [['Guests arrive','18:00'],['Kickoff','19:00'],['Dinner','20:00'],['Peak dancefloor','21:30'],['Last song','23:30']]
+    };
+
+    function getTimelineSuggestions() {
+      const type = (currentEvent.type || 'default').toLowerCase();
+      const suggestions = TIMELINE_SUGGESTIONS[type] || TIMELINE_SUGGESTIONS.default;
+      const existing = new Set((currentEvent.timeline || []).map(t => t.label.toLowerCase()));
+      return suggestions.filter(([label]) => !existing.has(label.toLowerCase()));
+    }
+
+    function addSuggestedMoment(label, time) {
+      if (!currentEvent.timeline) currentEvent.timeline = [];
+      currentEvent.timeline.push({ label, time });
+      saveEvent();
+      renderTimeline();
+    }
+
+    function addAllSuggestions() {
+      if (!currentEvent.timeline) currentEvent.timeline = [];
+      const toAdd = getTimelineSuggestions();
+      toAdd.forEach(([label, time]) => currentEvent.timeline.push({ label, time }));
+      saveEvent();
+      renderTimeline();
+    }
+
+    function renderTimeline() {
+      const timeline = (currentEvent.timeline || []).slice().sort(function(a,b) {
+        return (a.time || '').localeCompare(b.time || '');
+      });
+      const content = document.getElementById('contentArea');
+      const suggestions = getTimelineSuggestions();
+      const moments = ['Ceremony', 'Grand Entrance', 'First Dance', 'Parent Dances', 'Toasts', 'Dinner', 'Cake Cut', 'Bouquet Toss', 'Last Song', 'Cocktail Hour', 'Custom...'];
+
+      content.innerHTML = `
+        <div class="card">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;">
+            <div>
+              <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.1em;color:rgba(255,255,255,0.3);margin-bottom:4px;">Timeline</div>
+              <h3 style="margin:0;">Run of Show</h3>
+            </div>
+            <button class="btn-secondary btn-small" onclick="window.print()">Print</button>
+          </div>
+
+          ${suggestions.length > 0 ? `
+            <div style="margin-bottom:22px;">
+              <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.12em;color:rgba(255,255,255,0.28);margin-bottom:10px;font-family:'Barlow Condensed',sans-serif;">Quick add — tap, adjust the time, confirm</div>
+              <div style="display:flex;flex-wrap:wrap;gap:7px;align-items:center;">
+                ${suggestions.map(([label, time]) => `
+                  <button class="qc-chip" data-label="${label.replace(/"/g,'&quot;')}" data-time="${time}" onclick="expandChip(this)">
+                    <span>+ ${label}</span>
+                    <span class="qc-time-badge">${fmt24to12(time)}</span>
+                  </button>
+                `).join('')}
+                <button onclick="addAllSuggestions()" class="btn-secondary btn-small" style="border-radius:20px;">Add all</button>
+              </div>
+            </div>
+          ` : ''}
+
+          ${timeline.length > 0 ? `
+            <div style="position:relative;padding-left:26px;">
+              <div style="position:absolute;left:10px;top:6px;bottom:6px;width:2px;background:linear-gradient(180deg,rgba(31,163,224,0.7),rgba(31,163,224,0.08));border-radius:2px;pointer-events:none;"></div>
+              ${timeline.map((item,idx) => `
+                <div class="tl-row" data-tl-idx="${idx}">
+                  <div class="tl-dot"></div>
+                  <span class="tl-time" onclick="editTimelineTime(${idx},'${item.time||''}')" title="Click to edit time">${fmt24to12(item.time) || 'TBD'}</span>
+                  <span class="tl-label">${item.label || item.description || ''}</span>
+                  <button class="tl-delete" onclick="deleteTimelineItem(${idx})" title="Remove">×</button>
+                </div>
+              `).join('')}
+            </div>
+          ` : `<p style="color:rgba(255,255,255,0.35);font-size:14px;margin-bottom:8px;">Add the moments that matter to you. We'll make sure every one of them lands.</p>`}
+        </div>
+
+        <div class="card">
+          <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.12em;color:rgba(255,255,255,0.28);margin-bottom:12px;font-family:'Barlow Condensed',sans-serif;">Add a Moment</div>
+          <div class="form-row" style="align-items:flex-end;gap:12px;">
+            <div class="form-group" style="margin-bottom:0;flex:0 0 120px;">
+              <label class="form-label" style="font-size:11px;color:rgba(255,255,255,0.45);margin-bottom:6px;">Time</label>
+              <input type="time" id="timelineTime">
+            </div>
+            <div class="form-group" style="margin-bottom:0;flex:1;">
+              <label class="form-label" style="font-size:11px;color:rgba(255,255,255,0.45);margin-bottom:6px;">Moment</label>
+              <select id="timelineLabel" onchange="if(this.value==='Custom...'){this.style.display='none';document.getElementById('timelineLabelCustom').style.display='block';}">
+                <option value="">Choose a moment</option>
+                ${moments.map(m => `<option value="${m}">${m}</option>`).join('')}
+              </select>
+              <input type="text" id="timelineLabelCustom" placeholder="Describe the moment" style="display:none;">
+            </div>
+            <div style="flex:0 0 auto;padding-bottom:12px;">
+              <button class="btn-primary" onclick="addTimelineItem()">Add</button>
+            </div>
+          </div>
+        </div>
+      `;
+    }
+
+    function addTimelineItem() {
+      const time = document.getElementById('timelineTime').value;
+      const sel = document.getElementById('timelineLabel');
+      const custom = document.getElementById('timelineLabelCustom');
+      const label = (custom && custom.style.display !== 'none') ? custom.value : (sel ? sel.value : '');
+      if (!label) { showToast('Choose a moment first.', 'warning'); return; }
+      if (!currentEvent.timeline) currentEvent.timeline = [];
+      currentEvent.timeline.push({ time: time || 'TBD', label });
+      saveEvent();
+      renderTimeline();
+    }
+
+    function deleteTimelineItem(idx) {
+      if (currentEvent.timeline) {
+        currentEvent.timeline.splice(idx, 1);
+        saveEvent();
+        renderTimeline();
+      }
+    }
+
+    // ============ TAB: MUSIC ============
+    function renderMusic() {
+      const clientMusic = currentEvent.clientMusic || [];
+      const playlists = currentEvent.clientPlaylists || [];
+      const doNotPlay = currentEvent.doNotPlay || '';
+
+      const content = document.getElementById('contentArea');
+      content.innerHTML = `
+        <div class="card">
+          <h3>My Song Requests</h3>
+          <p>Tell us about the songs that matter to you.</p>
+
+          <div style="margin: 20px 0;">
+            <div class="form-group">
+              <label class="form-label">Moment / Occasion</label>
+              <input type="text" id="musicMoment" placeholder="e.g., First Dance, Cocktail Hour">
+            </div>
+            <div class="form-row">
+              <div class="form-group">
+                <label class="form-label">Song Title</label>
+                <input type="text" id="musicTitle" placeholder="Song name">
+              </div>
+              <div class="form-group">
+                <label class="form-label">Artist</label>
+                <input type="text" id="musicArtist" placeholder="Artist name">
+              </div>
+            </div>
+            <div class="form-group">
+              <label class="form-label">Category</label>
+              <select id="musicCategory">
+                <option value="Must Play">Must Play</option>
+                <option value="Nice to Have">Nice to Have</option>
+                <option value="Do Not Play">Do Not Play</option>
+              </select>
+            </div>
+            <button class="btn-primary" onclick="addMusicRequest()">Add Song Request</button>
+          </div>
+
+          ${clientMusic.length > 0 ? `
+            <div style="margin-top: 20px;">
+              <h3 style="font-size: 18px; margin-bottom: 12px;">Your Requests</h3>
+              ${clientMusic.map((song, idx) => `
+                <div class="vendor-card">
+                  <div class="vendor-info">
+                    <div class="vendor-name">${song.title}</div>
+                    <div class="vendor-type">${song.artist}</div>
+                    <div class="vendor-detail"><strong>Moment:</strong> ${song.moment}</div>
+                    <div style="margin-top: 8px;">
+                      <span class="badge badge-type">${song.category}</span>
+                    </div>
+                  </div>
+                  <div class="vendor-actions">
+                    <button class="btn-danger" onclick="deleteMusicRequest(${idx})">Delete</button>
+                  </div>
+                </div>
+              `).join('')}
+            </div>
+          ` : ''}
+        </div>
+
+        <div class="card">
+          <h3>Share a Playlist</h3>
+          <p>Add a Spotify or Apple Music playlist link for reference.</p>
+
+          <div class="form-group">
+            <label class="form-label">Playlist URL</label>
+            <input type="url" id="playlistUrl" placeholder="https://open.spotify.com/playlist/...">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Label (optional)</label>
+            <input type="text" id="playlistLabel" placeholder="e.g., Cocktail Hour Vibes">
+          </div>
+          <button class="btn-primary" onclick="addPlaylist()">Add Playlist</button>
+
+          ${playlists.length > 0 ? `
+            <div style="margin-top: 20px;">
+              ${playlists.map((p, idx) => `
+                <div class="vendor-card">
+                  <div class="vendor-info">
+                    <div class="vendor-name">${p.label || 'Playlist'}</div>
+                    <div class="vendor-detail"><a href="${p.url}" target="_blank" style="color: var(--cyan);">Open Playlist</a></div>
+                  </div>
+                  <div class="vendor-actions">
+                    <button class="btn-danger" onclick="deletePlaylist(${idx})">Delete</button>
+                  </div>
+                </div>
+              `).join('')}
+            </div>
+          ` : ''}
+        </div>
+
+        <div class="card">
+          <h3>Do Not Play</h3>
+          <p>Tell us about songs, artists, or genres to avoid.</p>
+          <div style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:12px;">
+            ${['Chicken Dance','Macarena','YMCA','Cotton-Eye Joe','Electric Slide','Cha Cha Slide'].map(song => `
+              <button style="background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.12);color:rgba(255,255,255,0.6);font-family:Barlow,sans-serif;font-size:12px;padding:5px 12px;border-radius:20px;cursor:pointer;" onclick="addDNPChip('${song}')">+ ${song}</button>
+            `).join('')}
+          </div>
+          <textarea id="doNotPlayText" placeholder="Songs, artists, or genres that are off-limits. Be specific — we'll respect it.">${doNotPlay}</textarea>
+          <button class="btn-primary" onclick="saveDoNotPlay()">Save</button>
+        </div>
+      `;
+    }
+
+    function addMusicRequest() {
+      const moment = document.getElementById('musicMoment').value;
+      const title = document.getElementById('musicTitle').value;
+      const artist = document.getElementById('musicArtist').value;
+      const category = document.getElementById('musicCategory').value;
+
+      if (!title || !artist) {
+        showToast('Fill in song title and artist first.', 'warning');
+        return;
+      }
+
+      if (!currentEvent.clientMusic) currentEvent.clientMusic = [];
+      currentEvent.clientMusic.push({ moment, title, artist, category });
+      saveEvent();
+      renderMusic();
+    }
+
+    function deleteMusicRequest(idx) {
+      currentEvent.clientMusic.splice(idx, 1);
+      saveEvent();
+      renderMusic();
+    }
+
+    function addPlaylist() {
+      const url = document.getElementById('playlistUrl').value;
+      const label = document.getElementById('playlistLabel').value;
+
+      if (!url) {
+        showToast('Enter a playlist URL first.', 'warning');
+        return;
+      }
+
+      if (!currentEvent.clientPlaylists) currentEvent.clientPlaylists = [];
+      currentEvent.clientPlaylists.push({ url, label });
+      saveEvent();
+      renderMusic();
+    }
+
+    function deletePlaylist(idx) {
+      currentEvent.clientPlaylists.splice(idx, 1);
+      saveEvent();
+      renderMusic();
+    }
+
+    function saveDoNotPlay() {
+      currentEvent.doNotPlay = document.getElementById('doNotPlayText').value;
+      saveEvent();
+      showSavedPill();
+    }
+
+    function addDNPChip(song) {
+      const el = document.getElementById('doNotPlayText');
+      if (!el) return;
+      const current = el.value.trim();
+      el.value = current ? current + ', ' + song : song;
+    }
+
+    function saveVenueNotesSilent() {
+      if (!currentEvent.clientNotes) currentEvent.clientNotes = {};
+      currentEvent.clientNotes.venue = document.getElementById('venueNotes') ? document.getElementById('venueNotes').value : '';
+      currentEvent.clientNotes.parking = document.getElementById('parkingNotes') ? document.getElementById('parkingNotes').value : '';
+      saveEvent();
+    }
+
+    // ============ TAB: PREFERENCES ============
+    function renderPreferences() {
+      const prefs = currentEvent.clientPrefs || {};
+      const content = document.getElementById('contentArea');
+
+      const vibes = ['Romantic & Intimate', 'Grand & Dramatic', 'Fun & High-Energy', 'Sophisticated & Elegant', 'Modern & Bold', 'Other'];
+      const moments = ['First Dance', 'Parent Dances', 'Grand Entrance', 'Cake Cutting', 'Bouquet Toss', 'Anniversary Dance', 'Surprise Performance', 'Candle/Unity Ceremony'];
+
+      content.innerHTML = `
+        <div class="card">
+          <h3>Your Event Vibe</h3>
+
+          <div class="form-group">
+            <label class="form-label">Overall Vibe</label>
+            <select id="prefVibe" onchange="toggleOtherVibe()">
+              <option value="">Select your vibe</option>
+              ${vibes.map(v => `<option value="${v}" ${prefs.vibe === v ? 'selected' : ''}>${v}</option>`).join('')}
+            </select>
+          </div>
+
+          ${prefs.vibe === 'Other' ? `
+            <div class="form-group">
+              <label class="form-label">Describe your vibe</label>
+              <input type="text" id="prefVibeOther" placeholder="Tell us your vibe" value="${prefs.vibeOther || ''}">
+            </div>
+          ` : ''}
+
+          <div class="form-group">
+            <label class="form-label">Color Theme</label>
+            <div class="color-inputs">
+              <input type="color" id="prefColorPrimary" value="${prefs.colorPrimary || '#1FA3E0'}">
+              <input type="text" id="prefColorPrimaryHex" placeholder="#1FA3E0" value="${prefs.colorPrimary || '#1FA3E0'}" onchange="syncColor('primary')">
+            </div>
+            <div class="color-inputs">
+              <input type="color" id="prefColorAccent" value="${prefs.colorAccent || '#FFFFFF'}">
+              <input type="text" id="prefColorAccentHex" placeholder="#FFFFFF" value="${prefs.colorAccent || '#FFFFFF'}" onchange="syncColor('accent')">
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label class="form-label">Color Notes</label>
+            <textarea id="prefColorNotes" placeholder="Any notes about your colors...">${prefs.colorNotes || ''}</textarea>
+          </div>
+        </div>
+
+        <div class="card">
+          <h3>Music & Atmosphere</h3>
+
+          <div class="form-group">
+            <label class="form-label">How would you describe your ideal music atmosphere?</label>
+            <textarea id="prefMusicDesc" placeholder="Genres, artists, specific songs you love — the more you give us, the better the night sounds...">${prefs.musicDesc || ''}</textarea>
+          </div>
+
+          <div class="form-group">
+            <label class="form-label">Guest Count (estimate)</label>
+            <input type="number" id="prefGuestCount" placeholder="Number of guests" value="${prefs.guestCount || ''}">
+          </div>
+        </div>
+
+        <div class="card">
+          <h3>Special Moments</h3>
+          <p>Which moments are important to you?</p>
+
+          <div class="checkbox-group">
+            ${moments.map(moment => `
+              <div class="checkbox-item">
+                <input type="checkbox" id="moment-${moment}" value="${moment}" ${(prefs.moments || []).includes(moment) ? 'checked' : ''}>
+                <label class="checkbox-label" for="moment-${moment}">${moment}</label>
+              </div>
+            `).join('')}
+          </div>
+
+          ${moments.map(moment => `
+            <div class="form-group" id="song-for-${moment}" style="display: ${(prefs.moments || []).includes(moment) ? 'block' : 'none'};">
+              <label class="form-label">Song for ${moment}</label>
+              <input type="text" class="song-input" data-moment="${moment}" placeholder="Song title" value="${(prefs.momentSongs || {})[moment] || ''}">
+            </div>
+          `).join('')}
+        </div>
+
+        <div class="card">
+          <h3>Special Requests</h3>
+          <textarea id="prefSpecialRequests" placeholder="Anything else on your mind. We love this part — the details are what make the night yours.">${prefs.specialRequests || ''}</textarea>
+        </div>
+
+        <button class="btn-primary" onclick="savePreferences()" style="width: 100%;">Save My Preferences</button>
+      `;
+
+      // Add event listeners for moment checkboxes
+      document.querySelectorAll(`[id^="moment-"]`).forEach(checkbox => {
+        checkbox.addEventListener('change', function() {
+          const moment = this.value;
+          const songField = document.getElementById(`song-for-${moment}`);
+          songField.style.display = this.checked ? 'block' : 'none';
+        });
+      });
+    }
+
+    function toggleOtherVibe() {
+      const vibe = document.getElementById('prefVibe').value;
+      const otherInput = document.getElementById('prefVibeOther');
+      if (otherInput) otherInput.style.display = vibe === 'Other' ? 'block' : 'none';
+    }
+
+    function syncColor(type) {
+      const colorInput = document.getElementById(`prefColor${type === 'primary' ? 'Primary' : 'Accent'}`);
+      const hexInput = document.getElementById(`prefColor${type === 'primary' ? 'Primary' : 'Accent'}Hex`);
+      colorInput.value = hexInput.value;
+    }
+
+    function savePreferences() {
+      if (!currentEvent.clientPrefs) currentEvent.clientPrefs = {};
+      const prefs = currentEvent.clientPrefs;
+
+      prefs.vibe = document.getElementById('prefVibe').value;
+      const otherInput = document.getElementById('prefVibeOther');
+      if (otherInput) prefs.vibeOther = otherInput.value;
+
+      prefs.colorPrimary = document.getElementById('prefColorPrimary').value;
+      prefs.colorAccent = document.getElementById('prefColorAccent').value;
+      prefs.colorNotes = document.getElementById('prefColorNotes').value;
+      prefs.musicDesc = document.getElementById('prefMusicDesc').value;
+      prefs.guestCount = document.getElementById('prefGuestCount').value;
+
+      prefs.moments = Array.from(document.querySelectorAll(`[id^="moment-"]:checked`)).map(cb => cb.value);
+      prefs.momentSongs = {};
+      document.querySelectorAll('.song-input').forEach(input => {
+        if (input.value) {
+          prefs.momentSongs[input.dataset.moment] = input.value;
+        }
+      });
+
+      prefs.specialRequests = document.getElementById('prefSpecialRequests').value;
+
+      saveEvent();
+      showToast('Preferences saved.', 'success');
+    }
+
+    // ============ TAB: ENHANCEMENTS ============
+    function renderEnhancements() {
+      // Read from event object (saved to Supabase via saveEvent), fall back to empty object
+      const saved = currentEvent.clientEnhancements || {};
+      const content = document.getElementById('contentArea');
+
+      content.innerHTML = `
+        <div class="card">
+          <h3 style="margin-bottom:6px;">Event Enhancements</h3>
+          <p style="color:var(--gray);font-size:13px;margin-bottom:20px;">Let us know what you'd like to add. We'll handle the coordination.</p>
+
+          <div class="enhancement-section">
+            <label class="enhancement-checkbox">
+              <input type="checkbox" id="uplightingEnabled" ${saved.uplightingEnabled ? 'checked' : ''}>
+              <div>
+                <div style="font-weight:600;font-size:14px;"> LED Uplighting</div>
+                <div style="font-size:12px;color:var(--gray);">Color-wash your venue walls to match your theme</div>
+              </div>
+            </label>
+            <div id="uplightingOptions" style="display:${saved.uplightingEnabled ? 'block' : 'none'};">
+              <div class="enhancement-options">
+                <label>Primary Color</label>
+                <div class="enhancement-color-row">
+                  <input type="color" id="uplightColor1" value="${saved.uplightColor1||'#1FA3E0'}">
+                  <input type="text" id="uplightColor1Text" value="${saved.uplightColor1||'#1FA3E0'}" placeholder="#hex or color name">
+                </div>
+                <label>Accent Color</label>
+                <div class="enhancement-color-row">
+                  <input type="color" id="uplightColor2" value="${saved.uplightColor2||'#ffffff'}">
+                  <input type="text" id="uplightColor2Text" value="${saved.uplightColor2||'#ffffff'}" placeholder="#hex or color name">
+                </div>
+                <label>Notes</label>
+                <textarea id="uplightNotes" rows="2" placeholder="e.g., Match our wedding colors — navy and gold">${saved.uplightNotes||''}</textarea>
+              </div>
+            </div>
+          </div>
+
+          <div class="enhancement-section">
+            <label class="enhancement-checkbox">
+              <input type="checkbox" id="photboothEnabled" ${saved.photboothEnabled ? 'checked' : ''}>
+              <div>
+                <div style="font-weight:600;font-size:14px;"> Photo Booth</div>
+                <div style="font-size:12px;color:var(--gray);">Instant prints your guests take home</div>
+              </div>
+            </label>
+            <div id="photoboothOptions" style="display:${saved.photboothEnabled ? 'block' : 'none'};">
+              <div class="enhancement-options">
+                <label>Theme / Backdrop</label>
+                <input type="text" id="photoboothTheme" value="${saved.photoboothTheme||''}" placeholder="e.g., Tropical, Black & White, Floral">
+                <label>Custom Overlay Text</label>
+                <input type="text" id="photoboothText" value="${saved.photoboothText||''}" placeholder="e.g., Maria & Carlos — Oct 12, 2026">
+              </div>
+            </div>
+          </div>
+
+          <div class="enhancement-section">
+            <label class="enhancement-checkbox">
+              <input type="checkbox" id="projectionEnabled" ${saved.projectionEnabled ? 'checked' : ''}>
+              <div>
+                <div style="font-weight:600;font-size:14px;"> Projection / Video Wall</div>
+                <div style="font-size:12px;color:var(--gray);">Photo slideshow, monogram, live feed, or video</div>
+              </div>
+            </label>
+            <div id="projectionOptions" style="display:${saved.projectionEnabled ? 'block' : 'none'};">
+              <div class="enhancement-options">
+                <label>What should we display?</label>
+                <textarea id="projectionDesc" rows="2" placeholder="e.g., Slideshow of our photos, custom monogram, video montage">${saved.projectionDesc||''}</textarea>
+              </div>
+            </div>
+          </div>
+
+          <div class="enhancement-section" style="border-bottom:none;padding-bottom:0;">
+            <div style="font-weight:600;font-size:14px;margin-bottom:8px;"> Anything Else?</div>
+            <textarea id="otherEnhancements" style="width:100%;box-sizing:border-box;background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.1);color:#fff;border-radius:6px;padding:8px;font-family:inherit;resize:vertical;font-size:13px;" rows="3" placeholder="Cold sparklers, fog machine, custom monogram, pipe & drape...">${saved.otherEnhancements||''}</textarea>
+          </div>
+
+          <button onclick="saveEnhancements()" style="margin-top:16px;width:100%;padding:13px;background:var(--accent, #1FA3E0);border:none;border-radius:8px;color:#000;font-weight:700;cursor:pointer;font-size:14px;letter-spacing:0.5px;">Save My Selections</button>
+        </div>
+
+        <!-- Lighting color picker card -->
+        <div class="card" style="margin-top:16px;">
+          <h3 style="margin-bottom:6px;">Lighting Design</h3>
+          <p style="color:var(--gray);font-size:13px;margin-bottom:16px;">Choose the mood for each part of your venue. Selections save automatically.</p>
+          <div id="lightingPickerContainer"></div>
+        </div>
+      `;
+
+      document.getElementById('uplightingEnabled').addEventListener('change', function() {
+        document.getElementById('uplightingOptions').style.display = this.checked ? 'block' : 'none';
+      });
+      document.getElementById('photboothEnabled').addEventListener('change', function() {
+        document.getElementById('photoboothOptions').style.display = this.checked ? 'block' : 'none';
+      });
+      document.getElementById('projectionEnabled').addEventListener('change', function() {
+        document.getElementById('projectionOptions').style.display = this.checked ? 'block' : 'none';
+      });
+
+      // Mount lighting picker (v2 — uplights only, multi-color)
+      const lpContainer = document.getElementById('lightingPickerContainer');
+      if (lpContainer && window.LightingPicker) {
+        const initialLighting = (currentEvent.clientEnhancements || {}).lighting || {};
+        LightingPicker.mount(lpContainer, initialLighting, function(lightingObj) {
+          if (!currentEvent.clientEnhancements) currentEvent.clientEnhancements = {};
+          currentEvent.clientEnhancements.lighting = lightingObj; // { colors: ['#hex', ...] }
+          saveEvent();
+        });
+      }
+    }
+
+    function saveEnhancements() {
+      const data = {
+        uplightingEnabled: document.getElementById('uplightingEnabled')?.checked || false,
+        uplightColor1: document.getElementById('uplightColor1')?.value || '#1FA3E0',
+        uplightColor2: document.getElementById('uplightColor2')?.value || '#ffffff',
+        uplightNotes: document.getElementById('uplightNotes')?.value || '',
+        photboothEnabled: document.getElementById('photboothEnabled')?.checked || false,
+        photoboothTheme: document.getElementById('photoboothTheme')?.value || '',
+        photoboothText: document.getElementById('photoboothText')?.value || '',
+        projectionEnabled: document.getElementById('projectionEnabled')?.checked || false,
+        projectionDesc: document.getElementById('projectionDesc')?.value || '',
+        otherEnhancements: document.getElementById('otherEnhancements')?.value || ''
+      };
+      // J3: save through the real save path so Saul sees the client's selections in his portal
+      currentEvent.clientEnhancements = data;
+      saveEvent();
+      showClientToast('Enhancements saved!');
+    }
+
+    // ============ TAB: INVOICES (CLIENT VIEW) ============
+    function renderClientInvoices() {
+      // J1: invoices are embedded on the event object by the provider — never in client's localStorage
+      const myInvoices = currentEvent.invoices || [];
+      const content = document.getElementById('contentArea');
+      if (!myInvoices.length) {
+        content.innerHTML = `<div class="card"><h3>Invoices</h3><p style="color:var(--gray);">No invoices yet. Your team will send one once your event details are confirmed.</p></div>`;
+        return;
+      }
+      let cards = '';
+      myInvoices.forEach(inv => {
+        const isPaid = inv.status === 'paid';
+        const isOverdue = !isPaid && inv.dueDate && new Date(inv.dueDate) < new Date();
+        const statusColor = isPaid ? '#2ecc71' : isOverdue ? '#e74c3c' : '#f39c12';
+        const statusLabel = isPaid ? ' Paid' : isOverdue ? 'Overdue' : 'Due';
+        cards += `
+          <div class="card" style="margin-bottom:12px;">
+            <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:12px;">
+              <div>
+                <div style="font-family:'Anton',sans-serif;font-size:18px;">${inv.invoiceNum}</div>
+                <div style="font-size:13px;color:var(--gray,#888);">${inv.dueDate ? 'Due ' + new Date(inv.dueDate).toLocaleDateString('en-US',{month:'long',day:'numeric',year:'numeric'}) : 'Due upon receipt'}</div>
+              </div>
+              <span style="color:${statusColor};font-weight:700;font-size:15px;">${statusLabel}</span>
+            </div>
+            ${(inv.lines||[]).map(l => `<div style="display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid rgba(255,255,255,0.06);font-size:14px;"><span>${l.desc}</span><span>$${l.amount.toLocaleString()}</span></div>`).join('')}
+            <div style="display:flex;justify-content:space-between;margin-top:12px;font-family:'Anton',sans-serif;font-size:22px;color:#1FA3E0;">
+              <span>Total</span><span>$${(inv.total||0).toLocaleString()}</span>
+            </div>
+            ${!isPaid ? `
+            <div style="margin-top:18px;">
+              <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.14em;color:rgba(255,255,255,0.28);margin-bottom:12px;font-family:'Barlow Condensed',sans-serif;">Pay This Invoice</div>
+              <div style="display:flex;flex-direction:column;gap:9px;">
+                <!-- PAYMENT HOOK: Apple Pay — enable when Stripe/Square is connected -->
+                <button disabled style="width:100%;padding:14px 20px;background:#000;border:1.5px solid rgba(255,255,255,0.1);border-radius:10px;color:rgba(255,255,255,0.28);font-size:14px;font-weight:600;cursor:not-allowed;display:flex;align-items:center;justify-content:center;gap:10px;font-family:'Barlow',sans-serif;">
+                  <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M18.71 19.5c-.83 1.24-1.71 2.45-3.05 2.47-1.34.03-1.77-.79-3.29-.79-1.53 0-2 .77-3.27.82-1.31.05-2.3-1.32-3.14-2.53C4.25 17 2.94 12.45 4.7 9.39c.87-1.52 2.43-2.48 4.12-2.51 1.28-.02 2.5.87 3.29.87.78 0 2.26-1.07 3.8-.91.65.03 2.47.26 3.64 1.98-.09.06-2.17 1.28-2.15 3.81.03 3.02 2.65 4.03 2.68 4.04-.03.07-.42 1.44-1.38 2.83M13 3.5c.73-.83 1.94-1.46 2.94-1.5.13 1.17-.34 2.35-1.04 3.19-.69.85-1.83 1.51-2.95 1.42-.15-1.15.41-2.35 1.05-3.11z"/></svg>
+                  Apple Pay — Coming Soon
+                </button>
+                <!-- PAYMENT HOOK: Credit / Debit Card — enable when Stripe/Square is connected -->
+                <button disabled style="width:100%;padding:14px 20px;background:rgba(31,163,224,0.06);border:1.5px solid rgba(31,163,224,0.18);border-radius:10px;color:rgba(255,255,255,0.28);font-size:14px;font-weight:600;cursor:not-allowed;display:flex;align-items:center;justify-content:center;gap:10px;font-family:'Barlow',sans-serif;">
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M20 4H4c-1.11 0-2 .89-2 2v12c0 1.11.89 2 2 2h16c1.11 0 2-.89 2-2V6c0-1.11-.89-2-2-2zm0 14H4v-6h16v6zm0-10H4V6h16v2z"/></svg>
+                  Credit / Debit Card — Coming Soon
+                </button>
+              </div>
+              <div style="margin-top:12px;padding:11px 14px;background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.06);border-radius:8px;font-size:12px;color:rgba(255,255,255,0.4);">
+                Need to pay now? We're happy to help — <span style="color:#1FA3E0;font-weight:600;">(786) 302-6056</span> or <span style="color:#1FA3E0;font-weight:600;">Hello@baselinestudiofl.com</span>
+              </div>
+            </div>` : ''}
+          </div>`;
+      });
+      content.innerHTML = `<div class="card"><h3>Your Invoices</h3></div>${cards}`;
+    }
+
+    // ============ TAB: DOCUMENTS (CLIENT VIEW) ============
+    function renderClientDocuments() {
+      // J2: all docs come from currentEvent.documents — provider embeds them when sharing.
+      // URL docs get an Open button; HTML-content docs get a Print button.
+      const allDocs = currentEvent.documents || [];
+      const content = document.getElementById('contentArea');
+
+      if (!allDocs.length) {
+        content.innerHTML = `<div class="card"><h3>Documents</h3><p style="color:rgba(255,255,255,0.4);font-size:14px;margin-bottom:4px;">Your contract and other documents will show up here once they're ready.</p><p style="color:rgba(255,255,255,0.3);font-size:13px;">Need something? Call us at (786) 302-6056.</p></div>`;
+        return;
+      }
+
+      let cards = '';
+      allDocs.forEach((doc, idx) => {
+        const hasContent = doc.contentHtml || doc.contentHTML || doc.content;
+        const hasUrl     = doc.url;
+        if (hasUrl) {
+          cards += `
+            <div style="display:flex;align-items:center;justify-content:space-between;padding:14px 18px;background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.07);border-radius:8px;margin-bottom:10px;">
+              <div style="font-size:14px;color:rgba(255,255,255,0.85);">${doc.label || doc.name || 'Document'}</div>
+              <a href="${doc.url}" target="_blank" rel="noopener" style="display:inline-block;padding:6px 16px;background:#1FA3E0;color:#000;border-radius:6px;font-size:12px;font-weight:700;text-decoration:none;">Open</a>
+            </div>`;
+        } else if (hasContent) {
+          const needsSig   = doc.requiresSignature && !doc.clientSignature;
+          const alreadySig = doc.requiresSignature &&  doc.clientSignature;
+          const signedAt   = alreadySig ? new Date(doc.clientSignedAt || Date.now()).toLocaleDateString('en-US',{month:'long',day:'numeric',year:'numeric'}) : '';
+          cards += `
+            <div class="card" style="margin-bottom:12px;">
+              <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;margin-bottom:12px;">
+                <h4 style="font-size:16px;margin:0;">${doc.label || doc.name || 'Document'}</h4>
+                <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
+                  ${alreadySig ? `<span style="font-size:11px;font-weight:700;color:#2ecc71;background:rgba(46,204,113,0.1);padding:4px 10px;border-radius:20px;border:1px solid rgba(46,204,113,0.25);">✓ Signed ${signedAt}</span>` : ''}
+                  ${needsSig   ? `<button onclick="openClientSignModal(${idx})" style="padding:6px 14px;background:#1FA3E0;border:none;border-radius:6px;color:#000;font-weight:700;cursor:pointer;font-size:12px;">Sign Document</button>` : ''}
+                  <button onclick="printClientDoc(${idx})" style="padding:6px 14px;background:rgba(255,255,255,0.07);border:1px solid rgba(255,255,255,0.12);border-radius:6px;color:rgba(255,255,255,0.7);font-weight:600;cursor:pointer;font-size:12px;">Print / PDF</button>
+                </div>
+              </div>
+              <div style="background:rgba(255,255,255,0.04);border-radius:8px;padding:16px;font-size:13px;color:rgba(255,255,255,0.8);line-height:1.7;max-height:300px;overflow-y:auto;">
+                ${hasContent}
+              </div>
+            </div>`;
+        }
+      });
+
+      content.innerHTML = `<div class="card" style="margin-bottom:12px;"><h3>Documents</h3><p style="color:rgba(255,255,255,0.4);font-size:13px;margin-top:4px;">Shared by your Baseline Studio team.</p></div>${cards}`;
+    }
+
+    function printClientDoc(docIdx) {
+      // J2: read from currentEvent.documents (not localStorage)
+      const doc = (currentEvent.documents || [])[docIdx];
+      if (!doc) return;
+      const title = doc.label || doc.name || 'Document';
+      const body  = doc.contentHtml || doc.contentHTML || doc.content || '';
+      const w = window.open('', '_blank');
+      w.document.write(`<html><head><title>${title}</title><style>body{font-family:Georgia,serif;margin:40px;color:#111;font-size:14px;line-height:1.7;}</style></head><body><h2>${title}</h2><hr><br>${body}</body></html>`);
+      w.document.close(); w.print();
+    }
+
+    function showClientToast(msg) {
+      const t = document.createElement('div');
+      t.style.cssText = 'position:fixed;bottom:24px;right:24px;background:#1FA3E0;color:#000;padding:12px 20px;border-radius:8px;font-weight:600;z-index:9999;';
+      t.textContent = msg;
+      document.body.appendChild(t);
+      setTimeout(() => t.remove(), 3000);
+    }
+
+    // ============ TAB: MESSAGES ============
+    function renderMessages() {
+      // Read from currentEvent.messages so data persists via saveEvent() → Supabase
+      const messages = currentEvent.messages || [];
+
+      const content = document.getElementById('contentArea');
+      content.innerHTML = `
+        <div class="card">
+          <h3>Messages</h3>
+          <div class="message-thread" id="messageThread">
+            ${messages.map(msg => `
+              <div class="message ${msg.from === 'client' ? 'client' : 'team'}">
+                <div class="message-avatar">${(msg.from === 'client' ? currentUser.firstName || currentUser.name || 'You' : 'BS')[0].toUpperCase()}</div>
+                <div>
+                  <div class="message-bubble">${msg.text}</div>
+                  <div class="message-time">${new Date(msg.ts).toLocaleString()}</div>
+                </div>
+              </div>
+            `).join('')}
+          </div>
+
+          <div class="message-input-area">
+            <textarea id="messageInput" placeholder="Type your message..." onkeydown="if (event.key === 'Enter' && event.ctrlKey) sendMessage()"></textarea>
+            <button class="btn-primary" onclick="sendMessage()" style="height: 60px; padding: 0 20px; margin: 0;">Send</button>
+          </div>
+        </div>
+      `;
+
+      // Scroll to bottom
+      setTimeout(() => {
+        const thread = document.getElementById('messageThread');
+        thread.scrollTop = thread.scrollHeight;
+      }, 100);
+    }
+
+    function sendMessage() {
+      const input = document.getElementById('messageInput');
+      const text = input.value.trim();
+
+      if (!text) return;
+
+      // Store in currentEvent.messages and save to Supabase via saveEvent()
+      if (!currentEvent.messages) currentEvent.messages = [];
+      currentEvent.messages.push({
+        from: 'client',
+        text,
+        ts: new Date().toISOString()
+      });
+      saveEvent();
+
+      input.value = '';
+      renderMessages();
+    }
+
+    // ============ TAB: SETTINGS ============
+    function renderClientSettings() {
+      const name  = currentEvent.clientName  || (currentUser && (currentUser.firstName || currentUser.name)) || '';
+      const phone = currentEvent.clientPhone || (currentUser && currentUser.phone) || '';
+      const email = (currentUser && currentUser.email) || '';
+
+      const inputStyle = 'width:100%;box-sizing:border-box;background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.12);border-radius:8px;padding:12px 14px;color:#fff;font-size:15px;outline:none;font-family:inherit;';
+      const labelStyle = 'display:block;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.08em;color:rgba(255,255,255,0.45);margin-bottom:7px;';
+      const cardStyle  = 'background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.1);border-radius:12px;padding:22px;margin-bottom:22px;';
+      const headStyle  = 'font-family:Anton,sans-serif;font-size:14px;letter-spacing:0.08em;text-transform:uppercase;color:rgba(255,255,255,0.85);margin-bottom:18px;';
+
+      document.getElementById('contentArea').innerHTML = `
+        <div style="max-width:500px;padding:8px 0 40px;">
+
+          <!-- Profile -->
+          <div style="${cardStyle}">
+            <div style="${headStyle}">Your Info</div>
+
+            <div style="margin-bottom:16px;">
+              <label style="${labelStyle}">Name</label>
+              <input type="text" id="settingsName" value="${(name).replace(/"/g,'&quot;')}" style="${inputStyle}" placeholder="Your name">
+            </div>
+
+            <div style="margin-bottom:16px;">
+              <label style="${labelStyle}">Phone</label>
+              <input type="tel" id="settingsPhone" value="${(phone).replace(/"/g,'&quot;')}" style="${inputStyle}" placeholder="(305) 000-0000">
+            </div>
+
+            <div style="margin-bottom:20px;">
+              <label style="${labelStyle}">Email</label>
+              <div style="background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.07);border-radius:8px;padding:12px 14px;font-size:15px;color:rgba(255,255,255,0.35);">${email}</div>
+              <div style="font-size:11px;color:rgba(255,255,255,0.3);margin-top:5px;">Your email is your login — it can't be changed here.</div>
+            </div>
+
+            <div style="display:flex;align-items:center;gap:14px;">
+              <button onclick="saveClientProfile()" style="background:#1FA3E0;color:#000;border:none;border-radius:8px;padding:11px 22px;font-size:14px;font-weight:700;cursor:pointer;letter-spacing:0.02em;">Save changes</button>
+              <span id="profileSaveFb" style="font-size:13px;color:rgba(255,255,255,0.45);"></span>
+            </div>
+          </div>
+
+          <!-- Password -->
+          <div style="${cardStyle}">
+            <div style="${headStyle}">Change Password</div>
+
+            <div style="margin-bottom:16px;">
+              <label style="${labelStyle}">Current password</label>
+              <input type="password" id="settingsPwCur" style="${inputStyle}" placeholder="Your current password">
+            </div>
+
+            <div style="margin-bottom:16px;">
+              <label style="${labelStyle}">New password</label>
+              <input type="password" id="settingsPwNew" style="${inputStyle}" placeholder="At least 6 characters">
+            </div>
+
+            <div style="margin-bottom:20px;">
+              <label style="${labelStyle}">Confirm new password</label>
+              <input type="password" id="settingsPwConfirm" style="${inputStyle}" placeholder="Repeat new password">
+            </div>
+
+            <div style="display:flex;align-items:center;gap:14px;">
+              <button onclick="saveClientPassword()" style="background:#1FA3E0;color:#000;border:none;border-radius:8px;padding:11px 22px;font-size:14px;font-weight:700;cursor:pointer;letter-spacing:0.02em;">Update password</button>
+              <span id="pwSaveFb" style="font-size:13px;color:rgba(255,255,255,0.45);"></span>
+            </div>
+          </div>
+
+          <!-- Sign out -->
+          <div style="text-align:center;padding-top:4px;">
+            <button onclick="logout()" style="background:none;border:1px solid rgba(255,255,255,0.15);border-radius:8px;padding:10px 22px;color:rgba(255,255,255,0.45);font-size:13px;cursor:pointer;letter-spacing:0.02em;">Sign out</button>
+          </div>
+
+        </div>
+      `;
+    }
+
+    function saveClientProfile() {
+      const name  = (document.getElementById('settingsName')?.value  || '').trim();
+      const phone = (document.getElementById('settingsPhone')?.value || '').trim();
+      const fb    = document.getElementById('profileSaveFb');
+      if (name)  currentEvent.clientName  = name;
+      if (phone) currentEvent.clientPhone = phone;
+      saveEvent();
+      if (fb) {
+        fb.textContent = 'Saved.';
+        fb.style.color = 'rgba(39,174,96,0.9)';
+        setTimeout(() => { if (fb) { fb.textContent = ''; fb.style.color = ''; } }, 2500);
+      }
+    }
+
+    async function saveClientPassword() {
+      const cur  = (document.getElementById('settingsPwCur')?.value     || '').trim();
+      const nw   = (document.getElementById('settingsPwNew')?.value     || '').trim();
+      const conf = (document.getElementById('settingsPwConfirm')?.value || '').trim();
+      const fb   = document.getElementById('pwSaveFb');
+      const btn  = document.querySelector('#settingsPwCur')?.closest('[style*="cardStyle"]')
+                   ? null
+                   : document.querySelectorAll('[onclick="saveClientPassword()"]')[0];
+
+      function setFb(msg, ok) {
+        if (!fb) return;
+        fb.textContent = msg;
+        fb.style.color = ok ? 'rgba(39,174,96,0.9)' : 'rgba(231,76,60,0.9)';
+      }
+
+      if (!cur)        { setFb('Enter your current password.', false); return; }
+      if (nw.length < 6) { setFb('New password must be at least 6 characters.', false); return; }
+      if (nw !== conf) { setFb('Passwords do not match.', false); return; }
+
+      if (fb) { fb.textContent = 'Updating…'; fb.style.color = 'rgba(255,255,255,0.45)'; }
+
+      try {
+        const SUPABASE_URL  = 'https://jkdhkwcxnwpiufeyrnso.supabase.co';
+        const SUPABASE_ANON = 'sb_publishable_6xcEpHwIJi8bq4XuSyLCGg_3A30raS9';
+        const userEmail = (currentUser && currentUser.email) || '';
+        const r = await fetch(`${SUPABASE_URL}/rest/v1/rpc/change_client_password`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'apikey': SUPABASE_ANON },
+          body: JSON.stringify({ p_email: userEmail, p_old_password: cur, p_new_password: nw })
+        });
+        const result = await r.json();
+        if (result === true) {
+          if (window.BSPortal && BSPortal._updateSessionPw) BSPortal._updateSessionPw(nw);
+          setFb('Password updated.', true);
+          document.getElementById('settingsPwCur').value     = '';
+          document.getElementById('settingsPwNew').value     = '';
+          document.getElementById('settingsPwConfirm').value = '';
+          setTimeout(() => { if (fb) { fb.textContent = ''; } }, 3000);
+        } else {
+          setFb('Current password is incorrect.', false);
+        }
+      } catch {
+        setFb('Something went wrong. Try again.', false);
+      }
+    }
+
+    // ============ UTILITIES ============
+    let _saveEventTimer = null;
+    let _saveRetryFn = null; // stores last failed save for retry
+
+    function saveEvent() {
+      // localStorage backup: always store current state locally so nothing is lost
+      try { localStorage.setItem('bs_event_draft_' + currentEvent.id, JSON.stringify(currentEvent)); } catch(e) {}
+
+      // Debounced cloud save via SECURITY DEFINER RPC (clients have no JWT)
+      clearTimeout(_saveEventTimer);
+      _saveEventTimer = setTimeout(function() {
+        if (typeof BSPortal === 'undefined' || !BSPortal.saveClientEvent) return;
+        const snapshot = JSON.parse(JSON.stringify(currentEvent)); // freeze for retry
+        _saveRetryFn = function() {
+          BSPortal.saveClientEvent(snapshot).then(function(ok) {
+            if (ok) { showSavedPill(); try { localStorage.removeItem('bs_event_draft_' + snapshot.id); } catch(e) {} }
+            else showSaveErrorPill(_saveRetryFn);
+          }).catch(function() { showSaveErrorPill(_saveRetryFn); });
+        };
+        BSPortal.saveClientEvent(snapshot).then(function(ok) {
+          if (ok) { showSavedPill(); try { localStorage.removeItem('bs_event_draft_' + snapshot.id); } catch(e) {} }
+          else showSaveErrorPill(_saveRetryFn);
+        }).catch(function() { showSaveErrorPill(_saveRetryFn); });
+      }, 800);
+    }
+
+    // Error pill — slides up like the saved pill but red, with a Retry button
+    function showSaveErrorPill(retryFn) {
+      let pill = document.getElementById('_saveErrorPill');
+      if (!pill) {
+        pill = document.createElement('div');
+        pill.id = '_saveErrorPill';
+        pill.style.cssText = 'position:fixed;bottom:24px;right:24px;background:#1a1a1a;border:1px solid rgba(231,76,60,0.5);color:#fff;font-family:Barlow,sans-serif;font-size:13px;padding:10px 16px;border-radius:12px;box-shadow:0 4px 20px rgba(0,0,0,0.5);transform:translateY(80px);opacity:0;transition:transform 0.3s cubic-bezier(0.22,1,0.36,1),opacity 0.3s;z-index:9999;display:flex;align-items:center;gap:12px;';
+        document.body.appendChild(pill);
+      }
+      clearTimeout(pill._t);
+      pill.innerHTML = '<span style="color:#e74c3c;">⚠ Couldn\'t save</span><button onclick="(function(){var p=document.getElementById(\'_saveErrorPill\');p.style.transform=\'translateY(80px)\';p.style.opacity=\'0\';' + (retryFn ? 'window._clientSaveRetryFn&&window._clientSaveRetryFn();' : '') + '})()" style="background:rgba(231,76,60,0.2);border:1px solid rgba(231,76,60,0.4);color:#e74c3c;font-family:Barlow,sans-serif;font-size:12px;font-weight:700;padding:4px 12px;border-radius:8px;cursor:pointer;">Retry</button>';
+      window._clientSaveRetryFn = retryFn;
+      pill.style.transform = 'translateY(0)';
+      pill.style.opacity = '1';
+      pill._t = setTimeout(function() { pill.style.transform = 'translateY(80px)'; pill.style.opacity = '0'; }, 7000);
+    }
+
+    // Animated "Saved" pill — slides in from bottom-right, hides after 2s
+    function showSavedPill() {
+      let pill = document.getElementById('_savedPill');
+      if (!pill) {
+        pill = document.createElement('div');
+        pill.id = '_savedPill';
+        pill.style.cssText = 'position:fixed;bottom:24px;right:24px;background:#1FA3E0;color:#000;font-family:Barlow,sans-serif;font-size:13px;font-weight:600;padding:8px 18px;border-radius:100px;box-shadow:0 4px 16px rgba(31,163,224,0.4);transform:translateY(60px);opacity:0;transition:transform 0.3s cubic-bezier(0.22,1,0.36,1),opacity 0.3s;z-index:9999;pointer-events:none;';
+        pill.textContent = 'Saved';
+        document.body.appendChild(pill);
+      }
+      clearTimeout(pill._t);
+      pill.style.transform = 'translateY(0)';
+      pill.style.opacity = '1';
+      pill._t = setTimeout(function() {
+        pill.style.transform = 'translateY(60px)';
+        pill.style.opacity = '0';
+      }, 2000);
+    }
+
+    // ─── Mouse-tracked spotlight on cards ────────────────────────────────────
+    document.addEventListener('mousemove', function(e) {
+      const card = e.target.closest('.card');
+      if (!card) return;
+      const rect = card.getBoundingClientRect();
+      card.style.setProperty('--x', (e.clientX - rect.left) + 'px');
+      card.style.setProperty('--y', (e.clientY - rect.top) + 'px');
+    });
+
+    // ============ ONBOARDING WIZARD ============
+    let _obStep = 0;
+
+    function renderOnboarding() {
+      document.getElementById('tabBar').style.display = 'none';
+      _obStep = 0;
+      _obRenderStep();
+    }
+
+    function _obRenderStep() {
+      switch (_obStep) {
+        case 0: _obWelcome(); break;
+        case 1: _obType();    break;
+        case 2: _obVibe();    break;
+        case 3: _obVenue();   break;
+        case 4: _obMoments(); break;
+        case 5: _obSpecial(); break;
+      }
+    }
+
+    function _obDots(active) {
+      // 5 steps (indices 0-4) after the welcome screen
+      return '<div class="ob-progress">' +
+        [0,1,2,3,4].map(i => {
+          let cls = 'ob-dot';
+          if (i < active) cls += ' done';
+          else if (i === active) cls += ' active';
+          return '<div class="' + cls + '"></div>';
+        }).join('') +
+      '</div>';
+    }
+
+    function _obWelcome() {
+      const eventName = currentEvent.name || currentEvent.title || 'your event';
+      document.getElementById('contentArea').innerHTML = `
+        <div class="ob-wrap">
+          <div class="ob-welcome-wrap">
+            <div class="ob-welcome-title">Welcome to your portal.</div>
+            <div class="ob-welcome-body">
+              We've got ${eventName} locked in on our end. Now we just need a few things from you — takes about two minutes, and it makes a real difference in how the night runs.
+            </div>
+            <button class="ob-next" onclick="_obStep=1;_obRenderStep();" style="font-size:16px;padding:14px 40px;">Let's do it →</button>
+            <div style="margin-top:18px;">
+              <button class="ob-skip" onclick="_obComplete(true)">Skip for now — just take me in</button>
+            </div>
+          </div>
+        </div>`;
+    }
+
+    function _obType() {
+      const types = ['Wedding','Quinceañera','Bar / Bat Mitzvah','Corporate Event','Birthday Party','Gala','Other'];
+      const cur = (currentEvent.type || '').toLowerCase();
+      document.getElementById('contentArea').innerHTML = `
+        <div class="ob-wrap">
+          ${_obDots(0)}
+          <div class="ob-question">What kind of event are we doing together?</div>
+          <div class="ob-sub">Just confirm the type — we'll tailor everything around it.</div>
+          <div class="ob-chips" id="obTypeChips">
+            ${types.map(t => `<div class="ob-chip ${cur && t.toLowerCase().startsWith(cur.split(' ')[0]) ? 'selected' : ''}" data-val="${t}" onclick="_obPickChip(this,'obTypeChips')">${t}</div>`).join('')}
+          </div>
+          <div class="ob-actions">
+            <button class="ob-skip" onclick="_obStep=2;_obRenderStep()">Skip this</button>
+            <button class="ob-next" onclick="_obSaveType()">Next →</button>
+          </div>
+        </div>`;
+    }
+
+    function _obPickChip(el, containerId) {
+      document.getElementById(containerId).querySelectorAll('.ob-chip').forEach(c => c.classList.remove('selected'));
+      el.classList.add('selected');
+    }
+
+    function _obSaveType() {
+      const sel = document.querySelector('#obTypeChips .ob-chip.selected');
+      if (sel) { currentEvent.type = sel.dataset.val; saveEvent(); }
+      _obStep = 2; _obRenderStep();
+    }
+
+    function _obVibe() {
+      const vibes = ['Romantic & Intimate','Grand & Dramatic','Fun & High-Energy','Sophisticated & Elegant','Modern & Bold','Something Else'];
+      const cur = (currentEvent.clientPrefs && currentEvent.clientPrefs.vibe) || '';
+      document.getElementById('contentArea').innerHTML = `
+        <div class="ob-wrap">
+          ${_obDots(1)}
+          <div class="ob-question">What's the overall vibe?</div>
+          <div class="ob-sub">One answer — go with your gut. You can always update it later.</div>
+          <div class="ob-chips" id="obVibeChips">
+            ${vibes.map(v => `<div class="ob-chip ${cur === v ? 'selected' : ''}" data-val="${v}" onclick="_obPickChip(this,'obVibeChips')">${v}</div>`).join('')}
+          </div>
+          <div class="ob-actions">
+            <button class="ob-skip" onclick="_obStep=3;_obRenderStep()">Skip this</button>
+            <button class="ob-next" onclick="_obSaveVibe()">Next →</button>
+          </div>
+        </div>`;
+    }
+
+    function _obSaveVibe() {
+      const sel = document.querySelector('#obVibeChips .ob-chip.selected');
+      if (sel) {
+        if (!currentEvent.clientPrefs) currentEvent.clientPrefs = {};
+        currentEvent.clientPrefs.vibe = sel.dataset.val;
+        saveEvent();
+      }
+      _obStep = 3; _obRenderStep();
+    }
+
+    function _obVenue() {
+      const venueName = currentEvent.venueName || currentEvent.venue || '';
+      const venueAddr = currentEvent.venueAddress || '';
+      document.getElementById('contentArea').innerHTML = `
+        <div class="ob-wrap">
+          ${_obDots(2)}
+          <div class="ob-question">Where's it happening?</div>
+          <div class="ob-sub">Just the name for now — address and contact details can come later once everything's locked in.</div>
+          <input class="ob-input-large" type="text" id="obVenueName" placeholder="Venue name (e.g., The Biltmore, Pérez Art Museum)" value="${venueName.replace(/"/g,'&quot;')}">
+          <input class="ob-input-large" type="text" id="obVenueAddr" placeholder="Address (optional)" value="${venueAddr.replace(/"/g,'&quot;')}">
+          <div class="ob-actions">
+            <button class="ob-skip" onclick="_obStep=4;_obRenderStep()">Skip this</button>
+            <button class="ob-next" onclick="_obSaveVenue()">Next →</button>
+          </div>
+        </div>`;
+      requestAnimationFrame(() => document.getElementById('obVenueName').focus());
+    }
+
+    function _obSaveVenue() {
+      const name = document.getElementById('obVenueName').value.trim();
+      const addr = document.getElementById('obVenueAddr').value.trim();
+      if (name) { currentEvent.venueName = name; currentEvent.venue = name; }
+      if (addr) currentEvent.venueAddress = addr;
+      if (name || addr) saveEvent();
+      _obStep = 4; _obRenderStep();
+    }
+
+    function _obMoments() {
+      const all = ['First Dance','Grand Entrance','Parent Dances','Cake Cutting','Toasts','Cocktail Hour','Anniversary Dance','Bouquet Toss','Surprise Dance','Candle Ceremony'];
+      const cur = (currentEvent.clientPrefs && currentEvent.clientPrefs.moments) || [];
+      document.getElementById('contentArea').innerHTML = `
+        <div class="ob-wrap">
+          ${_obDots(3)}
+          <div class="ob-question">Which moments matter most to you?</div>
+          <div class="ob-sub">We'll build your run of show around these. Pick as many as you want — nothing's set in stone yet.</div>
+          <div class="ob-checkbox-grid">
+            ${all.map(m => `
+              <div class="ob-check-item ${cur.includes(m) ? 'checked' : ''}" data-val="${m}" onclick="_obToggleCheckItem(this)">
+                <div class="ob-check-box">${cur.includes(m) ? '✓' : ''}</div>
+                <span>${m}</span>
+              </div>`).join('')}
+          </div>
+          <div class="ob-actions">
+            <button class="ob-skip" onclick="_obStep=5;_obRenderStep()">Skip this</button>
+            <button class="ob-next" onclick="_obSaveMoments()">Next →</button>
+          </div>
+        </div>`;
+    }
+
+    function _obToggleCheckItem(el) {
+      el.classList.toggle('checked');
+      el.querySelector('.ob-check-box').textContent = el.classList.contains('checked') ? '✓' : '';
+    }
+
+    function _obSaveMoments() {
+      const checked = Array.from(document.querySelectorAll('.ob-check-item.checked')).map(el => el.dataset.val);
+      if (!currentEvent.clientPrefs) currentEvent.clientPrefs = {};
+      currentEvent.clientPrefs.moments = checked;
+      if (checked.length) saveEvent();
+      _obStep = 5; _obRenderStep();
+    }
+
+    function _obSpecial() {
+      const cur = (currentEvent.clientPrefs && currentEvent.clientPrefs.specialRequests) || '';
+      document.getElementById('contentArea').innerHTML = `
+        <div class="ob-wrap">
+          ${_obDots(4)}
+          <div class="ob-question">Anything we should know going in?</div>
+          <div class="ob-sub">Special requests, things that are off-limits, details that make this yours. No wrong answers.</div>
+          <textarea class="ob-textarea-large" id="obSpecial" placeholder="Examples: no chicken dance, groom is hard of hearing (keep monitors left), we want cold sparklers for the grand entrance...">${cur}</textarea>
+          <div class="ob-actions">
+            <button class="ob-skip" onclick="_obComplete(false)">Skip, I'm done</button>
+            <button class="ob-next" onclick="_obSaveSpecial()">Finish ✓</button>
+          </div>
+        </div>`;
+      requestAnimationFrame(() => document.getElementById('obSpecial').focus());
+    }
+
+    function _obSaveSpecial() {
+      const val = document.getElementById('obSpecial').value.trim();
+      if (val) {
+        if (!currentEvent.clientPrefs) currentEvent.clientPrefs = {};
+        currentEvent.clientPrefs.specialRequests = val;
+      }
+      _obComplete(false);
+    }
+
+    function _obComplete(skipped) {
+      currentEvent.onboardingComplete = true;
+      // Persist the flag locally so it survives fresh logins on this device,
+      // regardless of whether the Supabase RPC echoes the field back on next login.
+      try { localStorage.setItem('bs_ob_done_' + currentEvent.id, '1'); } catch(e) {}
+      saveEvent();
+      // Restore tab bar
+      document.getElementById('tabBar').style.display = '';
+      if (!skipped) {
+        // Brief confirmation screen, then switch to My Event
+        document.getElementById('contentArea').innerHTML = `
+          <div class="ob-complete-wrap">
+            <div class="ob-welcome-title">All set.</div>
+            <div class="ob-welcome-body" style="max-width:320px;margin:0 auto 0;">Everything's saved. You can update any of it from the tabs above — your event details, your music, your timeline, all of it. We've got it from here.</div>
+          </div>`;
+        setTimeout(() => setActiveTab('my-event'), 1800);
+      } else {
+        setActiveTab('my-event');
+      }
+    }
+
+    // Initialize on load
+    window.addEventListener('load', init);
+
+    // ── AUTO-SYNC: save client event data to Supabase automatically ──────────────
+    // Runs every 90 seconds AND immediately when the user switches away from the tab.
+    // This prevents data loss if the client closes the browser without hitting Save.
+    let _autoSavePending = false;
+
+    function _captureAndSave() {
+      // BUG FIX: BSPortal is always defined — check getCurrentUser() instead
+      if (!currentEvent || !BSPortal.getCurrentUser() || !BSPortal.saveClientEvent) return;
+      // Also keep localStorage backup current
+      try { localStorage.setItem('bs_event_draft_' + currentEvent.id, JSON.stringify(currentEvent)); } catch(e) {}
+      BSPortal.saveClientEvent(currentEvent).then(function(ok) {
+        if (!ok) showSaveErrorPill(function() { _captureAndSave(); });
+      }).catch(function() { showSaveErrorPill(function() { _captureAndSave(); }); });
+    }
+
+    // Periodic save: every 90 seconds while on the page
+    setInterval(_captureAndSave, 90 * 1000);
+
+    // Visibility change: save the moment the user switches tabs or minimizes
+    document.addEventListener('visibilitychange', function() {
+      if (document.visibilityState === 'hidden') _captureAndSave();
+    });
+
+    // Beforeunload: best-effort sync on close (may be blocked by browser)
+    window.addEventListener('beforeunload', function() {
+      if (!currentEvent || typeof BSPortal === 'undefined' || !BSPortal.saveClientEvent) return;
+      // Use sendBeacon for reliable delivery on page unload
+      const email = BSPortal.getCurrentUser && BSPortal.getCurrentUser()?.email;
+      const pw    = (window._bsSession && window._bsSession.portalPw);
+      if (email && pw) {
+        const body = JSON.stringify({ p_email: email.toLowerCase(), p_password: pw, p_event_data: currentEvent });
+        navigator.sendBeacon(
+          'https://jkdhkwcxnwpiufeyrnso.supabase.co/rest/v1/rpc/update_client_event',
+          new Blob([body], { type: 'application/json' })
+        );
+      }
+    });
+
+    // ============ CLIENT-SIDE DOCUMENT SIGNING ============
+    let _clientSigCanvas = null;
+    let _clientSigCtx    = null;
+    let _clientSigDocIdx = null;
+    let _clientSigDrawing = false;
+
+    function openClientSignModal(docIdx) {
+      _clientSigDocIdx = docIdx;
+      const doc = (currentEvent.documents || [])[docIdx];
+      if (!doc) return;
+      document.getElementById('clientSignDocTitle').textContent = doc.label || doc.name || 'Document';
+      document.getElementById('clientSignModal').style.display = 'flex';
+      // Init canvas
+      _clientSigCanvas = document.getElementById('clientSignCanvas');
+      _clientSigCtx    = _clientSigCanvas.getContext('2d');
+      _clientSigCtx.clearRect(0, 0, _clientSigCanvas.width, _clientSigCanvas.height);
+      _clientSigCtx.lineWidth   = 2.5;
+      _clientSigCtx.lineCap     = 'round';
+      _clientSigCtx.strokeStyle = '#ffffff';
+      _clientSigDrawing = false;
+      // Mouse events
+      _clientSigCanvas.onmousedown = (e) => { _clientSigDrawing = true; _clientSigCtx.beginPath(); const r=_clientSigCanvas.getBoundingClientRect(); _clientSigCtx.moveTo(e.clientX-r.left,e.clientY-r.top); };
+      _clientSigCanvas.onmousemove = (e) => { if (!_clientSigDrawing) return; const r=_clientSigCanvas.getBoundingClientRect(); _clientSigCtx.lineTo(e.clientX-r.left,e.clientY-r.top); _clientSigCtx.stroke(); };
+      _clientSigCanvas.onmouseup   = () => { _clientSigDrawing = false; };
+      _clientSigCanvas.onmouseleave= () => { _clientSigDrawing = false; };
+      // Touch events
+      _clientSigCanvas.ontouchstart = (e) => { e.preventDefault(); _clientSigDrawing = true; _clientSigCtx.beginPath(); const r=_clientSigCanvas.getBoundingClientRect(); const t=e.touches[0]; _clientSigCtx.moveTo(t.clientX-r.left,t.clientY-r.top); };
+      _clientSigCanvas.ontouchmove  = (e) => { e.preventDefault(); if (!_clientSigDrawing) return; const r=_clientSigCanvas.getBoundingClientRect(); const t=e.touches[0]; _clientSigCtx.lineTo(t.clientX-r.left,t.clientY-r.top); _clientSigCtx.stroke(); };
+      _clientSigCanvas.ontouchend   = () => { _clientSigDrawing = false; };
+    }
+
+    function clearClientSignature() {
+      if (_clientSigCtx && _clientSigCanvas) _clientSigCtx.clearRect(0, 0, _clientSigCanvas.width, _clientSigCanvas.height);
+    }
+
+    function closeClientSignModal() {
+      document.getElementById('clientSignModal').style.display = 'none';
+      _clientSigDocIdx = null;
+    }
+
+    function saveClientSignature() {
+      if (!_clientSigCanvas || _clientSigDocIdx === null) return;
+      const px = _clientSigCtx.getImageData(0, 0, _clientSigCanvas.width, _clientSigCanvas.height).data;
+      const hasContent = Array.from(px).some(v => v !== 0);
+      if (!hasContent) { showClientToast('Please draw your signature first.'); return; }
+      const sig = _clientSigCanvas.toDataURL('image/png');
+      if (!currentEvent.documents) currentEvent.documents = [];
+      const doc = currentEvent.documents[_clientSigDocIdx];
+      if (!doc) return;
+      doc.clientSignature  = sig;
+      doc.clientSignedAt   = new Date().toISOString();
+      doc.clientSignedName = currentUser?.name || currentUser?.firstName || 'Client';
+      saveEvent();
+      closeClientSignModal();
+      showClientToast('Document signed successfully!');
+      renderClientDocuments();
+    }
+  </script>
+
+  <!-- Client Signature Modal -->
+  <div id="clientSignModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.8);backdrop-filter:blur(6px);z-index:3000;align-items:center;justify-content:center;">
+    <div style="background:#111118;border:1px solid rgba(31,163,224,0.25);border-radius:14px;padding:28px 24px;width:480px;max-width:94vw;box-shadow:0 24px 80px rgba(0,0,0,0.7);">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">
+        <div style="font-family:'Anton',sans-serif;font-size:18px;letter-spacing:.04em;">Sign Document</div>
+        <button onclick="closeClientSignModal()" style="background:none;border:none;color:rgba(255,255,255,0.4);font-size:22px;cursor:pointer;line-height:1;padding:0;">×</button>
+      </div>
+      <div id="clientSignDocTitle" style="font-size:13px;color:rgba(255,255,255,0.4);margin-bottom:18px;"></div>
+      <div style="font-size:12px;color:rgba(255,255,255,0.35);margin-bottom:10px;">Draw your signature below</div>
+      <canvas id="clientSignCanvas" width="432" height="140" style="width:100%;height:140px;background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.1);border-radius:8px;cursor:crosshair;touch-action:none;"></canvas>
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-top:16px;flex-wrap:wrap;gap:10px;">
+        <button onclick="clearClientSignature()" style="padding:8px 16px;background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.12);border-radius:7px;color:rgba(255,255,255,0.6);font-size:13px;cursor:pointer;font-family:'Barlow',sans-serif;">Clear</button>
+        <div style="display:flex;gap:8px;">
+          <button onclick="closeClientSignModal()" style="padding:8px 16px;background:none;border:1px solid rgba(255,255,255,0.12);border-radius:7px;color:rgba(255,255,255,0.4);font-size:13px;cursor:pointer;font-family:'Barlow',sans-serif;">Cancel</button>
+          <button onclick="saveClientSignature()" style="padding:8px 20px;background:#1FA3E0;border:none;border-radius:7px;color:#000;font-weight:700;font-size:13px;cursor:pointer;font-family:'Barlow',sans-serif;">Confirm Signature</button>
+        </div>
+      </div>
+      <p style="font-size:11px;color:rgba(255,255,255,0.25);margin-top:14px;line-height:1.5;">By clicking "Confirm Signature" you confirm this is your authorized signature for this document.</p>
+    </div>
+  </div>
+</body>
+</html>

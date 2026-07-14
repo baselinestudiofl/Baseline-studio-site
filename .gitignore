@@ -1,0 +1,23 @@
+# Ignore the entire Next.js project folder — not part of the website
+baseline-next/
+
+# Dependencies
+node_modules/
+
+# System files
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+npm-debug.log*
+
+# Build artifacts
+.next/
+out/
+dist/
+build/
+
+# Scripts (contain sensitive token)
+push-to-github.sh
+push.command
