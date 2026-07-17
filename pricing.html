@@ -4,13 +4,13 @@
   <meta charset="UTF-8">
 <link rel="canonical" href="https://www.baselinestudiofl.com/pricing">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Event Production Pricing Miami | DJ, Lighting & AV Costs | Baseline Studio</title>
-<meta property="og:title" content="Event Production Pricing Miami | Baseline Studio">
-<meta property="og:description" content="Transparent event production pricing in Miami — DJ packages, lighting rentals, LED video walls, special effects, and full production bundles. No hidden fees.">
+  <title>Event Production Packages Miami | Weddings, Corporate & Social Events | Baseline Studio</title>
+<meta property="og:title" content="Event Production Packages Miami | Baseline Studio">
+<meta property="og:description" content="Custom event production packages in Miami for weddings, corporate galas, quinceañeras, sweet 16s, and bar mitzvahs. DJ, lighting, special effects, and full production. Get a custom quote.">
 <meta property="og:type" content="website">
 <meta property="og:url" content="https://www.baselinestudiofl.com/pricing">
 <meta property="og:image" content="https://www.baselinestudiofl.com/og-image.jpg">
-  <meta name="description" content="Transparent event production pricing in Miami — DJ packages, lighting rentals, LED video walls, special effects, and full production bundles. No hidden fees.">
+  <meta name="description" content="Custom event production packages in Miami for weddings, corporate galas, quinceañeras, sweet 16s, and bar mitzvahs. DJ, lighting, special effects, and full production. Get a custom quote.">
   <link rel="stylesheet" href="fonts/fonts.css">
   <link rel="stylesheet" href="style.css?v=2">
   <style>
@@ -48,7 +48,16 @@
       .pricing-disclaimer { padding: 0 24px 40px; }
     }
     @media (max-width: 600px) { .addons-grid { grid-template-columns: 1fr; } }
-    
+
+    /* Event-type package cards */
+    .pkg-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 2px; margin-bottom: 60px; }
+    .pkg-card { padding: 48px 40px; background: var(--black-2); }
+    .pkg-card-addons { margin-top: 24px; padding-top: 20px; border-top: 1px solid var(--rule); }
+    .pkg-addons-label { font-size: 10px; font-weight: 700; letter-spacing: 2px; text-transform: uppercase; color: rgba(255,255,255,0.35); margin-bottom: 10px; font-family: var(--font-cond); }
+    .pkg-addons-text { font-size: 13px; font-weight: 300; color: rgba(255,255,255,0.45); line-height: 1.8; }
+    .packages-eyebrow { font-family: var(--font-cond); font-size: clamp(26px, 3vw, 40px); font-weight: 800; letter-spacing: -1.5px; color: var(--white); margin-bottom: 40px; }
+    @media (max-width: 900px) { .pkg-grid { grid-template-columns: 1fr; } .pkg-card { padding: 36px 28px; } }
+
   </style>
 <!-- Google Analytics — deferred until after page load to avoid blocking LCP -->
 <script>
@@ -66,7 +75,7 @@
 <link rel="icon" href="favicon-32x32.png" type="image/png" sizes="32x32">
 <link rel="icon" href="favicon-16x16.png" type="image/png" sizes="16x16">
 <link rel="apple-touch-icon" href="apple-touch-icon.png">
-<link rel="preload" as="image" href="https://images.unsplash.com/photo-1544691370-1f47a5b649c6?auto=format
+<link rel="preload" as="image" href="https://images.unsplash.com/photo-1544691370-1f47a5b649c6?auto=format&fit=crop&w=1200&q=75&fm=webp" media="(max-width: 768px)">
 <script type="application/ld+json">
 {
   "@context": "https://schema.org",
@@ -84,9 +93,9 @@
 {
   "@context": "https://schema.org",
   "@type": "WebPage",
-  "name": "Event Production Pricing Miami | Baseline Studio",
+  "name": "Event Production Packages Miami | Baseline Studio",
   "url": "https://www.baselinestudiofl.com/pricing",
-  "description": "Transparent event production pricing in Miami — DJ packages, lighting rentals, LED video walls, special effects, and full production bundles. No hidden fees.",
+  "description": "Custom event production packages in Miami for weddings, corporate galas, quinceañeras, sweet 16s, and bar mitzvahs. DJ, lighting, special effects, and full production.",
   "provider": { "@id": "https://www.baselinestudiofl.com/#organization" }
 }
 </script>
@@ -97,33 +106,32 @@
   "mainEntity": [
     {
       "@type": "Question",
-      "name": "What is included in a DJ package?",
-      "acceptedAnswer": { "@type": "Answer", "text": "DJ packages include a professional DJ, all sound equipment including speakers, subwoofers, and mixer, wireless microphones, and up to the agreed number of hours. Setup and breakdown are included." }
+      "name": "How does event production pricing work at Baseline Studio?",
+      "acceptedAnswer": { "@type": "Answer", "text": "Every event is different, so every quote is custom. We build a proposal based on your specific event type, venue, hours, and equipment needs. You receive a full line-item breakdown before anything is signed — no hidden fees added after the fact." }
     },
     {
       "@type": "Question",
-      "name": "Do you require a deposit?",
-      "acceptedAnswer": { "@type": "Answer", "text": "Yes. We require a deposit to hold your date. The remaining balance is due before or on the day of your event. We walk you through the payment schedule during booking." }
+      "name": "What is typically included in a wedding production package?",
+      "acceptedAnswer": { "@type": "Answer", "text": "Wedding packages typically include a professional DJ, full sound system, wireless microphones for the ceremony and speeches, LED uplighting, music consultation, run-of-show planning, and all setup and breakdown. Add-ons like cold spark fountains, dancing on cloud effect, and gobo monogram projection are popular upgrades." }
     },
     {
       "@type": "Question",
-      "name": "Are there travel fees?",
-      "acceptedAnswer": { "@type": "Answer", "text": "There are no travel fees for events in Miami-Dade County. For Broward County, most events fall within our standard service area. Palm Beach County and beyond may include a modest travel fee, confirmed in your quote." }
+      "name": "What does a corporate event or gala package include?",
+      "acceptedAnswer": { "@type": "Answer", "text": "Corporate packages typically include DJ or emcee service, professional sound system, lapel or podium microphones for speakers, LED uplighting, stage lighting, and AV support for presentations or video. LED video walls and logo gobo projection are common upgrades for galas." }
     },
     {
       "@type": "Question",
-      "name": "Can I customize a package?",
-      "acceptedAnswer": { "@type": "Answer", "text": "Yes. Most clients build a custom package based on their needs. Tell us your event type, hours, and priorities and we will build a quote that fits." }
+      "name": "Do you require a deposit to hold a date?",
+      "acceptedAnswer": { "@type": "Answer", "text": "Yes. A deposit is required to reserve your date. The remaining balance is due before or on the day of your event. We walk you through the payment schedule during booking." }
     },
     {
       "@type": "Question",
-      "name": "What is your cancellation policy?",
-      "acceptedAnswer": { "@type": "Answer", "text": "Cancellation terms are outlined in your contract. Deposits are generally non-refundable if the event is cancelled within a certain window of the event date. We will always try to work with you if something comes up." }
+      "name": "Are there travel fees for events outside Miami?",
+      "acceptedAnswer": { "@type": "Answer", "text": "There are no travel fees for events in Miami-Dade County. Most Broward County events fall within our standard service area. Palm Beach County and beyond may include a modest travel fee, confirmed in your quote." }
     }
   ]
 }
 </script>
-</head>fit=crop</head>w=1200</head>q=75</head>fm=webp" media="(max-width: 768px)">
 </head>
 <body>
   <div class="scroll-progress" id="scrollProgress"></div>
@@ -165,11 +173,11 @@
     <div class="page-hero-inner">
       <div class="section-eyebrow reveal">Pricing</div>
       <h1 class="page-hero-title reveal reveal-delay-1">
-        Straight answers<br>
-        on <em>what it costs.</em>
+        Built around<br>
+        <em>your event.</em>
       </h1>
       <p class="page-hero-body reveal reveal-delay-2">
-        Most production companies make you fill out a form just to see a number. We don't do that. Here's a real sense of what things cost — so you can plan before we even talk. Every event gets a custom proposal, but these ranges give you somewhere to start.
+        A wedding isn't a corporate gala isn't a quinceañera. Every event has a different flow, a different feel, and different priorities. So instead of a fixed price list, we build a custom proposal around what your event actually needs. Here's what typically goes into each type.
       </p>
     </div>
   </section>
@@ -177,62 +185,96 @@
   <div class="pricing-intro">
     <div>
       <div class="section-eyebrow reveal">How It Works</div>
-      <h2 class="pricing-headline reveal reveal-delay-1">No surprise<br>invoices.</h2>
+      <h2 class="pricing-headline reveal reveal-delay-1">One quote.<br>Full breakdown.</h2>
     </div>
-    <p class="pricing-note reveal">Every proposal we send is a line-item breakdown — what's included, what each piece costs, and what the total is. We don't add fees after you sign. If you want to add something, we price it separately and you decide. No surprises at the final invoice.</p>
+    <p class="pricing-note reveal">Every proposal we send is a line-item breakdown — what's included, what each piece costs, and the total. Pricing depends on your event length, venue, and scope, so every quote is built from scratch. This page gives you a real sense of what goes into each type of event before we talk.</p>
   </div>
 
   <section class="pricing-tiers">
-    <div class="tier-grid">
-      <div class="tier-card reveal">
-        <div class="tier-badge">Starter</div>
-        <div class="tier-name">DJ Only</div>
-        <div class="tier-range">From $900</div>
-        <div class="tier-range-note">Based on hours + travel</div>
+    <div class="section-eyebrow reveal" style="padding: 0 0 20px;">Packages by Event Type</div>
+    <div class="pkg-grid">
+
+      <!-- Wedding -->
+      <div class="pkg-card reveal">
+        <div class="tier-badge">Weddings</div>
+        <div class="tier-name">Wedding Production</div>
         <ul class="tier-includes">
-          <li>Professional DJ setup</li>
-          <li>Pioneer CDJ-3000s + DJM-A9</li>
-          <li>4–5 hour coverage</li>
-          <li>Music consultation pre-event</li>
-          <li>Setup and breakdown included</li>
-        </ul>
-        <a href="contact" class="tier-cta">Get a Quote →</a>
-      </div>
-      <div class="tier-card featured reveal reveal-delay-1">
-        <div class="tier-badge">Most Booked</div>
-        <div class="tier-name">Full Production</div>
-        <div class="tier-range">From $2,500</div>
-        <div class="tier-range-note">DJ + sound + lighting</div>
-        <ul class="tier-includes">
-          <li>DJ &amp; MC service</li>
-          <li>Professional sound system</li>
+          <li>Professional DJ with full sound system</li>
+          <li>Wireless microphones — ceremony, toasts &amp; speeches</li>
           <li>LED uplighting (up to 20 fixtures)</li>
-          <li>Wireless microphones</li>
-          <li>Full event coordination</li>
-          <li>Setup, sound check, breakdown</li>
+          <li>Music consultation + run-of-show planning</li>
+          <li>Coordination for processional, first dance &amp; formalities</li>
+          <li>Setup, sound check, and breakdown</li>
         </ul>
+        <div class="pkg-card-addons">
+          <div class="pkg-addons-label">Popular Add-Ons</div>
+          <div class="pkg-addons-text">Cold spark fountains · Dancing on Cloud · Gobo monogram · Live ceremony musicians · Bistro string lights</div>
+        </div>
         <a href="contact" class="tier-cta">Get a Quote →</a>
       </div>
-      <div class="tier-card reveal reveal-delay-2">
-        <div class="tier-badge">Premium</div>
-        <div class="tier-name">Complete Studio</div>
-        <div class="tier-range">From $5,000</div>
-        <div class="tier-range-note">Full production buildout</div>
+
+      <!-- Corporate / Gala -->
+      <div class="pkg-card reveal reveal-delay-1">
+        <div class="tier-badge">Corporate &amp; Galas</div>
+        <div class="tier-name">Corporate Production</div>
         <ul class="tier-includes">
-          <li>Everything in Full Production</li>
-          <li>LED video wall</li>
-          <li>Stage/dancefloor lighting</li>
-          <li>Special effects package</li>
-          <li>Bistro string lighting</li>
-          <li>Dedicated production manager</li>
+          <li>DJ or emcee service</li>
+          <li>Professional sound system</li>
+          <li>Lapel or podium microphone for speakers</li>
+          <li>LED uplighting to transform the room</li>
+          <li>Stage or panel lighting</li>
+          <li>AV support for presentations and video playback</li>
+          <li>Setup, sound check, and breakdown</li>
         </ul>
+        <div class="pkg-card-addons">
+          <div class="pkg-addons-label">Popular Add-Ons</div>
+          <div class="pkg-addons-text">LED video wall · Logo gobo projection · CO₂ cannons · Live cocktail hour musicians</div>
+        </div>
         <a href="contact" class="tier-cta">Get a Quote →</a>
       </div>
+
+      <!-- Social Events -->
+      <div class="pkg-card reveal">
+        <div class="tier-badge">Quinceañeras, Sweet 16s &amp; Birthdays</div>
+        <div class="tier-name">Social Event Production</div>
+        <ul class="tier-includes">
+          <li>Professional DJ with full sound system</li>
+          <li>LED uplighting and dancefloor lighting</li>
+          <li>Wireless microphones — court entrances, speeches &amp; moments</li>
+          <li>High-energy effects for the dancefloor reveal</li>
+          <li>Setup, sound check, and breakdown</li>
+        </ul>
+        <div class="pkg-card-addons">
+          <div class="pkg-addons-label">Popular Add-Ons</div>
+          <div class="pkg-addons-text">CO₂ cannons · Cold spark fountains · Confetti cannons · Dancing on Cloud · LED video wall</div>
+        </div>
+        <a href="contact" class="tier-cta">Get a Quote →</a>
+      </div>
+
+      <!-- Bar / Bat Mitzvah -->
+      <div class="pkg-card reveal reveal-delay-1">
+        <div class="tier-badge">Bar &amp; Bat Mitzvahs</div>
+        <div class="tier-name">Bar/Bat Mitzvah Production</div>
+        <ul class="tier-includes">
+          <li>Professional DJ with full sound system</li>
+          <li>LED uplighting</li>
+          <li>Wireless microphones — candle lighting, prayers &amp; toasts</li>
+          <li>Dancefloor lighting for the party portion</li>
+          <li>Hora and formalities coordination</li>
+          <li>Setup, sound check, and breakdown</li>
+        </ul>
+        <div class="pkg-card-addons">
+          <div class="pkg-addons-label">Popular Add-Ons</div>
+          <div class="pkg-addons-text">Gobo projection (Hebrew name or monogram) · Cold spark fountains · LED video wall · Confetti cannons</div>
+        </div>
+        <a href="contact" class="tier-cta">Get a Quote →</a>
+      </div>
+
     </div>
 
     <div class="add-ons reveal">
       <div class="section-eyebrow" style="margin-bottom:16px;">Add-Ons</div>
-      <h3 class="add-ons-title">Build your own package.</h3>
+      <h3 class="add-ons-title">Mix and match what you need.</h3>
       <div class="addons-grid">
         <div class="addon-card reveal">
           <div class="addon-name">Cold Spark Fountains</div>
@@ -271,7 +313,7 @@
   </section>
 
   <div class="pricing-disclaimer">
-    <p class="disclaimer-text reveal">These are starting points. Final pricing depends on your event length, venue, equipment scope, travel, and crew size. We always send a full custom proposal before anything is signed — you'll see the exact breakdown, not a ballpark. If something doesn't make sense in the quote, just ask us.</p>
+    <p class="disclaimer-text reveal">Every quote is custom and built around your specific event. Final pricing depends on event length, venue, equipment scope, crew size, and any travel. Event details sometimes change — a longer timeline, a different venue layout, last-minute additions — and that can affect the final cost. We flag anything that does before it's on your invoice. You'll always see the full breakdown before you sign anything.</p>
   </div>
 
   <div class="cta-strip">

@@ -207,6 +207,11 @@
     .kanban-card-date { font-size: 12px; color: var(--gray); margin-bottom: 8px; }
     .kanban-card-footer { display: flex; justify-content: space-between; align-items: center; }
     .kanban-card-price { font-weight: 600; color: var(--cyan); }
+    .stage-actions { display: flex; gap: 6px; margin-top: 10px; flex-wrap: wrap; }
+    .stage-action-btn { font-size: 10px; font-weight: 700; letter-spacing: .04em; text-transform: uppercase; padding: 5px 10px; border-radius: 5px; border: 1px solid rgba(31,163,224,0.4); background: rgba(31,163,224,0.08); color: var(--cyan); cursor: pointer; white-space: nowrap; transition: background 0.15s, border-color 0.15s; }
+    .stage-action-btn:hover { background: rgba(31,163,224,0.2); border-color: var(--cyan); }
+    .stage-action-btn.success { border-color: rgba(46,204,113,0.4); background: rgba(46,204,113,0.08); color: #2ecc71; }
+    .stage-action-btn.success:hover { background: rgba(46,204,113,0.2); border-color: #2ecc71; }
 
     .toast-container { position: fixed; bottom: 20px; right: 20px; z-index: 300; }
     .toast { background: var(--black-3); border: 1px solid var(--border); border-radius: 6px; padding: 15px 20px; margin-bottom: 10px; display: flex; align-items: center; gap: 10px; animation: slideIn 0.3s ease-out; }
@@ -2585,11 +2590,13 @@
           const date = new Date(e.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
           const next = nextStatus[status];
           const advanceChip = next ? `<div class="kanban-advance-chip" onclick="event.stopPropagation();advancePipelineStage('${e.id}','${next}')" style="display:none;position:absolute;bottom:8px;right:8px;font-size:10px;font-weight:700;padding:3px 8px;border-radius:10px;background:rgba(31,163,224,0.2);color:var(--cyan);border:1px solid rgba(31,163,224,0.3);cursor:pointer;white-space:nowrap;">→ ${next}</div>` : '';
+          const stageCtaHtml = getStageCTAs(status, e.id, e);
           html += `<div class="kanban-card" draggable="true" data-event-id="${e.id}" style="position:relative;" ondragstart="dragStart(event)" ondragend="dragEnd(event)" onclick="openEventDetail('${e.id}')" onmouseenter="this.querySelector('.kanban-advance-chip')&&(this.querySelector('.kanban-advance-chip').style.display='block')" onmouseleave="this.querySelector('.kanban-advance-chip')&&(this.querySelector('.kanban-advance-chip').style.display='none')">
             <div class="kanban-card-title">${e.name}</div>
             <div class="kanban-card-client">${e.clientName}</div>
             <div class="kanban-card-date">${date} ${daysUntilChip(e.date)}</div>
             <div class="kanban-card-footer"><div class="kanban-card-price">$${e.basePrice}</div></div>
+            ${stageCtaHtml ? `<div class="stage-actions" onclick="event.stopPropagation()">${stageCtaHtml}</div>` : ''}
             ${advanceChip}
           </div>`;
         });
@@ -2614,6 +2621,103 @@
       showToast('Moved to ' + newStatus, 'success');
       renderPipeline();
     }
+
+    // ── Stage-specific CTA buttons for kanban cards ───────────────────
+    function getStageCTAs(status, eventId, ev) {
+      const hasEmail = !!(ev && (ev.clientEmail || ev.portalEmail));
+      switch (status) {
+        case 'lead':
+          return `<button class="stage-action-btn" onclick="openQuoteBuilderModal('${eventId}')">Send Quote</button>`;
+        case 'proposal':
+          return `<button class="stage-action-btn" onclick="stageFollowUp('${eventId}')">Follow Up</button>`;
+        case 'negotiation':
+          return `<button class="stage-action-btn" onclick="stageSendContract('${eventId}')">Send Contract</button>`;
+        case 'booked':
+          return `<button class="stage-action-btn${ev && ev.depositPaid ? ' success' : ''}" onclick="stageCollectDeposit('${eventId}')">${ev && ev.depositPaid ? '✓ Deposit Paid' : 'Mark Deposit Paid'}</button>
+                  <button class="stage-action-btn" onclick="sendPortalInvite('${eventId}')">Portal Invite</button>`;
+        case 'confirmed':
+          return `<button class="stage-action-btn" onclick="stageSendDayOf('${eventId}')">Send Day-Of</button>`;
+        case 'completed':
+          return `<button class="stage-action-btn success" onclick="stageRequestReview('${eventId}')">Request Review</button>`;
+        default:
+          return '';
+      }
+    }
+
+    async function stageFollowUp(eventId) {
+      const events = getDB('events');
+      const ev = events.find(e => e.id === eventId);
+      if (!ev) return;
+      const email = ev.clientEmail || ev.portalEmail || '';
+      const firstName = (ev.clientName || 'there').split(' ')[0];
+      if (!email) { showToast('No client email — add one in event details first.', 'warning'); return; }
+      const eventDate = ev.date ? new Date(ev.date + 'T12:00:00').toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' }) : 'your event date';
+      const body = `Hey ${firstName} —\n\nJust wanted to follow up on the quote I sent over for your ${ev.type || 'event'} on ${eventDate}.\n\nHappy to answer any questions or adjust anything. What's your timeline for deciding?\n\n— Saul\nBaseline Studio\n(786) 302-6056`;
+      const result = await BSPortal.sendEmail('generic', { email, clientName: ev.clientName || 'there', body, subject: `Following up — ${ev.name || 'your event'}` });
+      if (result.ok) {
+        showToast('Follow-up sent to ' + email, 'success');
+      } else {
+        showEmailFallback(email, `Following up — ${ev.name || 'your event'}`, body, 'Could not send — use this fallback:');
+      }
+    }
+
+    function stageSendContract(eventId) {
+      // Navigate to event detail and open the Documents tab
+      navigateToEvent(eventId);
+      setTimeout(() => {
+        const docsBtn = document.querySelector('.tab-btn[onclick*="documents"]');
+        if (docsBtn) docsBtn.click();
+        // Auto-select a contract template if one exists
+        const sel = document.getElementById('evtDocTemplate_' + eventId);
+        if (sel) {
+          const contractOption = Array.from(sel.options).find(o => /agreement|contract/i.test(o.text));
+          if (contractOption) { sel.value = contractOption.value; showToast('Contract template ready — click "+ From Template" to create it.', 'info'); }
+        }
+      }, 350);
+    }
+
+    function stageCollectDeposit(eventId) {
+      navigateToEvent(eventId);
+      setTimeout(() => {
+        const cb = document.getElementById('editDepositPaid');
+        if (cb && !cb.checked) { cb.focus(); showToast('Mark the deposit checkbox once payment is received.', 'info'); }
+      }, 350);
+    }
+
+    async function stageSendDayOf(eventId) {
+      const events = getDB('events');
+      const ev = events.find(e => e.id === eventId);
+      if (!ev) return;
+      const email = ev.portalEmail || ev.clientEmail || '';
+      const firstName = (ev.clientName || 'there').split(' ')[0];
+      if (!email) { showToast('No client email — add one in event details first.', 'warning'); return; }
+      const eventDate = ev.date ? new Date(ev.date + 'T12:00:00').toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' }) : 'your event date';
+      const timelineLines = (ev.timeline || []).map(t => `  ${t.time || ''}  ${t.label || ''}`).join('\n');
+      const body = `Hey ${firstName} —\n\nYour event is coming up — here's where everything stands.\n\nDate: ${eventDate}\nVenue: ${ev.venueName || 'your venue'}\n${timelineLines ? '\nRun of Show:\n' + timelineLines + '\n' : ''}\nWe'll be onsite early for setup and sound check. If anything comes up between now and then, just text or call.\n\n— Saul\nBaseline Studio\n(786) 302-6056`;
+      const result = await BSPortal.sendEmail('generic', { email, clientName: ev.clientName || 'there', body, subject: `Day-of details — ${ev.name || 'your event'}` });
+      if (result.ok) {
+        showToast('Day-of details sent to ' + email, 'success');
+      } else {
+        showEmailFallback(email, `Day-of details — ${ev.name || 'your event'}`, body, 'Could not send — use this fallback:');
+      }
+    }
+
+    async function stageRequestReview(eventId) {
+      const events = getDB('events');
+      const ev = events.find(e => e.id === eventId);
+      if (!ev) return;
+      const email = ev.portalEmail || ev.clientEmail || '';
+      const firstName = (ev.clientName || 'there').split(' ')[0];
+      if (!email) { showToast('No client email — add one in event details first.', 'warning'); return; }
+      const body = `Hey ${firstName} —\n\nReally glad we got to be part of your ${ev.type || 'event'}. Hope the night was everything you wanted it to be.\n\nIf you have a minute, leaving us a Google review would mean a lot. It takes about 60 seconds and helps other clients find us:\n\nhttps://g.page/r/baselinestudiofl/review\n\nThanks for trusting us with your night.\n\n— Saul\nBaseline Studio\n(786) 302-6056`;
+      const result = await BSPortal.sendEmail('generic', { email, clientName: ev.clientName || 'there', body, subject: `Thank you — ${ev.name || 'your event'}` });
+      if (result.ok) {
+        showToast('Review request sent to ' + email, 'success');
+      } else {
+        showEmailFallback(email, `Thank you — ${ev.name || 'your event'}`, body, 'Could not send — use this fallback:');
+      }
+    }
+    // ─────────────────────────────────────────────────────────────────
 
     function toggleArchiveEvent(eventId, archive) {
       const events = getDB('events');
@@ -3169,6 +3273,11 @@
       const ev = events.find(e => e.id === eventId);
       if (!ev) return;
       ev.depositPaid = paid;
+      // Auto-advance to confirmed when deposit is received and event is still in booked stage
+      if (paid && ev.status === 'booked') {
+        ev.status = 'confirmed';
+        showToast('Deposit received — stage advanced to Confirmed.', 'success');
+      }
       setDB('events', events);
       if (paid) {
         // Non-blocking toast with inline "Send Portal Invite" action
@@ -3511,8 +3620,8 @@
 
       // Auto-advance pipeline stage when a contract is signed
       const isContract = doc.name && /agreement|contract/i.test(doc.name);
-      if (isContract && ev && ev.status !== 'completed' && ev.status !== 'confirmed') {
-        ev.status = 'confirmed';
+      if (isContract && ev && !['booked','confirmed','completed'].includes(ev.status)) {
+        ev.status = 'booked';
       }
 
       setDB('events', events);
