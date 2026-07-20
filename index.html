@@ -115,6 +115,8 @@
     --cyan-dark:  #1585b8;
     --cyan-dim:   rgba(31,163,224,0.12);
     --cyan-glow:  rgba(31,163,224,0.06);
+    --rule:       rgba(255,255,255,0.07);
+    --rule-cyan:  rgba(31,163,224,0.18);
     --gray:       #777;
     --gray-light: #bbb;
     --font-head:  'Anton', Impact, sans-serif;
@@ -283,14 +285,15 @@
   }
   .testimonial-grid {
     display: grid; grid-template-columns: repeat(3, 1fr);
-    gap: 1px; background: rgba(255,255,255,0.06);
+    gap: 1px; background: var(--rule-cyan);
   }
   .testimonial-card {
     background: var(--black); padding: 2.4rem 2rem;
     display: flex; flex-direction: column; justify-content: space-between;
-    transition: background 0.2s;
+    border-left: 2px solid rgba(31,163,224,0.18);
+    transition: background 0.2s, border-color 0.2s;
   }
-  .testimonial-card:hover { background: #080808; }
+  .testimonial-card:hover { background: #080808; border-left-color: var(--cyan); }
   .testimonial-quote {
     font-family: var(--font-body); font-size: clamp(0.95rem, 1.3vw, 1.05rem);
     color: rgba(255,255,255,0.8); line-height: 1.75; font-weight: 300; font-style: italic;
@@ -408,7 +411,7 @@
   .fx-grid {
     display: grid; grid-template-columns: repeat(3, 1fr);
     gap: 1px; margin-top: 3rem;
-    background: rgba(255,255,255,0.05);
+    background: var(--rule-cyan);
   }
   .fx-item {
     background: var(--black); padding: 2.8rem 2rem;
@@ -416,8 +419,9 @@
     border-bottom: 2px solid transparent;
     transition: background 0.25s, border-color 0.25s;
   }
-  .fx-item-wide { grid-column: span 2; }
+  .fx-item-wide { grid-column: span 2; background: linear-gradient(135deg, rgba(31,163,224,0.04) 0%, var(--black) 60%); }
   .fx-item:hover { background: var(--black-2); border-bottom-color: var(--cyan); }
+  .fx-item-wide:hover { background: linear-gradient(135deg, rgba(31,163,224,0.08) 0%, var(--black-2) 60%); }
   .fx-icon {
     font-family: var(--font-cond); font-size: 0.72rem; font-weight: 700;
     letter-spacing: 0.18em; color: rgba(255,255,255,0.5);
@@ -485,57 +489,40 @@
     font-family: var(--font-cond); font-size: 1rem; font-weight: 600;
     letter-spacing: 0.1em; color: var(--cyan);
   }
-  .form-field { margin-bottom: 1.6rem; }
-  .form-field label {
-    display: block; font-family: var(--font-cond); font-size: 0.72rem; font-weight: 700;
-    letter-spacing: 0.15em; text-transform: uppercase; color: rgba(255,255,255,0.5);
-    margin-bottom: 0.5rem;
-  }
-  .form-field input, .form-field textarea, .form-field select {
-    width: 100%; background: transparent;
-    border: none; border-bottom: 1px solid rgba(255,255,255,0.2);
-    color: var(--white); font-family: var(--font-body); font-size: 1rem;
-    padding: 0.75rem 0; outline: none; transition: border-color 0.2s;
-    -webkit-appearance: none;
-  }
-  .form-field input:focus, .form-field textarea:focus, .form-field select:focus { border-bottom-color: var(--cyan); }
-  .form-field textarea { resize: none; height: 90px; }
-  .form-field input::placeholder, .form-field textarea::placeholder { color: rgba(255,255,255,0.45); }
-  .form-field select option { background: #0d2033; color: var(--white); }
-  .form-checkboxes { display: flex; flex-wrap: wrap; gap: 0.5rem; margin-top: 0.6rem; }
-  .form-checkbox { position: relative; cursor: pointer; }
-  .form-checkbox input[type="checkbox"] { position: absolute; opacity: 0; width: 0; height: 0; pointer-events: none; }
-  .form-checkbox span {
-    display: flex; align-items: center; gap: 0.5rem;
-    font-family: var(--font-cond); font-size: 0.8rem; font-weight: 600;
-    letter-spacing: 0.08em; text-transform: uppercase;
-    color: rgba(255,255,255,0.5); border: 1px solid rgba(255,255,255,0.18);
-    padding: 0.55rem 0.85rem; cursor: pointer; transition: all 0.2s; user-select: none;
-  }
-  .form-checkbox span::before {
-    content: ''; display: inline-block; width: 11px; height: 11px; flex-shrink: 0;
-    border: 1.5px solid rgba(255,255,255,0.3); transition: all 0.2s;
-  }
-  .form-checkbox input[type="checkbox"]:checked + span {
-    color: var(--white); border-color: var(--cyan); background: rgba(31,163,224,0.08);
-  }
-  .form-checkbox input[type="checkbox"]:checked + span::before {
-    background: var(--cyan); border-color: var(--cyan);
-  }
-  .form-checkbox:hover span { color: var(--white); border-color: rgba(255,255,255,0.4); }
-  .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 2rem; }
-  .btn-submit {
-    margin-top: 2rem; padding: 1rem 3rem;
-    background: none; border: 1px solid rgba(255,255,255,0.35);
-    color: var(--white); font-family: var(--font-cond); font-size: 0.85rem; font-weight: 700;
-    letter-spacing: 0.18em; text-transform: uppercase; cursor: pointer;
-    transition: all 0.25s; display: inline-block;
-  }
-  .btn-submit:hover { background: var(--white); color: var(--black); border-color: var(--white); }
-  .form-success {
-    display: none; font-family: var(--font-body); color: rgba(255,255,255,0.8);
-    padding: 2rem 0; font-size: 1rem; line-height: 1.7;
-  }
+  .contact-form-wrap { background: var(--black-2); border: 1px solid var(--rule); padding: 48px 40px; }
+  /* FORM INPUTS — shared by CFW steps */
+  .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 2rem; margin-bottom: 1.2rem; }
+  .form-group { display: flex; flex-direction: column; gap: 0.4rem; margin-bottom: 1.4rem; }
+  .form-label { font-family: var(--font-cond); font-size: 0.7rem; font-weight: 700; letter-spacing: 0.12em; text-transform: uppercase; color: rgba(255,255,255,0.45); }
+  .form-input, .form-textarea { width: 100%; padding: 0.75rem 0; background: transparent; border: none; border-bottom: 1px solid rgba(255,255,255,0.2); color: var(--white); font-family: var(--font-body); font-size: 1rem; outline: none; transition: border-color 0.2s; -webkit-appearance: none; }
+  .form-input:focus, .form-textarea:focus { border-bottom-color: var(--cyan); }
+  .form-input::placeholder, .form-textarea::placeholder { color: rgba(255,255,255,0.2); }
+  .form-textarea { resize: none; min-height: 100px; }
+  .form-success { display: none; font-family: var(--font-body); color: rgba(255,255,255,0.8); padding: 2rem 0; font-size: 1rem; line-height: 1.7; }
+  .form-success.show { display: block; }
+  /* CONVERSATIONAL FORM WIDGET */
+  .cfw-question { font-family: var(--font-cond); font-size: 22px; font-weight: 800; letter-spacing: -.5px; color: var(--white); margin-bottom: 6px; }
+  .cfw-step-counter { font-size: 11px; font-weight: 700; letter-spacing: .1em; text-transform: uppercase; color: rgba(255,255,255,.3); margin-bottom: 20px; }
+  .cfw-progress-track { height: 2px; background: rgba(255,255,255,.08); border-radius: 2px; margin-bottom: 28px; }
+  .cfw-progress-fill { height: 100%; background: var(--cyan); border-radius: 2px; transition: width .4s cubic-bezier(.22,1,.36,1); }
+  .cfw-panel { animation: cfwFadeIn .25s ease; }
+  @keyframes cfwFadeIn { from { opacity:0; transform:translateY(6px); } to { opacity:1; transform:translateY(0); } }
+  .cfw-tile-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-bottom: 24px; }
+  .cfw-tile { background: var(--black-3); border: 1px solid var(--rule); border-radius: 8px; padding: 16px 10px; text-align: center; cursor: pointer; transition: border-color .15s, background .15s; font-size: 13px; font-weight: 500; color: rgba(255,255,255,.65); }
+  .cfw-tile:hover { border-color: rgba(31,163,224,.5); background: rgba(31,163,224,.05); color: #fff; }
+  .cfw-tile.selected { border-color: var(--cyan); background: rgba(31,163,224,.12); color: #fff; }
+  .cfw-tile-icon { display: flex; justify-content: center; align-items: center; margin-bottom: 8px; color: rgba(255,255,255,.45); transition: color .15s; }
+  .cfw-tile:hover .cfw-tile-icon { color: rgba(255,255,255,.85); }
+  .cfw-tile.selected .cfw-tile-icon { color: var(--cyan); }
+  .cfw-chip-grid { display: flex; flex-wrap: wrap; gap: 10px; margin-bottom: 8px; }
+  .cfw-chip { padding: 9px 16px; border: 1px solid var(--rule); border-radius: 100px; font-size: 13px; font-weight: 500; color: rgba(255,255,255,.6); cursor: pointer; transition: border-color .15s, background .15s, color .15s; }
+  .cfw-chip:hover { border-color: rgba(31,163,224,.5); color: #fff; }
+  .cfw-chip.selected { border-color: var(--cyan); background: rgba(31,163,224,.12); color: #fff; }
+  .cfw-nav { display: flex; align-items: center; justify-content: space-between; margin-top: 28px; gap: 12px; }
+  .cfw-back { background: none; border: 1px solid rgba(255,255,255,.12); color: rgba(255,255,255,.45); padding: 11px 20px; border-radius: 4px; font-family: var(--font-body); font-size: 14px; cursor: pointer; transition: border-color .15s, color .15s; }
+  .cfw-back:hover { border-color: rgba(255,255,255,.3); color: rgba(255,255,255,.8); }
+  .cfw-next { background: var(--cyan); color: var(--black); border: none; padding: 12px 28px; border-radius: 4px; font-family: var(--font-body); font-size: 14px; font-weight: 700; cursor: pointer; transition: opacity .15s; margin-left: auto; }
+  .cfw-next:hover { opacity: .85; }
 
   /*  FOOTER  */
   #footer { background: var(--black); padding: 5rem var(--gutter) 3rem; border-top: 1px solid rgba(255,255,255,0.06); }
@@ -570,16 +557,27 @@
 
   /*  PORTAL  */
   #portal-section {
-    background: var(--black-2); padding: clamp(4rem, 7vw, 6rem) var(--gutter);
-    border-top: 1px solid rgba(255,255,255,0.05);
+    background: linear-gradient(160deg, #07111c 0%, var(--black-2) 55%, #0a0a0a 100%);
+    padding: clamp(4rem, 7vw, 6rem) var(--gutter);
+    border-top: 1px solid rgba(31,163,224,0.12);
   }
   .portal-inner { max-width: var(--max-w); margin: 0 auto; }
   .portal-bento {
     display: grid; grid-template-columns: repeat(3, 1fr);
-    gap: 1px; background: rgba(255,255,255,0.06); margin-top: 3rem;
+    gap: 1px; background: var(--rule-cyan); margin-top: 3rem;
   }
-  .portal-card { background: var(--black-3); padding: 2.4rem; position: relative; overflow: hidden; }
-  .portal-card-main { grid-column: span 2; background: var(--black-4); }
+  .portal-card {
+    background: var(--black-3); padding: 2.4rem; position: relative; overflow: hidden;
+    border: 1px solid rgba(31,163,224,0.1);
+    transition: border-color 0.25s, background 0.25s;
+  }
+  .portal-card:hover { border-color: rgba(31,163,224,0.35); background: #131313; }
+  .portal-card-main {
+    grid-column: span 2;
+    background: linear-gradient(135deg, rgba(31,163,224,0.07) 0%, var(--black-4) 70%);
+    border-color: rgba(31,163,224,0.2);
+  }
+  .portal-card-main:hover { border-color: rgba(31,163,224,0.45); }
   .portal-card-label {
     font-family: var(--font-cond); font-size: 0.7rem; font-weight: 700;
     letter-spacing: 0.2em; text-transform: uppercase; color: var(--cyan);
@@ -635,6 +633,8 @@
     .portal-card-main { grid-column: span 1; }
     .contact-inner { grid-template-columns: 1fr; gap: 3.5rem; }
     .form-row { grid-template-columns: 1fr; gap: 0; }
+    .contact-form-wrap { padding: 32px 24px; }
+    .cfw-tile-grid { grid-template-columns: repeat(2, 1fr); }
     .footer-cols { grid-template-columns: 1fr 1fr; gap: 2.5rem; }
     .footer-bottom { flex-direction: column; align-items: flex-start; gap: 0.75rem; }
     .service-row { grid-template-columns: 60px 1fr; }
@@ -894,12 +894,12 @@
 <section id="portal-section">
   <div class="portal-inner">
     <span class="section-eyebrow reveal">Client Experience</span>
-    <h2 class="section-heading reveal">More than a vendor.<br>A full system.</h2>
+    <h2 class="section-heading reveal">You'll always know<br>where things stand.</h2>
     <div class="portal-bento reveal">
       <div class="portal-card portal-card-main">
         <span class="portal-card-label">The Client Portal</span>
-        <h3 class="portal-card-title">Your event,<br>fully organized.</h3>
-        <p class="portal-card-desc">Once you book, you get access to a private portal with everything about your event in one place. Contracts, your run of show, event details, and a direct line to the team. No chasing emails. No spreadsheets.</p>
+        <h3 class="portal-card-title">Your event,<br>one place.</h3>
+        <p class="portal-card-desc">Once we're booked, we set you up with your own client portal. Your contract, the timeline we build out together, payment status. All of it in one spot. Check on anything whenever, message us directly. You don't have to dig through old emails to find what we talked about. A lot of clients tell us that alone takes a weight off.</p>
         <a href="login.html" class="portal-card-cta">Access Your Portal →</a>
       </div>
       <div class="portal-card">
@@ -907,21 +907,21 @@
           <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25m0 12.75h7.5m-7.5 3H12M10.5 2.25H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 00-9-9z" /></svg>
         </div>
         <p class="portal-feature-title">Contracts & Proposals</p>
-        <p class="portal-feature-desc">Sign, review, and store everything in one place. No PDFs buried in your inbox.</p>
+        <p class="portal-feature-desc">Everything you need to sign or review lives here. You can pull it up anytime instead of hunting through old emails.</p>
       </div>
       <div class="portal-card">
         <div class="portal-feature-icon">
           <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M6.75 3v2.25M17.25 3v2.25M3 18.75V7.5a2.25 2.25 0 012.25-2.25h13.5A2.25 2.25 0 0121 7.5v11.25m-18 0A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75m-18 0v-7.5A2.25 2.25 0 015.25 9h13.5A2.25 2.25 0 0121 11.25v7.5" /></svg>
         </div>
         <p class="portal-feature-title">Event Timeline</p>
-        <p class="portal-feature-desc">Your full run of show, built together and updated as things change.</p>
+        <p class="portal-feature-desc">We build your run of show together in here. It stays updated as things shift, so you're always looking at the current version.</p>
       </div>
       <div class="portal-card">
         <div class="portal-feature-icon">
           <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M8.625 12a.375.375 0 11-.75 0 .375.375 0 01.75 0zm0 0H8.25m4.125 0a.375.375 0 11-.75 0 .375.375 0 01.75 0zm0 0H12m4.125 0a.375.375 0 11-.75 0 .375.375 0 01.75 0zm0 0h-.375M21 12c0 4.556-4.03 8.25-9 8.25a9.764 9.764 0 01-2.555-.337A5.972 5.972 0 015.41 20.97a5.969 5.969 0 01-.474-.065 4.48 4.48 0 00.978-2.025c.09-.457-.133-.901-.467-1.226C3.93 16.178 3 14.189 3 12c0-4.556 4.03-8.25 9-8.25s9 3.694 9 8.25z" /></svg>
         </div>
         <p class="portal-feature-title">Direct Line to the Team</p>
-        <p class="portal-feature-desc">Questions go through the portal, not lost in email threads. We get back fast.</p>
+        <p class="portal-feature-desc">Message us through the portal and you get a real response. Everything stays in one thread so nothing gets lost.</p>
       </div>
     </div>
   </div>
@@ -990,58 +990,114 @@
       <p class="contact-desc reveal">Tell us your date, your venue, and what you're going for. We love this part — figuring out what's going to make your event feel like yours. No generic packages. Just a real conversation and a quote that actually fits.</p>
       <a href="tel:7863026056" onclick="gtag('event','phone_call',{'event_category':'contact','event_label':'homepage'});" class="contact-tel reveal">(786) 302-6056</a>
     </div>
-    <div>
-      <!-- Web3Forms: same key as contact.html — get it at web3forms.com -->
-      <form id="contactForm">
+    <div class="contact-form-wrap reveal">
+      <!-- Progress + question heading -->
+      <div class="cfw-progress-track"><div class="cfw-progress-fill" id="hpCfwProgressFill" style="width:20%"></div></div>
+      <div class="cfw-step-counter" id="hpCfwCounter">Step 1 of 5</div>
+      <div class="cfw-question" id="hpCfwQuestion">What's the occasion?</div>
+
+      <!-- Step 1: Event type -->
+      <div id="hpCfwStep1" class="cfw-panel">
+        <div class="cfw-tile-grid">
+          <div class="cfw-tile" data-val="Wedding" onclick="hpCfwSelectTile(this)"><span class="cfw-tile-icon"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg></span>Wedding</div>
+          <div class="cfw-tile" data-val="Quinceañera" onclick="hpCfwSelectTile(this)"><span class="cfw-tile-icon"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg></span>Quinceañera</div>
+          <div class="cfw-tile" data-val="Bar / Bat Mitzvah" onclick="hpCfwSelectTile(this)"><span class="cfw-tile-icon"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 3 22 19.5 2 19.5"/><polygon points="12 21 2 4.5 22 4.5"/></svg></span>Bar / Bat Mitzvah</div>
+          <div class="cfw-tile" data-val="Corporate Event" onclick="hpCfwSelectTile(this)"><span class="cfw-tile-icon"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="7" width="20" height="14" rx="1"/><path d="M16 7V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v2"/><line x1="12" y1="12" x2="12" y2="12.01"/></svg></span>Corporate</div>
+          <div class="cfw-tile" data-val="Birthday / Private Party" onclick="hpCfwSelectTile(this)"><span class="cfw-tile-icon"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 12 20 22 4 22 4 12"/><rect x="2" y="7" width="20" height="5"/><line x1="12" y1="22" x2="12" y2="7"/><path d="M12 7H7.5a2.5 2.5 0 0 1 0-5C11 2 12 7 12 7z"/><path d="M12 7h4.5a2.5 2.5 0 0 0 0-5C13 2 12 7 12 7z"/></svg></span>Birthday / Party</div>
+          <div class="cfw-tile" data-val="Other" onclick="hpCfwSelectTile(this)"><span class="cfw-tile-icon"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/><circle cx="5" cy="12" r="1"/></svg></span>Other</div>
+        </div>
+      </div>
+
+      <!-- Step 2: Date + venue -->
+      <div id="hpCfwStep2" class="cfw-panel" style="display:none">
+        <div class="form-row">
+          <div class="form-group">
+            <label class="form-label">Event Date</label>
+            <input type="date" class="form-input" id="hpCfwDate">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Guest Count <span style="opacity:.5;font-weight:400">(approx.)</span></label>
+            <input type="number" class="form-input" id="hpCfwGuests" placeholder="150">
+          </div>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Venue <span style="opacity:.5;font-weight:400">(name or city)</span></label>
+          <input type="text" class="form-input" id="hpCfwVenue" placeholder="The Biltmore, Coral Gables">
+        </div>
+      </div>
+
+      <!-- Step 3: Services -->
+      <div id="hpCfwStep3" class="cfw-panel" style="display:none">
+        <div class="cfw-chip-grid">
+          <div class="cfw-chip" data-val="DJ" onclick="hpCfwToggleChip(this)">DJ &amp; Entertainment</div>
+          <div class="cfw-chip" data-val="Sound" onclick="hpCfwToggleChip(this)">Live Sound &amp; Audio</div>
+          <div class="cfw-chip" data-val="LED" onclick="hpCfwToggleChip(this)">LED Video Walls</div>
+          <div class="cfw-chip" data-val="Uplighting" onclick="hpCfwToggleChip(this)">Uplighting</div>
+          <div class="cfw-chip" data-val="Bistro Lights" onclick="hpCfwToggleChip(this)">Bistro String Lights</div>
+          <div class="cfw-chip" data-val="Special Effects" onclick="hpCfwToggleChip(this)">Special Effects</div>
+          <div class="cfw-chip" data-val="Live Musicians" onclick="hpCfwToggleChip(this)">Live Musicians</div>
+        </div>
+        <p style="font-size:12px;color:rgba(255,255,255,.3);margin-top:14px;">Pick everything that applies. We can talk through the rest.</p>
+      </div>
+
+      <!-- Step 4: Contact info -->
+      <div id="hpCfwStep4" class="cfw-panel" style="display:none">
+        <div class="form-row">
+          <div class="form-group">
+            <label class="form-label">First Name</label>
+            <input type="text" class="form-input" id="hpCfwFirst" placeholder="Jane">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Last Name</label>
+            <input type="text" class="form-input" id="hpCfwLast" placeholder="Smith">
+          </div>
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label class="form-label">Email</label>
+            <input type="email" class="form-input" id="hpCfwEmail" placeholder="jane@email.com">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Phone <span style="opacity:.5;font-weight:400">(optional)</span></label>
+            <input type="tel" class="form-input" id="hpCfwPhone" placeholder="(305) 000-0000">
+          </div>
+        </div>
+      </div>
+
+      <!-- Step 5: Message + submit -->
+      <div id="hpCfwStep5" class="cfw-panel" style="display:none">
+        <div class="form-group">
+          <label class="form-label">Anything else? <span style="opacity:.5;font-weight:400">(optional)</span></label>
+          <textarea class="form-textarea" id="hpCfwMessage" placeholder="Vibe, budget range, specific moments you care about — anything helps." style="min-height:110px;"></textarea>
+        </div>
+      </div>
+
+      <!-- Nav -->
+      <div class="cfw-nav">
+        <button class="cfw-back" id="hpCfwBack" onclick="hpCfwBack()" style="display:none">← Back</button>
+        <button class="cfw-next" id="hpCfwNext" onclick="hpCfwNext()">Next →</button>
+      </div>
+
+      <!-- Hidden Web3Forms submission -->
+      <form id="hp-contact-form" style="display:none">
         <input type="hidden" name="access_key" value="8eb161bf-d25e-41f4-8111-e5ea9a8a200e">
         <input type="hidden" name="subject" value="New Inquiry — Baseline Studio">
         <input type="hidden" name="from_name" value="Baseline Studio Website">
         <input type="hidden" name="redirect" value="false">
-        <input type="checkbox" name="botcheck" style="display:none;">
-        <div class="form-row">
-          <div class="form-field">
-            <label for="cf-firstName">First Name <span style="color:var(--cyan)">*</span></label>
-            <input id="cf-firstName" type="text" name="firstName" required placeholder="First name" autocomplete="given-name">
-          </div>
-          <div class="form-field">
-            <label for="cf-lastName">Last Name <span style="color:var(--cyan)">*</span></label>
-            <input id="cf-lastName" type="text" name="lastName" required placeholder="Last name" autocomplete="family-name">
-          </div>
-        </div>
-        <div class="form-field">
-          <label for="cf-email">Email <span style="color:var(--cyan)">*</span></label>
-          <input id="cf-email" type="email" name="email" required placeholder="your@email.com" autocomplete="email">
-        </div>
-        <div class="form-row">
-          <div class="form-field">
-            <label for="cf-eventDate">Event Date</label>
-            <input id="cf-eventDate" type="date" name="eventDate">
-          </div>
-          <div class="form-field">
-            <label for="cf-venue">Venue</label>
-            <input id="cf-venue" type="text" name="venue" placeholder="Venue name or TBD">
-          </div>
-        </div>
-        <div class="form-field">
-          <label>What are you looking for?</label>
-          <div class="form-checkboxes">
-            <label class="form-checkbox"><input type="checkbox" name="services" value="DJ"><span>DJ</span></label>
-            <label class="form-checkbox"><input type="checkbox" name="services" value="Live Sound"><span>Live Sound</span></label>
-            <label class="form-checkbox"><input type="checkbox" name="services" value="Lighting"><span>Lighting</span></label>
-            <label class="form-checkbox"><input type="checkbox" name="services" value="LED Wall / Video"><span>LED Wall / Video</span></label>
-            <label class="form-checkbox"><input type="checkbox" name="services" value="Special Effects"><span>Special Effects</span></label>
-            <label class="form-checkbox"><input type="checkbox" name="services" value="Live Musicians"><span>Live Musicians</span></label>
-          </div>
-        </div>
-        <div class="form-field">
-          <label for="cf-message">Anything else we should know</label>
-          <textarea id="cf-message" name="message" placeholder="Venue, guest count, vibe, anything on your mind..."></textarea>
-        </div>
-        <button type="submit" class="btn-submit">Send Message</button>
+        <input type="checkbox" name="botcheck" style="display:none">
+        <input type="hidden" name="firstName" id="hpHFirst">
+        <input type="hidden" name="lastName" id="hpHLast">
+        <input type="hidden" name="email" id="hpHEmail">
+        <input type="hidden" name="phone" id="hpHPhone">
+        <input type="hidden" name="eventType" id="hpHType">
+        <input type="hidden" name="eventDate" id="hpHDate">
+        <input type="hidden" name="venue" id="hpHVenue">
+        <input type="hidden" name="guestCount" id="hpHGuests">
+        <input type="hidden" name="services_summary" id="hpHServices">
+        <input type="hidden" name="message" id="hpHMessage">
       </form>
-      <div class="form-success" id="formSuccess">
-        Got it — thanks. We'll review your info and reach out shortly. If your date is time-sensitive, feel free to call us directly at (786) 302-6056.
-      </div>
+
+      <div class="form-success" id="hp-form-success">Got it — we'll be in touch within one business day.</div>
     </div>
   </div>
 </section>
@@ -1180,6 +1236,130 @@
       if (submitBtn) { submitBtn.disabled = false; submitBtn.textContent = 'Send Message'; }
     }
   });
+</script>
+
+<script>
+  /* Homepage Conversational Form */
+  var hpCfwStep = 1;
+  var hpCfwTotal = 5;
+  var hpCfwQuestions = [
+    'What\'s the occasion?',
+    'When is it, and where?',
+    'What are you looking for?',
+    'How should we reach you?',
+    'Anything else before we reach out?'
+  ];
+
+  function hpCfwShow(step) {
+    for (var i = 1; i <= hpCfwTotal; i++) {
+      var el = document.getElementById('hpCfwStep' + i);
+      if (el) el.style.display = (i === step) ? '' : 'none';
+      if (i === step && el) {
+        el.style.animation = 'none';
+        el.offsetHeight;
+        el.style.animation = '';
+      }
+    }
+    document.getElementById('hpCfwQuestion').textContent = hpCfwQuestions[step - 1];
+    document.getElementById('hpCfwCounter').textContent = 'Step ' + step + ' of ' + hpCfwTotal;
+    document.getElementById('hpCfwProgressFill').style.width = (step / hpCfwTotal * 100) + '%';
+    document.getElementById('hpCfwBack').style.display = (step > 1) ? '' : 'none';
+    var nextBtn = document.getElementById('hpCfwNext');
+    nextBtn.textContent = (step === hpCfwTotal) ? 'Send Inquiry' : 'Next →';
+  }
+
+  function hpCfwSelectTile(el) {
+    document.querySelectorAll('#hpCfwStep1 .cfw-tile').forEach(function(t) { t.classList.remove('selected'); });
+    el.classList.add('selected');
+  }
+
+  function hpCfwToggleChip(el) {
+    el.classList.toggle('selected');
+  }
+
+  function hpCfwBack() {
+    if (hpCfwStep > 1) { hpCfwStep--; hpCfwShow(hpCfwStep); }
+  }
+
+  function hpCfwNext() {
+    if (hpCfwStep === hpCfwTotal) { hpCfwSubmit(); return; }
+    if (hpCfwStep === 4) {
+      var first = document.getElementById('hpCfwFirst').value.trim();
+      var email = document.getElementById('hpCfwEmail').value.trim();
+      if (!first) { document.getElementById('hpCfwFirst').focus(); return; }
+      if (!email || !email.includes('@')) { document.getElementById('hpCfwEmail').focus(); return; }
+    }
+    hpCfwStep++;
+    hpCfwShow(hpCfwStep);
+    if (hpCfwStep === 2) { setTimeout(function() { document.getElementById('hpCfwDate').focus(); }, 100); }
+    if (hpCfwStep === 4) { setTimeout(function() { document.getElementById('hpCfwFirst').focus(); }, 100); }
+  }
+
+  async function hpCfwSubmit() {
+    var btn = document.getElementById('hpCfwNext');
+    btn.disabled = true;
+    btn.textContent = 'Sending…';
+
+    var eventType = (document.querySelector('#hpCfwStep1 .cfw-tile.selected') || {}).dataset && document.querySelector('#hpCfwStep1 .cfw-tile.selected').dataset.val || '';
+    var eventDate = document.getElementById('hpCfwDate').value;
+    var guests    = document.getElementById('hpCfwGuests').value;
+    var venue     = document.getElementById('hpCfwVenue').value.trim();
+    var services  = Array.from(document.querySelectorAll('#hpCfwStep3 .cfw-chip.selected')).map(function(c) { return c.dataset.val; }).join(', ') || 'Not specified';
+    var firstName = document.getElementById('hpCfwFirst').value.trim();
+    var lastName  = document.getElementById('hpCfwLast').value.trim();
+    var email     = document.getElementById('hpCfwEmail').value.trim();
+    var phone     = document.getElementById('hpCfwPhone').value.trim();
+    var message   = document.getElementById('hpCfwMessage').value.trim();
+
+    document.getElementById('hpHFirst').value    = firstName;
+    document.getElementById('hpHLast').value     = lastName;
+    document.getElementById('hpHEmail').value    = email;
+    document.getElementById('hpHPhone').value    = phone;
+    document.getElementById('hpHType').value     = eventType;
+    document.getElementById('hpHDate').value     = eventDate;
+    document.getElementById('hpHVenue').value    = venue;
+    document.getElementById('hpHGuests').value   = guests;
+    document.getElementById('hpHServices').value = services;
+    document.getElementById('hpHMessage').value  = message;
+
+    var form = document.getElementById('hp-contact-form');
+    var formData = new FormData(form);
+
+    try {
+      var response = await fetch('https://api.web3forms.com/submit', { method: 'POST', body: formData });
+      var data = await response.json();
+      if (data.success) {
+        var sbUrl  = 'https://jkdhkwcxnwpiufeyrnso.supabase.co';
+        var sbAnon = 'sb_publishable_6xcEpHwIJi8bq4XuSyLCGg_3A30raS9';
+        fetch(sbUrl + '/rest/v1/rpc/submit_lead', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'apikey': sbAnon },
+          body: JSON.stringify({ p_name: (firstName + ' ' + lastName).trim(), p_email: email, p_phone: phone, p_type: eventType || 'inquiry', p_date: eventDate, p_venue: venue, p_services: services, p_message: message })
+        }).catch(function() {});
+        var edgeUrl = sbUrl + '/functions/v1/send-email';
+        var edgeH   = { 'Content-Type': 'application/json', 'apikey': sbAnon, 'Authorization': 'Bearer ' + sbAnon };
+        fetch(edgeUrl, { method: 'POST', headers: edgeH, body: JSON.stringify({ type: 'contact_thankyou', email: email, firstName: firstName, message: message }) }).catch(function() {});
+        fetch(edgeUrl, { method: 'POST', headers: edgeH, body: JSON.stringify({ type: 'internal_lead', firstName: firstName, lastName: lastName, email: email, phone: phone, eventType: eventType, eventDate: eventDate, venue: venue, guestCount: guests, services: services, message: message }) }).catch(function() {});
+        for (var i = 1; i <= hpCfwTotal; i++) { var el = document.getElementById('hpCfwStep' + i); if (el) el.style.display = 'none'; }
+        document.getElementById('hpCfwQuestion').style.display = 'none';
+        document.getElementById('hpCfwCounter').style.display = 'none';
+        document.querySelector('#contact .cfw-progress-track').style.display = 'none';
+        document.getElementById('hpCfwNext').style.display = 'none';
+        document.getElementById('hpCfwBack').style.display = 'none';
+        var msg = document.getElementById('hp-form-success');
+        msg.classList.add('show');
+        if (typeof gtag !== 'undefined') gtag('event', 'form_submit', { 'event_category': 'contact', 'event_label': 'homepage_quote' });
+      } else {
+        alert('Something went wrong. Email us at Hello@baselinestudiofl.com or call (786) 302-6056.');
+        btn.disabled = false;
+        btn.textContent = 'Send Inquiry';
+      }
+    } catch (e) {
+      alert('Something went wrong. Email us at Hello@baselinestudiofl.com or call (786) 302-6056.');
+      btn.disabled = false;
+      btn.textContent = 'Send Inquiry';
+    }
+  }
 </script>
 </body>
 </html>

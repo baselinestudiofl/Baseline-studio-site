@@ -40,7 +40,9 @@
     .cfw-tile { background: var(--black-3); border: 1px solid var(--rule); border-radius: 8px; padding: 16px 10px; text-align: center; cursor: pointer; transition: border-color .15s, background .15s; font-size: 13px; font-weight: 500; color: rgba(255,255,255,.65); }
     .cfw-tile:hover { border-color: rgba(31,163,224,.5); background: rgba(31,163,224,.05); color: #fff; }
     .cfw-tile.selected { border-color: var(--cyan); background: rgba(31,163,224,.12); color: #fff; }
-    .cfw-tile-icon { display: block; font-size: 22px; margin-bottom: 8px; }
+    .cfw-tile-icon { display: flex; justify-content: center; align-items: center; margin-bottom: 8px; color: rgba(255,255,255,.45); transition: color .15s; }
+    .cfw-tile:hover .cfw-tile-icon { color: rgba(255,255,255,.85); }
+    .cfw-tile.selected .cfw-tile-icon { color: var(--cyan); }
     .cfw-chip-grid { display: flex; flex-wrap: wrap; gap: 10px; margin-bottom: 8px; }
     .cfw-chip { padding: 9px 16px; border: 1px solid var(--rule); border-radius: 100px; font-size: 13px; font-weight: 500; color: rgba(255,255,255,.6); cursor: pointer; transition: border-color .15s, background .15s, color .15s; }
     .cfw-chip:hover { border-color: rgba(31,163,224,.5); color: #fff; }
@@ -250,7 +252,7 @@
             </div>
           </div>
           <div class="contact-detail-item">
-            <span class="cd-icon">⏱</span>
+            <span class="cd-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg></span>
             <div>
               <div class="cd-label">Response Time</div>
               <div class="cd-value"><p>Within one business day. Usually same day.</p></div>
@@ -269,12 +271,12 @@
         <!-- Step 1: Event type tiles -->
         <div id="cfwStep1" class="cfw-panel">
           <div class="cfw-tile-grid">
-            <div class="cfw-tile" data-val="Wedding" onclick="cfwSelectTile(this)"><span class="cfw-tile-icon">💍</span>Wedding</div>
-            <div class="cfw-tile" data-val="Quinceañera" onclick="cfwSelectTile(this)"><span class="cfw-tile-icon">👑</span>Quinceañera</div>
-            <div class="cfw-tile" data-val="Bar / Bat Mitzvah" onclick="cfwSelectTile(this)"><span class="cfw-tile-icon">✡</span>Bar / Bat Mitzvah</div>
-            <div class="cfw-tile" data-val="Corporate Event" onclick="cfwSelectTile(this)"><span class="cfw-tile-icon">🏛</span>Corporate</div>
-            <div class="cfw-tile" data-val="Birthday / Private Party" onclick="cfwSelectTile(this)"><span class="cfw-tile-icon">🎉</span>Birthday / Party</div>
-            <div class="cfw-tile" data-val="Other" onclick="cfwSelectTile(this)"><span class="cfw-tile-icon">✦</span>Other</div>
+            <div class="cfw-tile" data-val="Wedding" onclick="cfwSelectTile(this)"><span class="cfw-tile-icon"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg></span>Wedding</div>
+            <div class="cfw-tile" data-val="Quinceañera" onclick="cfwSelectTile(this)"><span class="cfw-tile-icon"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg></span>Quinceañera</div>
+            <div class="cfw-tile" data-val="Bar / Bat Mitzvah" onclick="cfwSelectTile(this)"><span class="cfw-tile-icon"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 3 22 19.5 2 19.5"/><polygon points="12 21 2 4.5 22 4.5"/></svg></span>Bar / Bat Mitzvah</div>
+            <div class="cfw-tile" data-val="Corporate Event" onclick="cfwSelectTile(this)"><span class="cfw-tile-icon"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="7" width="20" height="14" rx="1"/><path d="M16 7V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v2"/><line x1="12" y1="12" x2="12" y2="12.01"/></svg></span>Corporate</div>
+            <div class="cfw-tile" data-val="Birthday / Private Party" onclick="cfwSelectTile(this)"><span class="cfw-tile-icon"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 12 20 22 4 22 4 12"/><rect x="2" y="7" width="20" height="5"/><line x1="12" y1="22" x2="12" y2="7"/><path d="M12 7H7.5a2.5 2.5 0 0 1 0-5C11 2 12 7 12 7z"/><path d="M12 7h4.5a2.5 2.5 0 0 0 0-5C13 2 12 7 12 7z"/></svg></span>Birthday / Party</div>
+            <div class="cfw-tile" data-val="Other" onclick="cfwSelectTile(this)"><span class="cfw-tile-icon"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/><circle cx="5" cy="12" r="1"/></svg></span>Other</div>
           </div>
         </div>
 
