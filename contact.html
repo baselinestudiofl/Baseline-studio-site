@@ -29,12 +29,32 @@
     .cd-value a:hover { color: var(--white); }
     .cd-value p { font-size: 15px; color: rgba(255,255,255,0.55); }
     .contact-form-wrap { background: var(--black-2); border: 1px solid var(--rule); padding: 48px 40px; }
-    .contact-form-title { font-family: var(--font-cond); font-size: 26px; font-weight: 800; letter-spacing: -1px; color: var(--white); margin-bottom: 8px; }
-    .contact-form-sub { font-size: 14px; font-weight: 300; color: rgba(255,255,255,0.55); margin-bottom: 32px; }
+    /* Conversational form */
+    .cfw-question { font-family: var(--font-cond); font-size: 22px; font-weight: 800; letter-spacing: -.5px; color: var(--white); margin-bottom: 6px; }
+    .cfw-step-counter { font-size: 11px; font-weight: 700; letter-spacing: .1em; text-transform: uppercase; color: rgba(255,255,255,.3); margin-bottom: 20px; }
+    .cfw-progress-track { height: 2px; background: rgba(255,255,255,.08); border-radius: 2px; margin-bottom: 28px; }
+    .cfw-progress-fill { height: 100%; background: var(--cyan); border-radius: 2px; transition: width .4s cubic-bezier(.22,1,.36,1); }
+    .cfw-panel { animation: cfwFadeIn .25s ease; }
+    @keyframes cfwFadeIn { from { opacity:0; transform:translateY(6px); } to { opacity:1; transform:translateY(0); } }
+    .cfw-tile-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-bottom: 24px; }
+    .cfw-tile { background: var(--black-3); border: 1px solid var(--rule); border-radius: 8px; padding: 16px 10px; text-align: center; cursor: pointer; transition: border-color .15s, background .15s; font-size: 13px; font-weight: 500; color: rgba(255,255,255,.65); }
+    .cfw-tile:hover { border-color: rgba(31,163,224,.5); background: rgba(31,163,224,.05); color: #fff; }
+    .cfw-tile.selected { border-color: var(--cyan); background: rgba(31,163,224,.12); color: #fff; }
+    .cfw-tile-icon { display: block; font-size: 22px; margin-bottom: 8px; }
+    .cfw-chip-grid { display: flex; flex-wrap: wrap; gap: 10px; margin-bottom: 8px; }
+    .cfw-chip { padding: 9px 16px; border: 1px solid var(--rule); border-radius: 100px; font-size: 13px; font-weight: 500; color: rgba(255,255,255,.6); cursor: pointer; transition: border-color .15s, background .15s, color .15s; }
+    .cfw-chip:hover { border-color: rgba(31,163,224,.5); color: #fff; }
+    .cfw-chip.selected { border-color: var(--cyan); background: rgba(31,163,224,.12); color: #fff; }
+    .cfw-nav { display: flex; align-items: center; justify-content: space-between; margin-top: 28px; gap: 12px; }
+    .cfw-back { background: none; border: 1px solid rgba(255,255,255,.12); color: rgba(255,255,255,.45); padding: 11px 20px; border-radius: 4px; font-family: var(--font-body); font-size: 14px; cursor: pointer; transition: border-color .15s, color .15s; }
+    .cfw-back:hover { border-color: rgba(255,255,255,.3); color: rgba(255,255,255,.8); }
+    .cfw-next { background: var(--cyan); color: var(--black); border: none; padding: 12px 28px; border-radius: 4px; font-family: var(--font-body); font-size: 14px; font-weight: 700; cursor: pointer; transition: opacity .15s; margin-left: auto; }
+    .cfw-next:hover { opacity: .85; }
     @media (max-width: 900px) {
       .contact-page { padding: 60px 24px; }
       .contact-page-inner { grid-template-columns: 1fr; gap: 50px; }
       .contact-form-wrap { padding: 32px 24px; }
+      .cfw-tile-grid { grid-template-columns: repeat(2, 1fr); }
     }
     
   </style>
@@ -240,188 +260,254 @@
       </div>
 
       <div class="contact-form-wrap reveal">
-        <div class="contact-form-title">Request a Quote</div>
-        <p class="contact-form-sub">The more detail you give us, the better proposal we can put together.</p>
-        <!-- Web3Forms: get your free access key at web3forms.com — paste it in the hidden input below -->
-        <form id="contact-form">
-          <input type="hidden" name="access_key" value="8eb161bf-d25e-41f4-8111-e5ea9a8a200e">
-          <input type="hidden" name="subject" value="New Inquiry — Baseline Studio">
-          <input type="hidden" name="from_name" value="Baseline Studio Website">
-          <input type="hidden" name="redirect" value="false">
-          <input type="checkbox" name="botcheck" style="display:none;">
+
+        <!-- Progress + question heading -->
+        <div class="cfw-progress-track"><div class="cfw-progress-fill" id="cfwProgressFill" style="width:20%"></div></div>
+        <div class="cfw-step-counter" id="cfwCounter">Step 1 of 5</div>
+        <div class="cfw-question" id="cfwQuestion">What's the occasion?</div>
+
+        <!-- Step 1: Event type tiles -->
+        <div id="cfwStep1" class="cfw-panel">
+          <div class="cfw-tile-grid">
+            <div class="cfw-tile" data-val="Wedding" onclick="cfwSelectTile(this)"><span class="cfw-tile-icon">💍</span>Wedding</div>
+            <div class="cfw-tile" data-val="Quinceañera" onclick="cfwSelectTile(this)"><span class="cfw-tile-icon">👑</span>Quinceañera</div>
+            <div class="cfw-tile" data-val="Bar / Bat Mitzvah" onclick="cfwSelectTile(this)"><span class="cfw-tile-icon">✡</span>Bar / Bat Mitzvah</div>
+            <div class="cfw-tile" data-val="Corporate Event" onclick="cfwSelectTile(this)"><span class="cfw-tile-icon">🏛</span>Corporate</div>
+            <div class="cfw-tile" data-val="Birthday / Private Party" onclick="cfwSelectTile(this)"><span class="cfw-tile-icon">🎉</span>Birthday / Party</div>
+            <div class="cfw-tile" data-val="Other" onclick="cfwSelectTile(this)"><span class="cfw-tile-icon">✦</span>Other</div>
+          </div>
+        </div>
+
+        <!-- Step 2: Date + venue -->
+        <div id="cfwStep2" class="cfw-panel" style="display:none">
+          <div class="form-row">
+            <div class="form-group">
+              <label class="form-label">Event Date</label>
+              <input type="date" class="form-input" id="cfwDate">
+            </div>
+            <div class="form-group">
+              <label class="form-label">Guest Count <span style="opacity:.5;font-weight:400">(approx.)</span></label>
+              <input type="number" class="form-input" id="cfwGuests" placeholder="150">
+            </div>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Venue <span style="opacity:.5;font-weight:400">(name or city)</span></label>
+            <input type="text" class="form-input" id="cfwVenue" placeholder="The Biltmore, Coral Gables">
+          </div>
+        </div>
+
+        <!-- Step 3: Services -->
+        <div id="cfwStep3" class="cfw-panel" style="display:none">
+          <div class="cfw-chip-grid">
+            <div class="cfw-chip" data-val="DJ" onclick="cfwToggleChip(this)">DJ &amp; Entertainment</div>
+            <div class="cfw-chip" data-val="Sound" onclick="cfwToggleChip(this)">Live Sound &amp; Audio</div>
+            <div class="cfw-chip" data-val="LED" onclick="cfwToggleChip(this)">LED Video Walls</div>
+            <div class="cfw-chip" data-val="Uplighting" onclick="cfwToggleChip(this)">Uplighting</div>
+            <div class="cfw-chip" data-val="Bistro Lights" onclick="cfwToggleChip(this)">Bistro String Lights</div>
+            <div class="cfw-chip" data-val="Special Effects" onclick="cfwToggleChip(this)">Special Effects</div>
+            <div class="cfw-chip" data-val="Live Musicians" onclick="cfwToggleChip(this)">Live Musicians</div>
+          </div>
+          <p style="font-size:12px;color:rgba(255,255,255,.3);margin-top:14px;">Pick everything that applies. We can talk through the rest.</p>
+        </div>
+
+        <!-- Step 4: Contact info -->
+        <div id="cfwStep4" class="cfw-panel" style="display:none">
           <div class="form-row">
             <div class="form-group">
               <label class="form-label">First Name</label>
-              <input type="text" class="form-input" name="firstName" required placeholder="Jane">
+              <input type="text" class="form-input" id="cfwFirst" placeholder="Jane">
             </div>
             <div class="form-group">
               <label class="form-label">Last Name</label>
-              <input type="text" class="form-input" name="lastName" required placeholder="Smith">
+              <input type="text" class="form-input" id="cfwLast" placeholder="Smith">
             </div>
           </div>
           <div class="form-row">
             <div class="form-group">
               <label class="form-label">Email</label>
-              <input type="email" class="form-input" name="email" required placeholder="jane@email.com">
+              <input type="email" class="form-input" id="cfwEmail" placeholder="jane@email.com">
             </div>
             <div class="form-group">
-              <label class="form-label">Phone</label>
-              <input type="tel" class="form-input" name="phone" placeholder="(305) 000-0000">
+              <label class="form-label">Phone <span style="opacity:.5;font-weight:400">(optional)</span></label>
+              <input type="tel" class="form-input" id="cfwPhone" placeholder="(305) 000-0000">
             </div>
           </div>
-          <div class="form-row">
-            <div class="form-group">
-              <label class="form-label">Event Date</label>
-              <input type="date" class="form-input" name="eventDate" required>
-            </div>
-            <div class="form-group">
-              <label class="form-label">Event Type</label>
-              <select class="form-select" name="eventType">
-                <option value="">Select one</option>
-                <option>Wedding</option>
-                <option>Corporate Event</option>
-                <option>Birthday / Quinceañera</option>
-                <option>Bar / Bat Mitzvah</option>
-                <option>Private Party</option>
-                <option>Other</option>
-              </select>
-            </div>
+        </div>
+
+        <!-- Step 5: Message + submit -->
+        <div id="cfwStep5" class="cfw-panel" style="display:none">
+          <div class="form-group">
+            <label class="form-label">Anything else? <span style="opacity:.5;font-weight:400">(optional)</span></label>
+            <textarea class="form-textarea" id="cfwMessage" placeholder="Vibe, budget range, specific moments you care about — anything helps." style="min-height:110px;"></textarea>
           </div>
-          <div class="form-row">
-            <div class="form-group">
-              <label class="form-label">Venue</label>
-              <input type="text" class="form-input" name="venue" placeholder="Venue name or city">
-            </div>
-            <div class="form-group">
-              <label class="form-label">Guest Count</label>
-              <input type="number" class="form-input" name="guestCount" placeholder="Approx. 150">
-            </div>
-          </div>
-          <div class="form-group" style="margin-bottom:20px;">
-            <div class="form-label" style="margin-bottom:12px;">Services You're Interested In</div>
-            <div class="form-checkbox-grid">
-              <div class="form-check"><input type="checkbox" id="dj" name="services" value="DJ"><label for="dj">DJ &amp; Entertainment</label></div>
-              <div class="form-check"><input type="checkbox" id="sound" name="services" value="Sound"><label for="sound">Live Sound &amp; Audio</label></div>
-              <div class="form-check"><input type="checkbox" id="led" name="services" value="LED"><label for="led">LED Video Walls</label></div>
-              <div class="form-check"><input type="checkbox" id="up" name="services" value="Uplighting"><label for="up">Uplighting</label></div>
-              <div class="form-check"><input type="checkbox" id="bistro" name="services" value="Bistro"><label for="bistro">Bistro String Lights</label></div>
-              <div class="form-check"><input type="checkbox" id="fx" name="services" value="FX"><label for="fx">Special Effects</label></div>
-              <div class="form-check"><input type="checkbox" id="musicians" name="services" value="Musicians"><label for="musicians">Live Musicians</label></div>
-            </div>
-          </div>
-          <div class="form-group" style="margin-bottom:24px;">
-            <label class="form-label">Tell us about your event</label>
-            <textarea class="form-textarea" name="message" placeholder="The more you share — venue, vibe, any specific moments you care about — the better we can quote you."></textarea>
-          </div>
-          <button type="submit" class="form-submit">Send Inquiry</button>
+        </div>
+
+        <!-- Nav -->
+        <div class="cfw-nav">
+          <button class="cfw-back" id="cfwBack" onclick="cfwBack()" style="display:none">← Back</button>
+          <button class="cfw-next" id="cfwNext" onclick="cfwNext()">Next →</button>
+        </div>
+
+        <!-- Hidden form — only used for Web3Forms submission on step 5 -->
+        <form id="contact-form" style="display:none">
+          <input type="hidden" name="access_key" value="8eb161bf-d25e-41f4-8111-e5ea9a8a200e">
+          <input type="hidden" name="subject" value="New Inquiry — Baseline Studio">
+          <input type="hidden" name="from_name" value="Baseline Studio Website">
+          <input type="hidden" name="redirect" value="false">
+          <input type="checkbox" name="botcheck" style="display:none">
+          <input type="hidden" name="firstName" id="hFirst">
+          <input type="hidden" name="lastName" id="hLast">
+          <input type="hidden" name="email" id="hEmail">
+          <input type="hidden" name="phone" id="hPhone">
+          <input type="hidden" name="eventType" id="hType">
+          <input type="hidden" name="eventDate" id="hDate">
+          <input type="hidden" name="venue" id="hVenue">
+          <input type="hidden" name="guestCount" id="hGuests">
+          <input type="hidden" name="services_summary" id="hServices">
+          <input type="hidden" name="message" id="hMessage">
         </form>
-        <div class="form-success" id="form-success"> Got it — we'll be in touch within one business day.</div>
+
+        <div class="form-success" id="form-success">Got it — we'll be in touch within one business day.</div>
       </div>
     </div>
   </section>
 
   <script>
-    document.getElementById('contact-form').addEventListener('submit', async function(e) {
-      e.preventDefault();
-      var form = e.target;
-      var submitBtn = form.querySelector('.form-submit');
+    var cfwStep = 1;
+    var cfwTotal = 5;
+    var cfwQuestions = [
+      'What\'s the occasion?',
+      'When is it, and where?',
+      'What are you looking for?',
+      'How should we reach you?',
+      'Anything else before we reach out?'
+    ];
 
-      // Build services string from checkboxes for cleaner email formatting
-      var selectedServices = Array.from(form.querySelectorAll('[name="services"]:checked')).map(function(cb) { return cb.value; });
-      var servicesInput = form.querySelector('[name="services_summary"]');
-      if (!servicesInput) {
-        servicesInput = document.createElement('input');
-        servicesInput.type = 'hidden';
-        servicesInput.name = 'services_summary';
-        form.appendChild(servicesInput);
+    function cfwShow(step) {
+      for (var i = 1; i <= cfwTotal; i++) {
+        var el = document.getElementById('cfwStep' + i);
+        if (el) el.style.display = (i === step) ? '' : 'none';
+        if (i === step && el) {
+          // Trigger re-animation
+          el.style.animation = 'none';
+          el.offsetHeight; // reflow
+          el.style.animation = '';
+        }
       }
-      servicesInput.value = selectedServices.length ? selectedServices.join(', ') : 'Not specified';
+      document.getElementById('cfwQuestion').textContent = cfwQuestions[step - 1];
+      document.getElementById('cfwCounter').textContent = 'Step ' + step + ' of ' + cfwTotal;
+      document.getElementById('cfwProgressFill').style.width = (step / cfwTotal * 100) + '%';
+      document.getElementById('cfwBack').style.display = (step > 1) ? '' : 'none';
+      var nextBtn = document.getElementById('cfwNext');
+      nextBtn.textContent = (step === cfwTotal) ? 'Send Inquiry' : 'Next →';
+    }
 
-      submitBtn.disabled = true;
-      submitBtn.textContent = 'Sending...';
+    function cfwSelectTile(el) {
+      document.querySelectorAll('#cfwStep1 .cfw-tile').forEach(function(t) { t.classList.remove('selected'); });
+      el.classList.add('selected');
+    }
 
+    function cfwToggleChip(el) {
+      el.classList.toggle('selected');
+    }
+
+    function cfwBack() {
+      if (cfwStep > 1) { cfwStep--; cfwShow(cfwStep); }
+    }
+
+    function cfwNext() {
+      if (cfwStep === cfwTotal) { cfwSubmit(); return; }
+
+      // Step-specific validation
+      if (cfwStep === 4) {
+        var first = document.getElementById('cfwFirst').value.trim();
+        var email = document.getElementById('cfwEmail').value.trim();
+        if (!first) { document.getElementById('cfwFirst').focus(); return; }
+        if (!email || !email.includes('@')) { document.getElementById('cfwEmail').focus(); return; }
+      }
+
+      cfwStep++;
+      cfwShow(cfwStep);
+
+      // Auto-focus first input on text steps
+      if (cfwStep === 2) { setTimeout(function() { document.getElementById('cfwDate').focus(); }, 100); }
+      if (cfwStep === 4) { setTimeout(function() { document.getElementById('cfwFirst').focus(); }, 100); }
+    }
+
+    async function cfwSubmit() {
+      var btn = document.getElementById('cfwNext');
+      btn.disabled = true;
+      btn.textContent = 'Sending…';
+
+      // Collect values
+      var eventType    = (document.querySelector('#cfwStep1 .cfw-tile.selected') || {}).dataset && document.querySelector('#cfwStep1 .cfw-tile.selected').dataset.val || '';
+      var eventDate    = document.getElementById('cfwDate').value;
+      var guests       = document.getElementById('cfwGuests').value;
+      var venue        = document.getElementById('cfwVenue').value.trim();
+      var services     = Array.from(document.querySelectorAll('#cfwStep3 .cfw-chip.selected')).map(function(c) { return c.dataset.val; }).join(', ') || 'Not specified';
+      var firstName    = document.getElementById('cfwFirst').value.trim();
+      var lastName     = document.getElementById('cfwLast').value.trim();
+      var email        = document.getElementById('cfwEmail').value.trim();
+      var phone        = document.getElementById('cfwPhone').value.trim();
+      var message      = document.getElementById('cfwMessage').value.trim();
+
+      // Populate hidden form
+      document.getElementById('hFirst').value    = firstName;
+      document.getElementById('hLast').value     = lastName;
+      document.getElementById('hEmail').value    = email;
+      document.getElementById('hPhone').value    = phone;
+      document.getElementById('hType').value     = eventType;
+      document.getElementById('hDate').value     = eventDate;
+      document.getElementById('hVenue').value    = venue;
+      document.getElementById('hGuests').value   = guests;
+      document.getElementById('hServices').value = services;
+      document.getElementById('hMessage').value  = message;
+
+      var form = document.getElementById('contact-form');
       var formData = new FormData(form);
 
       try {
-        // 1 — Send email via Web3Forms
-        var response = await fetch('https://api.web3forms.com/submit', {
-          method: 'POST',
-          body: formData
-        });
+        var response = await fetch('https://api.web3forms.com/submit', { method: 'POST', body: formData });
         var data = await response.json();
 
         if (data.success) {
-          // 2 — Write lead to Supabase pipeline (fire-and-forget)
           var sbUrl  = 'https://jkdhkwcxnwpiufeyrnso.supabase.co';
           var sbAnon = 'sb_publishable_6xcEpHwIJi8bq4XuSyLCGg_3A30raS9';
-          var fullName = (formData.get('firstName') + ' ' + formData.get('lastName')).trim();
+
+          // Write lead to Supabase pipeline
           fetch(sbUrl + '/rest/v1/rpc/submit_lead', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json', 'apikey': sbAnon },
-            body: JSON.stringify({
-              p_name:     fullName,
-              p_email:    formData.get('email')      || '',
-              p_phone:    formData.get('phone')      || '',
-              p_type:     formData.get('eventType')  || 'inquiry',
-              p_date:     formData.get('eventDate')  || '',
-              p_venue:    formData.get('venue')      || '',
-              p_services: servicesInput.value        || '',
-              p_message:  formData.get('message')    || ''
-            })
-          }).catch(function() {}); // silent — never blocks the user
+            body: JSON.stringify({ p_name: (firstName + ' ' + lastName).trim(), p_email: email, p_phone: phone, p_type: eventType || 'inquiry', p_date: eventDate, p_venue: venue, p_services: services, p_message: message })
+          }).catch(function() {});
 
-          // 3 — Automated emails via Edge Function (fire-and-forget)
+          // Edge Function emails
           var edgeUrl = sbUrl + '/functions/v1/send-email';
-          var edgeHeaders = { 'Content-Type': 'application/json', 'apikey': sbAnon, 'Authorization': 'Bearer ' + sbAnon };
-          // Thank-you email to the visitor
-          fetch(edgeUrl, {
-            method: 'POST',
-            headers: edgeHeaders,
-            body: JSON.stringify({
-              type:      'contact_thankyou',
-              email:     formData.get('email')     || '',
-              firstName: formData.get('firstName') || '',
-              message:   formData.get('message')   || ''
-            })
-          }).catch(function() {});
-          // Internal lead alert to Hello@baselinestudiofl.com
-          fetch(edgeUrl, {
-            method: 'POST',
-            headers: edgeHeaders,
-            body: JSON.stringify({
-              type:       'internal_lead',
-              firstName:  formData.get('firstName')  || '',
-              lastName:   formData.get('lastName')   || '',
-              email:      formData.get('email')      || '',
-              phone:      formData.get('phone')      || '',
-              eventType:  formData.get('eventType')  || '',
-              eventDate:  formData.get('eventDate')  || '',
-              venue:      formData.get('venue')      || '',
-              guestCount: formData.get('guestCount') || '',
-              services:   servicesInput.value        || '',
-              message:    formData.get('message')    || ''
-            })
-          }).catch(function() {});
+          var edgeH   = { 'Content-Type': 'application/json', 'apikey': sbAnon, 'Authorization': 'Bearer ' + sbAnon };
+          fetch(edgeUrl, { method: 'POST', headers: edgeH, body: JSON.stringify({ type: 'contact_thankyou', email: email, firstName: firstName, message: message }) }).catch(function() {});
+          fetch(edgeUrl, { method: 'POST', headers: edgeH, body: JSON.stringify({ type: 'internal_lead', firstName: firstName, lastName: lastName, email: email, phone: phone, eventType: eventType, eventDate: eventDate, venue: venue, guestCount: guests, services: services, message: message }) }).catch(function() {});
 
+          // Show success
+          for (var i = 1; i <= cfwTotal; i++) { var el = document.getElementById('cfwStep' + i); if (el) el.style.display = 'none'; }
+          document.getElementById('cfwQuestion').style.display = 'none';
+          document.getElementById('cfwCounter').style.display = 'none';
+          document.querySelector('.cfw-progress-track').style.display = 'none';
+          document.getElementById('cfwNext').style.display = 'none';
+          document.getElementById('cfwBack').style.display = 'none';
           var msg = document.getElementById('form-success');
           msg.classList.add('show');
-          msg.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
-          gtag('event', 'form_submit', {'event_category': 'contact', 'event_label': 'quote_request'});
-          form.reset();
-          submitBtn.disabled = false;
-          submitBtn.textContent = 'Send Inquiry';
-          setTimeout(function() { msg.classList.remove('show'); }, 8000);
+          if (typeof gtag !== 'undefined') gtag('event', 'form_submit', { 'event_category': 'contact', 'event_label': 'quote_request' });
         } else {
-          alert('Something went wrong. Please email us directly at Hello@baselinestudiofl.com or call (786) 302-6056.');
-          submitBtn.disabled = false;
-          submitBtn.textContent = 'Send Inquiry';
+          alert('Something went wrong. Email us at Hello@baselinestudiofl.com or call (786) 302-6056.');
+          btn.disabled = false;
+          btn.textContent = 'Send Inquiry';
         }
-      } catch (error) {
-        alert('Something went wrong. Please email us directly at Hello@baselinestudiofl.com or call (786) 302-6056.');
-        submitBtn.disabled = false;
-        submitBtn.textContent = 'Send Inquiry';
+      } catch (e) {
+        alert('Something went wrong. Email us at Hello@baselinestudiofl.com or call (786) 302-6056.');
+        btn.disabled = false;
+        btn.textContent = 'Send Inquiry';
       }
-    });
+    }
   </script>
   <footer>
     <div class="footer-inner">

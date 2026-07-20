@@ -274,36 +274,34 @@
   .intro-band-item:last-child { border-right: none; }
 
   /*  TESTIMONIALS  */
-  #testimonials { background: var(--black); padding: 9rem var(--gutter); }
+  #testimonials { background: var(--black); padding: clamp(4rem, 7vw, 6rem) var(--gutter); }
   .testimonial-wrap { max-width: var(--max-w); margin: 0 auto; }
   .testimonial-label {
     font-family: var(--font-cond); font-size: 0.78rem; font-weight: 700;
     letter-spacing: 0.2em; text-transform: uppercase; color: var(--cyan);
-    margin-bottom: 3rem;
+    margin-bottom: 2rem;
   }
-  .testimonial-slider { position: relative; min-height: 180px; }
-  .testimonial-slide { display: none; }
-  .testimonial-slide.active { display: block; animation: fadeIn 0.4s ease; }
-  @keyframes fadeIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
+  .testimonial-grid {
+    display: grid; grid-template-columns: repeat(3, 1fr);
+    gap: 1px; background: rgba(255,255,255,0.06);
+  }
+  .testimonial-card {
+    background: var(--black); padding: 2.4rem 2rem;
+    display: flex; flex-direction: column; justify-content: space-between;
+    transition: background 0.2s;
+  }
+  .testimonial-card:hover { background: #080808; }
   .testimonial-quote {
-    font-family: var(--font-head); font-size: clamp(1.5rem, 3.5vw, 2.8rem);
-    text-transform: uppercase; line-height: 1.1; color: var(--white); max-width: 860px;
+    font-family: var(--font-body); font-size: clamp(0.95rem, 1.3vw, 1.05rem);
+    color: rgba(255,255,255,0.8); line-height: 1.75; font-weight: 300; font-style: italic;
   }
   .testimonial-author {
-    font-family: var(--font-body); font-size: 0.85rem;
-    color: var(--gray); letter-spacing: 0.1em; text-transform: uppercase; margin-top: 1.8rem;
+    font-family: var(--font-cond); font-size: 0.75rem;
+    color: var(--gray); letter-spacing: 0.12em; text-transform: uppercase; margin-top: 1.5rem;
   }
-  .testimonial-controls { display: flex; gap: 0.8rem; margin-top: 3rem; }
-  .testimonial-btn {
-    width: 46px; height: 46px; border-radius: 50%; border: 1px solid rgba(255,255,255,0.15);
-    background: none; color: var(--white); cursor: pointer;
-    display: flex; align-items: center; justify-content: center;
-    font-size: 1.1rem; transition: all 0.2s;
-  }
-  .testimonial-btn:hover { background: var(--cyan); border-color: var(--cyan); }
 
   /*  SERVICES  */
-  #services { background: var(--black-2); padding: 9rem var(--gutter); }
+  #services { background: var(--black-2); padding: clamp(4rem, 7vw, 6rem) var(--gutter); }
   .services-inner { max-width: var(--max-w); margin: 0 auto; }
   .section-eyebrow {
     font-family: var(--font-cond); font-size: 0.78rem; font-weight: 700;
@@ -405,19 +403,20 @@
   .split-panel-link:hover { opacity: 0.7; }
 
   /*  SPECIAL FX  */
-  #fx { background: var(--black); padding: 9rem var(--gutter); }
+  #fx { background: var(--black); padding: clamp(4rem, 7vw, 6rem) var(--gutter); }
   .fx-inner { max-width: var(--max-w); margin: 0 auto; }
   .fx-grid {
-    display: grid; grid-template-columns: repeat(4, 1fr);
-    gap: 1px; margin-top: 4rem;
+    display: grid; grid-template-columns: repeat(3, 1fr);
+    gap: 1px; margin-top: 3rem;
     background: rgba(255,255,255,0.05);
   }
   .fx-item {
     background: var(--black); padding: 2.8rem 2rem;
-    transition: background 0.3s; position: relative;
+    position: relative;
     border-bottom: 2px solid transparent;
-    transition: background 0.3s, border-color 0.3s;
+    transition: background 0.25s, border-color 0.25s;
   }
+  .fx-item-wide { grid-column: span 2; }
   .fx-item:hover { background: var(--black-2); border-bottom-color: var(--cyan); }
   .fx-icon {
     font-family: var(--font-cond); font-size: 0.72rem; font-weight: 700;
@@ -428,10 +427,10 @@
     font-family: var(--font-cond); font-size: 1rem; font-weight: 700;
     letter-spacing: 0.1em; text-transform: uppercase; color: var(--cyan); margin-bottom: 0.8rem;
   }
-  .fx-desc { font-family: var(--font-body); font-size: 0.875rem; color: var(--gray); line-height: 1.65; }
+  .fx-desc { font-family: var(--font-body); font-size: 0.875rem; color: var(--gray); line-height: 1.65; max-width: 480px; }
 
   /*  FAQ  */
-  #faq { background: var(--black-2); padding: 9rem var(--gutter); }
+  #faq { background: var(--black-2); padding: clamp(4rem, 7vw, 6rem) var(--gutter); }
   .faq-inner { max-width: 860px; margin: 0 auto; }
   .faq-list { margin-top: 3.5rem; }
   .faq-item {
@@ -467,7 +466,7 @@
   /*  CONTACT  */
   #contact {
     background: linear-gradient(135deg, #0d2033 0%, #071420 100%);
-    padding: 9rem var(--gutter);
+    padding: clamp(4rem, 7vw, 6rem) var(--gutter);
   }
   .contact-inner {
     max-width: var(--max-w); margin: 0 auto;
@@ -569,6 +568,54 @@
   .footer-portal { font-family: var(--font-body); font-size: 0.78rem; color: var(--cyan); letter-spacing: 0.06em; }
   .footer-portal:hover { text-decoration: underline; }
 
+  /*  PORTAL  */
+  #portal-section {
+    background: var(--black-2); padding: clamp(4rem, 7vw, 6rem) var(--gutter);
+    border-top: 1px solid rgba(255,255,255,0.05);
+  }
+  .portal-inner { max-width: var(--max-w); margin: 0 auto; }
+  .portal-bento {
+    display: grid; grid-template-columns: repeat(3, 1fr);
+    gap: 1px; background: rgba(255,255,255,0.06); margin-top: 3rem;
+  }
+  .portal-card { background: var(--black-3); padding: 2.4rem; position: relative; overflow: hidden; }
+  .portal-card-main { grid-column: span 2; background: var(--black-4); }
+  .portal-card-label {
+    font-family: var(--font-cond); font-size: 0.7rem; font-weight: 700;
+    letter-spacing: 0.2em; text-transform: uppercase; color: var(--cyan);
+    margin-bottom: 1rem; display: block;
+  }
+  .portal-card-title {
+    font-family: var(--font-head); font-size: clamp(1.8rem, 3vw, 3rem);
+    text-transform: uppercase; line-height: 1; margin-bottom: 1.2rem;
+  }
+  .portal-card-desc {
+    font-family: var(--font-body); font-size: 0.92rem;
+    color: rgba(255,255,255,0.5); line-height: 1.75; max-width: 440px;
+  }
+  .portal-card-cta {
+    display: inline-flex; align-items: center; gap: 0.5rem; margin-top: 2rem;
+    font-family: var(--font-cond); font-size: 0.78rem; font-weight: 700;
+    letter-spacing: 0.12em; text-transform: uppercase; color: var(--cyan);
+    border-bottom: 1px solid rgba(31,163,224,0.4); padding-bottom: 2px;
+    transition: border-color 0.2s, opacity 0.2s;
+  }
+  .portal-card-cta:hover { border-color: var(--cyan); opacity: 0.75; }
+  .portal-feature-icon {
+    width: 38px; height: 38px; margin-bottom: 1.4rem;
+    border: 1px solid rgba(31,163,224,0.25); border-radius: 8px;
+    display: flex; align-items: center; justify-content: center;
+  }
+  .portal-feature-icon svg { width: 18px; height: 18px; stroke: var(--cyan); }
+  .portal-feature-title {
+    font-family: var(--font-cond); font-size: 0.95rem; font-weight: 700;
+    letter-spacing: 0.08em; text-transform: uppercase; color: var(--white); margin-bottom: 0.55rem;
+  }
+  .portal-feature-desc {
+    font-family: var(--font-body); font-size: 0.85rem;
+    color: rgba(255,255,255,0.4); line-height: 1.65;
+  }
+
   /*  REVEAL  */
   .reveal { opacity: 0; transform: translateY(24px); transition: opacity 0.6s var(--ease), transform 0.6s var(--ease); }
   .reveal.visible { opacity: 1; transform: none; }
@@ -582,6 +629,10 @@
     #split { grid-template-columns: 1fr; }
     .split-panel { min-height: 48vh; }
     .fx-grid { grid-template-columns: 1fr 1fr; }
+    .fx-item-wide { grid-column: span 1; }
+    .testimonial-grid { grid-template-columns: 1fr; }
+    .portal-bento { grid-template-columns: 1fr; }
+    .portal-card-main { grid-column: span 1; }
     .contact-inner { grid-template-columns: 1fr; gap: 3.5rem; }
     .form-row { grid-template-columns: 1fr; gap: 0; }
     .footer-cols { grid-template-columns: 1fr 1fr; gap: 2.5rem; }
@@ -595,8 +646,14 @@
     .hero-cta-row { flex-direction: column; align-items: flex-start; }
     .services-cta-row { flex-direction: column; }
     .split-panel { padding: 2.5rem 1.5rem; }
-    .intro-band-services { gap: 0.5rem; }
-    .intro-band-item { padding: 0 0.8rem; font-size: 0.7rem; }
+    .intro-band-services {
+      flex-wrap: nowrap; overflow-x: auto; -webkit-overflow-scrolling: touch;
+      -ms-overflow-style: none; scrollbar-width: none;
+      mask-image: linear-gradient(to right, black 75%, transparent 100%);
+      -webkit-mask-image: linear-gradient(to right, black 75%, transparent 100%);
+    }
+    .intro-band-services::-webkit-scrollbar { display: none; }
+    .intro-band-item { white-space: nowrap; padding: 0 0.8rem; font-size: 0.72rem; flex-shrink: 0; }
   }
 </style>
 <!-- Google Analytics — deferred until after page load to avoid blocking LCP -->
@@ -702,23 +759,19 @@
 <section id="testimonials">
   <div class="testimonial-wrap">
     <p class="testimonial-label reveal">What clients say</p>
-    <div class="testimonial-slider">
-      <div class="testimonial-slide active">
+    <div class="testimonial-grid reveal">
+      <div class="testimonial-card">
         <p class="testimonial-quote">"We can't even remember how many people walked up and told us the DJ was killing it."</p>
         <p class="testimonial-author">— Alex S., Wedding at The Addison</p>
       </div>
-      <div class="testimonial-slide">
+      <div class="testimonial-card">
         <p class="testimonial-quote">"Organized, professional, and the music was exactly what we wanted all night."</p>
         <p class="testimonial-author">— Joseph W., Corporate Event</p>
       </div>
-      <div class="testimonial-slide">
+      <div class="testimonial-card">
         <p class="testimonial-quote">"They made our vision a reality. Our guests are still talking about it."</p>
         <p class="testimonial-author">— Yael S., Wedding</p>
       </div>
-    </div>
-    <div class="testimonial-controls">
-      <button class="testimonial-btn" id="prevBtn" aria-label="Previous testimonial">&#8592;</button>
-      <button class="testimonial-btn" id="nextBtn" aria-label="Next testimonial">&#8594;</button>
     </div>
   </div>
 </section>
@@ -813,7 +866,7 @@
     <span class="section-eyebrow reveal">Special Effects</span>
     <h2 class="section-heading reveal">The part that makes<br>everyone's phone come out.</h2>
     <div class="fx-grid reveal">
-      <a href="service-cold-spark" class="fx-item" style="text-decoration:none;display:block;">
+      <a href="service-cold-spark" class="fx-item fx-item-wide" style="text-decoration:none;display:block;">
         <div class="fx-icon">01</div>
         <p class="fx-title">Cold Sparks</p>
         <p class="fx-desc">Spark fountains for grand entrances, first dances, and cake cuts. Safe, clean, and impossible to ignore.</p>
@@ -828,11 +881,48 @@
         <p class="fx-title">Dancing on Cloud</p>
         <p class="fx-desc">Most people call it "the fog thing." We call it Dancing on Cloud. Low-lying fog that hugs the dance floor during your first dance — it photographs incredibly and it's one of the most requested effects we do.</p>
       </a>
-      <a href="service-co2-jets" class="fx-item" style="text-decoration:none;display:block;">
+      <a href="service-co2-jets" class="fx-item fx-item-wide" style="text-decoration:none;display:block;">
         <div class="fx-icon">04</div>
         <p class="fx-title">CO₂ Jets</p>
         <p class="fx-desc">High-powered jet columns timed to drops and builds. Gets the crowd every time.</p>
       </a>
+    </div>
+  </div>
+</section>
+
+<!-- PORTAL -->
+<section id="portal-section">
+  <div class="portal-inner">
+    <span class="section-eyebrow reveal">Client Experience</span>
+    <h2 class="section-heading reveal">More than a vendor.<br>A full system.</h2>
+    <div class="portal-bento reveal">
+      <div class="portal-card portal-card-main">
+        <span class="portal-card-label">The Client Portal</span>
+        <h3 class="portal-card-title">Your event,<br>fully organized.</h3>
+        <p class="portal-card-desc">Once you book, you get access to a private portal with everything about your event in one place. Contracts, your run of show, event details, and a direct line to the team. No chasing emails. No spreadsheets.</p>
+        <a href="login.html" class="portal-card-cta">Access Your Portal →</a>
+      </div>
+      <div class="portal-card">
+        <div class="portal-feature-icon">
+          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25m0 12.75h7.5m-7.5 3H12M10.5 2.25H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 00-9-9z" /></svg>
+        </div>
+        <p class="portal-feature-title">Contracts & Proposals</p>
+        <p class="portal-feature-desc">Sign, review, and store everything in one place. No PDFs buried in your inbox.</p>
+      </div>
+      <div class="portal-card">
+        <div class="portal-feature-icon">
+          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M6.75 3v2.25M17.25 3v2.25M3 18.75V7.5a2.25 2.25 0 012.25-2.25h13.5A2.25 2.25 0 0121 7.5v11.25m-18 0A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75m-18 0v-7.5A2.25 2.25 0 015.25 9h13.5A2.25 2.25 0 0121 11.25v7.5" /></svg>
+        </div>
+        <p class="portal-feature-title">Event Timeline</p>
+        <p class="portal-feature-desc">Your full run of show, built together and updated as things change.</p>
+      </div>
+      <div class="portal-card">
+        <div class="portal-feature-icon">
+          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M8.625 12a.375.375 0 11-.75 0 .375.375 0 01.75 0zm0 0H8.25m4.125 0a.375.375 0 11-.75 0 .375.375 0 01.75 0zm0 0H12m4.125 0a.375.375 0 11-.75 0 .375.375 0 01.75 0zm0 0h-.375M21 12c0 4.556-4.03 8.25-9 8.25a9.764 9.764 0 01-2.555-.337A5.972 5.972 0 015.41 20.97a5.969 5.969 0 01-.474-.065 4.48 4.48 0 00.978-2.025c.09-.457-.133-.901-.467-1.226C3.93 16.178 3 14.189 3 12c0-4.556 4.03-8.25 9-8.25s9 3.694 9 8.25z" /></svg>
+        </div>
+        <p class="portal-feature-title">Direct Line to the Team</p>
+        <p class="portal-feature-desc">Questions go through the portal, not lost in email threads. We get back fast.</p>
+      </div>
     </div>
   </div>
 </section>
@@ -1008,18 +1098,6 @@
   document.querySelectorAll('#mobile-menu a').forEach(a => {
     a.addEventListener('click', () => mobileMenu.classList.remove('active'));
   });
-
-  // Testimonial slider
-  const slides = document.querySelectorAll('.testimonial-slide');
-  let current = 0;
-  function showSlide(n) {
-    slides[current].classList.remove('active');
-    current = (n + slides.length) % slides.length;
-    slides[current].classList.add('active');
-  }
-  document.getElementById('prevBtn').addEventListener('click', () => showSlide(current - 1));
-  document.getElementById('nextBtn').addEventListener('click', () => showSlide(current + 1));
-  setInterval(() => showSlide(current + 1), 7000);
 
   // Scroll reveal
   const observer = new IntersectionObserver(entries => {

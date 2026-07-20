@@ -3752,32 +3752,60 @@
     });
 
     // ============ ONBOARDING WIZARD ============
-    let _obStep = 0;
+    // Smart: only asks questions for fields that are actually missing from event data.
+    // If everything is already filled in from intake, skips the wizard entirely.
+
+    let _obStep = -1;       // -1 = welcome screen, 0+ = index into _obStepList
+    let _obStepList = [];   // dynamic list of step names that need to be asked
+
+    function _obGetPendingSteps() {
+      const steps = [];
+      // Only ask if the field is genuinely blank / missing
+      const hasType = currentEvent.type && currentEvent.type !== 'event' && currentEvent.type !== '';
+      const hasVibe = !!(currentEvent.clientPrefs && currentEvent.clientPrefs.vibe);
+      const hasVenue = !!(currentEvent.venueName || currentEvent.venue);
+      const hasMoments = !!(currentEvent.clientPrefs && currentEvent.clientPrefs.moments && currentEvent.clientPrefs.moments.length);
+      const hasSpecial = !!(currentEvent.clientPrefs && currentEvent.clientPrefs.specialRequests);
+
+      if (!hasType)    steps.push('type');
+      if (!hasVibe)    steps.push('vibe');
+      if (!hasVenue)   steps.push('venue');
+      if (!hasMoments) steps.push('moments');
+      if (!hasSpecial) steps.push('special');
+      return steps;
+    }
 
     function renderOnboarding() {
+      _obStepList = _obGetPendingSteps();
+
+      // Nothing missing — mark complete immediately and skip the wizard
+      if (_obStepList.length === 0) {
+        _obComplete(true);
+        return;
+      }
+
       document.getElementById('tabBar').style.display = 'none';
-      _obStep = 0;
+      _obStep = -1; // start at welcome
       _obRenderStep();
     }
 
     function _obRenderStep() {
-      switch (_obStep) {
-        case 0: _obWelcome(); break;
-        case 1: _obType();    break;
-        case 2: _obVibe();    break;
-        case 3: _obVenue();   break;
-        case 4: _obMoments(); break;
-        case 5: _obSpecial(); break;
-      }
+      if (_obStep === -1) { _obWelcome(); return; }
+      const name = _obStepList[_obStep];
+      if (!name) { _obComplete(false); return; }
+      const fns = { type: _obType, vibe: _obVibe, venue: _obVenue, moments: _obMoments, special: _obSpecial };
+      if (fns[name]) fns[name]();
     }
 
-    function _obDots(active) {
-      // 5 steps (indices 0-4) after the welcome screen
+    function _obNext() { _obStep++; _obRenderStep(); }
+
+    function _obDots(currentIdx) {
+      const total = _obStepList.length;
       return '<div class="ob-progress">' +
-        [0,1,2,3,4].map(i => {
+        Array.from({ length: total }, (_, i) => {
           let cls = 'ob-dot';
-          if (i < active) cls += ' done';
-          else if (i === active) cls += ' active';
+          if (i < currentIdx) cls += ' done';
+          else if (i === currentIdx) cls += ' active';
           return '<div class="' + cls + '"></div>';
         }).join('') +
       '</div>';
@@ -3785,14 +3813,16 @@
 
     function _obWelcome() {
       const eventName = currentEvent.name || currentEvent.title || 'your event';
+      const count = _obStepList.length;
+      const timeEst = count <= 2 ? 'under a minute' : 'about two minutes';
       document.getElementById('contentArea').innerHTML = `
         <div class="ob-wrap">
           <div class="ob-welcome-wrap">
             <div class="ob-welcome-title">Welcome to your portal.</div>
             <div class="ob-welcome-body">
-              We've got ${eventName} locked in on our end. Now we just need a few things from you — takes about two minutes, and it makes a real difference in how the night runs.
+              We've got ${eventName} locked in on our end. We just have ${count === 1 ? 'one quick question' : count + ' quick things'} for you — ${timeEst} — and it helps us make sure the night goes exactly how you want it.
             </div>
-            <button class="ob-next" onclick="_obStep=1;_obRenderStep();" style="font-size:16px;padding:14px 40px;">Let's do it →</button>
+            <button class="ob-next" onclick="_obStep=0;_obRenderStep();" style="font-size:16px;padding:14px 40px;">Let's do it →</button>
             <div style="margin-top:18px;">
               <button class="ob-skip" onclick="_obComplete(true)">Skip for now — just take me in</button>
             </div>
@@ -3801,18 +3831,19 @@
     }
 
     function _obType() {
+      const idx = _obStepList.indexOf('type');
       const types = ['Wedding','Quinceañera','Bar / Bat Mitzvah','Corporate Event','Birthday Party','Gala','Other'];
       const cur = (currentEvent.type || '').toLowerCase();
       document.getElementById('contentArea').innerHTML = `
         <div class="ob-wrap">
-          ${_obDots(0)}
+          ${_obDots(idx)}
           <div class="ob-question">What kind of event are we doing together?</div>
           <div class="ob-sub">Just confirm the type — we'll tailor everything around it.</div>
           <div class="ob-chips" id="obTypeChips">
             ${types.map(t => `<div class="ob-chip ${cur && t.toLowerCase().startsWith(cur.split(' ')[0]) ? 'selected' : ''}" data-val="${t}" onclick="_obPickChip(this,'obTypeChips')">${t}</div>`).join('')}
           </div>
           <div class="ob-actions">
-            <button class="ob-skip" onclick="_obStep=2;_obRenderStep()">Skip this</button>
+            <button class="ob-skip" onclick="_obNext()">Skip this</button>
             <button class="ob-next" onclick="_obSaveType()">Next →</button>
           </div>
         </div>`;
@@ -3826,22 +3857,23 @@
     function _obSaveType() {
       const sel = document.querySelector('#obTypeChips .ob-chip.selected');
       if (sel) { currentEvent.type = sel.dataset.val; saveEvent(); }
-      _obStep = 2; _obRenderStep();
+      _obNext();
     }
 
     function _obVibe() {
+      const idx = _obStepList.indexOf('vibe');
       const vibes = ['Romantic & Intimate','Grand & Dramatic','Fun & High-Energy','Sophisticated & Elegant','Modern & Bold','Something Else'];
       const cur = (currentEvent.clientPrefs && currentEvent.clientPrefs.vibe) || '';
       document.getElementById('contentArea').innerHTML = `
         <div class="ob-wrap">
-          ${_obDots(1)}
+          ${_obDots(idx)}
           <div class="ob-question">What's the overall vibe?</div>
           <div class="ob-sub">One answer — go with your gut. You can always update it later.</div>
           <div class="ob-chips" id="obVibeChips">
             ${vibes.map(v => `<div class="ob-chip ${cur === v ? 'selected' : ''}" data-val="${v}" onclick="_obPickChip(this,'obVibeChips')">${v}</div>`).join('')}
           </div>
           <div class="ob-actions">
-            <button class="ob-skip" onclick="_obStep=3;_obRenderStep()">Skip this</button>
+            <button class="ob-skip" onclick="_obNext()">Skip this</button>
             <button class="ob-next" onclick="_obSaveVibe()">Next →</button>
           </div>
         </div>`;
@@ -3854,21 +3886,22 @@
         currentEvent.clientPrefs.vibe = sel.dataset.val;
         saveEvent();
       }
-      _obStep = 3; _obRenderStep();
+      _obNext();
     }
 
     function _obVenue() {
+      const idx = _obStepList.indexOf('venue');
       const venueName = currentEvent.venueName || currentEvent.venue || '';
       const venueAddr = currentEvent.venueAddress || '';
       document.getElementById('contentArea').innerHTML = `
         <div class="ob-wrap">
-          ${_obDots(2)}
+          ${_obDots(idx)}
           <div class="ob-question">Where's it happening?</div>
-          <div class="ob-sub">Just the name for now — address and contact details can come later once everything's locked in.</div>
+          <div class="ob-sub">Just the name for now — address and contact details can come later.</div>
           <input class="ob-input-large" type="text" id="obVenueName" placeholder="Venue name (e.g., The Biltmore, Pérez Art Museum)" value="${venueName.replace(/"/g,'&quot;')}">
           <input class="ob-input-large" type="text" id="obVenueAddr" placeholder="Address (optional)" value="${venueAddr.replace(/"/g,'&quot;')}">
           <div class="ob-actions">
-            <button class="ob-skip" onclick="_obStep=4;_obRenderStep()">Skip this</button>
+            <button class="ob-skip" onclick="_obNext()">Skip this</button>
             <button class="ob-next" onclick="_obSaveVenue()">Next →</button>
           </div>
         </div>`;
@@ -3881,17 +3914,18 @@
       if (name) { currentEvent.venueName = name; currentEvent.venue = name; }
       if (addr) currentEvent.venueAddress = addr;
       if (name || addr) saveEvent();
-      _obStep = 4; _obRenderStep();
+      _obNext();
     }
 
     function _obMoments() {
+      const idx = _obStepList.indexOf('moments');
       const all = ['First Dance','Grand Entrance','Parent Dances','Cake Cutting','Toasts','Cocktail Hour','Anniversary Dance','Bouquet Toss','Surprise Dance','Candle Ceremony'];
       const cur = (currentEvent.clientPrefs && currentEvent.clientPrefs.moments) || [];
       document.getElementById('contentArea').innerHTML = `
         <div class="ob-wrap">
-          ${_obDots(3)}
+          ${_obDots(idx)}
           <div class="ob-question">Which moments matter most to you?</div>
-          <div class="ob-sub">We'll build your run of show around these. Pick as many as you want — nothing's set in stone yet.</div>
+          <div class="ob-sub">We'll build your run of show around these. Pick as many as you want.</div>
           <div class="ob-checkbox-grid">
             ${all.map(m => `
               <div class="ob-check-item ${cur.includes(m) ? 'checked' : ''}" data-val="${m}" onclick="_obToggleCheckItem(this)">
@@ -3900,7 +3934,7 @@
               </div>`).join('')}
           </div>
           <div class="ob-actions">
-            <button class="ob-skip" onclick="_obStep=5;_obRenderStep()">Skip this</button>
+            <button class="ob-skip" onclick="_obNext()">Skip this</button>
             <button class="ob-next" onclick="_obSaveMoments()">Next →</button>
           </div>
         </div>`;
@@ -3916,17 +3950,19 @@
       if (!currentEvent.clientPrefs) currentEvent.clientPrefs = {};
       currentEvent.clientPrefs.moments = checked;
       if (checked.length) saveEvent();
-      _obStep = 5; _obRenderStep();
+      _obNext();
     }
 
     function _obSpecial() {
+      const idx = _obStepList.indexOf('special');
+      const isLast = idx === _obStepList.length - 1;
       const cur = (currentEvent.clientPrefs && currentEvent.clientPrefs.specialRequests) || '';
       document.getElementById('contentArea').innerHTML = `
         <div class="ob-wrap">
-          ${_obDots(4)}
+          ${_obDots(idx)}
           <div class="ob-question">Anything we should know going in?</div>
           <div class="ob-sub">Special requests, things that are off-limits, details that make this yours. No wrong answers.</div>
-          <textarea class="ob-textarea-large" id="obSpecial" placeholder="Examples: no chicken dance, groom is hard of hearing (keep monitors left), we want cold sparklers for the grand entrance...">${cur}</textarea>
+          <textarea class="ob-textarea-large" id="obSpecial" placeholder="Examples: no chicken dance, groom is hard of hearing, we want cold sparklers for the grand entrance...">${cur}</textarea>
           <div class="ob-actions">
             <button class="ob-skip" onclick="_obComplete(false)">Skip, I'm done</button>
             <button class="ob-next" onclick="_obSaveSpecial()">Finish ✓</button>
@@ -3940,20 +3976,20 @@
       if (val) {
         if (!currentEvent.clientPrefs) currentEvent.clientPrefs = {};
         currentEvent.clientPrefs.specialRequests = val;
+        saveEvent();
       }
       _obComplete(false);
     }
 
     function _obComplete(skipped) {
       currentEvent.onboardingComplete = true;
-      // Persist the flag locally so it survives fresh logins on this device,
-      // regardless of whether the Supabase RPC echoes the field back on next login.
+      // Double-persist: localStorage ensures the flag survives fresh logins on this device
+      // even if the Supabase RPC doesn't echo onboardingComplete back.
       try { localStorage.setItem('bs_ob_done_' + currentEvent.id, '1'); } catch(e) {}
       saveEvent();
       // Restore tab bar
       document.getElementById('tabBar').style.display = '';
       if (!skipped) {
-        // Brief confirmation screen, then switch to My Event
         document.getElementById('contentArea').innerHTML = `
           <div class="ob-complete-wrap">
             <div class="ob-welcome-title">All set.</div>
