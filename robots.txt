@@ -98,6 +98,7 @@ User-agent: *
 Allow: /
 Disallow: /portal-client.html
 Disallow: /portal-provider.html
+Disallow: /portal-employee.html
 Disallow: /login.html
 Disallow: /reset-password.html
 

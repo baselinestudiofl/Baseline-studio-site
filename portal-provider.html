@@ -304,6 +304,32 @@
     .doc-footer button { padding: 8px 16px; font-size: 12px; }
     .doc-readonly-banner { padding: 12px 15px; background: var(--warning); color: var(--black); font-weight: 600; font-size: 13px; text-align: center; }
 
+    /* Document Tab Navigation */
+    .doc-tabs-nav { display: flex; gap: 0; border-bottom: 1px solid var(--border); flex-shrink: 0; }
+    .doc-tab-btn { padding: 11px 18px; background: transparent; border: none; color: var(--gray); cursor: pointer; font-size: 13px; font-weight: 500; border-bottom: 2px solid transparent; transition: all 0.2s; font-family: 'Barlow', sans-serif; white-space: nowrap; }
+    .doc-tab-btn:hover { color: var(--white); }
+    .doc-tab-btn.active { color: var(--cyan); border-bottom-color: var(--cyan); }
+    .doc-tab-content { display: none; flex: 1; overflow-y: auto; min-height: 0; }
+    .doc-tab-content.active { display: block; }
+    #docTabLibrary.doc-tab-content.active { display: flex; flex: 1; min-height: 0; overflow: hidden; }
+
+    /* Track table */
+    .track-status-badge { display: inline-block; padding: 3px 10px; border-radius: 12px; font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .04em; }
+    .track-status-pending { background: rgba(243,156,18,0.18); color: #f39c12; }
+    .track-status-signed { background: rgba(46,204,113,0.18); color: #2ecc71; }
+    .track-status-declined { background: rgba(231,76,60,0.18); color: #e74c3c; }
+
+    /* Blast section */
+    .blast-layout { display: grid; grid-template-columns: 1fr 1.5fr; gap: 24px; }
+    .blast-panel { background: var(--black-3); border: 1px solid var(--border); border-radius: 8px; padding: 24px; }
+    .blast-panel-title { font-family: 'Anton', sans-serif; font-size: 18px; margin-bottom: 18px; }
+    .blast-role-chips { display: flex; flex-wrap: wrap; gap: 8px; margin: 10px 0 16px; }
+    .blast-role-chip { display: flex; align-items: center; gap: 6px; padding: 7px 14px; border: 1px solid var(--border); border-radius: 20px; cursor: pointer; font-size: 12px; color: var(--gray); transition: all 0.2s; user-select: none; font-family: 'Barlow', sans-serif; }
+    .blast-role-chip.selected { background: rgba(31,163,224,0.15); border-color: var(--cyan); color: var(--cyan); }
+    .blast-record { padding: 14px 16px; background: var(--black-4); border: 1px solid var(--border); border-radius: 6px; margin-bottom: 10px; }
+    .blast-record-meta { font-size: 11px; color: var(--gray); margin-top: 6px; }
+    @media (max-width: 767px) { .blast-layout { grid-template-columns: 1fr; } }
+
     /* Automation Builder Styles */
     .automations-layout { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
     .automations-list { background: var(--black-3); border: 1px solid var(--border); border-radius: 8px; padding: 20px; }
@@ -1008,8 +1034,15 @@
       </div>
 
       <div class="section" id="documents" style="flex-direction: column; height: calc(100vh - 120px);">
-        <div id="djReadOnlyBanner" class="doc-readonly-banner" style="display: none; margin-bottom: 15px;">Documents are view-only for your role.</div>
-        <div class="doc-panel-container">
+        <div id="djReadOnlyBanner" class="doc-readonly-banner" style="display: none; margin-bottom: 0;">Documents are view-only for your role.</div>
+        <div class="doc-tabs-nav" id="docTabsNav">
+          <button class="doc-tab-btn active" onclick="switchDocTab('library')" id="docTabBtnLibrary">Library</button>
+          <button class="doc-tab-btn" onclick="switchDocTab('send')" id="docTabBtnSend">Send for Signature</button>
+          <button class="doc-tab-btn" onclick="switchDocTab('track')" id="docTabBtnTrack">Sent &amp; Tracking</button>
+          <button class="doc-tab-btn" onclick="switchDocTab('blasts')" id="docTabBtnBlasts">Blasts</button>
+        </div>
+        <div id="docTabLibrary" class="doc-tab-content active" style="flex:1;min-height:0;">
+        <div class="doc-panel-container" style="height:100%;">
           <div class="doc-sidebar">
             <div class="doc-sidebar-header">
               <button class="btn btn-primary" id="newDocButton" onclick="createNewDocument()" style="width: 100%; margin-bottom: 10px;">+ New Document</button>
@@ -1078,7 +1111,12 @@
               <button class="btn btn-danger" id="deleteDocButton" onclick="deleteCurrentDocument()">Delete</button>
             </div>
           </div>
-        </div>
+        </div><!-- /.doc-panel-container -->
+        </div><!-- /#docTabLibrary -->
+
+        <div id="docTabSend" class="doc-tab-content" style="padding:28px;overflow-y:auto;"></div>
+        <div id="docTabTrack" class="doc-tab-content" style="padding:28px;overflow-y:auto;"></div>
+        <div id="docTabBlasts" class="doc-tab-content" style="padding:28px;overflow-y:auto;"></div>
       </div>
 
       <div class="section" id="accounts">
@@ -1616,6 +1654,11 @@
     // They use an in-memory cache backed by Supabase — all existing calls work unchanged.
     function genId() { return Date.now().toString(36) + Math.random().toString(36).substr(2); }
 
+    // ── HTML escape — always use for user-supplied content in innerHTML ──────────
+    function esc(s) {
+      return String(s ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');
+    }
+
     function initData() {
       if (!getDB('users') || getDB('users').length === 0) {
         setDB('users', [
@@ -2040,7 +2083,50 @@
       ev.portalDisabled = disabled;
       setDB('events', events);
       window.currentEvent = ev;
-      showToast(disabled ? 'Portal access turned off for this client' : 'Portal access is now active', disabled ? 'warning' : 'success');
+      showToast(disabled ? 'Portal access turned off for this event' : 'Portal access is now active', disabled ? 'warning' : 'success');
+    }
+
+    // ── Client-level portal management (called from client profile page) ─────
+    function saveClientPortalCredentials(clientId) {
+      const client = (getDB('clients') || []).find(c => c.id === clientId);
+      if (!client) return;
+      const newEmail = (document.getElementById('clientPortalEmail')?.value || '').trim();
+      const newPass  = (document.getElementById('clientPortalPassword')?.value || '').trim();
+      const baseEmail = client.email || '';
+      if (!newEmail && !newPass) { showToast('Nothing to save', 'error'); return; }
+      if (newPass) {
+        // Canonical write path — syncs email + password across all client + event records
+        setClientCredentials(baseEmail, newEmail || baseEmail, newPass);
+      } else {
+        // Email-only change (no password entered)
+        const clients = getDB('clients');
+        const events  = getDB('events');
+        clients.forEach(c => { if (c.id === clientId) c.portalEmail = newEmail; });
+        events.filter(e => e.clientId === clientId || (e.clientEmail||'').toLowerCase() === baseEmail.toLowerCase())
+              .forEach(ev => { ev.portalEmail = newEmail; });
+        setDB('clients', clients);
+        setDB('events', events);
+      }
+      showToast('Portal credentials saved', 'success');
+      showClientPage(clientId);
+    }
+
+    function generateClientPortalPassword() {
+      const pw = genPortalPassword();
+      const el = document.getElementById('clientPortalPassword');
+      if (el) { el.value = pw; el.focus(); }
+    }
+
+    function toggleClientPortalDisabled(clientId, disabled) {
+      const client = (getDB('clients') || []).find(c => c.id === clientId);
+      if (!client) return;
+      const baseEmail = (client.email || '').toLowerCase();
+      const events = getDB('events');
+      const affected = events.filter(e => e.clientId === clientId || (e.clientEmail||'').toLowerCase() === baseEmail);
+      affected.forEach(ev => { ev.portalDisabled = disabled; });
+      setDB('events', events);
+      showToast(disabled ? 'Portal access disabled for all their events' : 'Portal access enabled', disabled ? 'warning' : 'success');
+      showClientPage(clientId);
     }
 
     // ── H: Weather chip via Open-Meteo (no API key) ──────────────────────────
@@ -2360,18 +2446,18 @@
               <div style="background:#111;border:1px solid rgba(255,255,255,0.08);border-radius:8px;padding:14px 18px;display:flex;align-items:center;gap:16px;cursor:pointer;transition:border-color .15s,background .15s;" onmouseenter="this.style.borderColor='rgba(31,163,224,0.4)';this.style.background='#141414'" onmouseleave="this.style.borderColor='rgba(255,255,255,0.08)';this.style.background='#111'" onclick="openInquiry('${inq.id}')">
                 <div style="flex:1;min-width:0;">
                   <div style="display:flex;align-items:center;gap:8px;margin-bottom:5px;flex-wrap:wrap;">
-                    <span style="font-weight:600;font-size:14px;">${inq.name || 'Unknown'}</span>
-                    <span style="font-size:11px;background:rgba(255,255,255,0.06);padding:2px 8px;border-radius:20px;color:rgba(255,255,255,0.5);">${inq.event_type || 'Inquiry'}</span>
-                    <span style="font-size:11px;padding:2px 8px;border-radius:20px;color:${sc};background:${sc}22;">${inq.status || 'new'}</span>
-                    ${ret ? `<span class="returning-badge">↩ ${ret.label}</span>` : ''}
+                    <span style="font-weight:600;font-size:14px;">${esc(inq.name || 'Unknown')}</span>
+                    <span style="font-size:11px;background:rgba(255,255,255,0.06);padding:2px 8px;border-radius:20px;color:rgba(255,255,255,0.5);">${esc(inq.event_type || 'Inquiry')}</span>
+                    <span style="font-size:11px;padding:2px 8px;border-radius:20px;color:${sc};background:${sc}22;">${esc(inq.status || 'new')}</span>
+                    ${ret ? `<span class="returning-badge">↩ ${esc(ret.label)}</span>` : ''}
                   </div>
                   <div style="font-size:12px;color:rgba(255,255,255,0.45);display:flex;gap:16px;flex-wrap:wrap;">
-                    ${inq.email ? `<a href="mailto:${inq.email}" onclick="event.stopPropagation()" style="color:rgba(255,255,255,0.45);text-decoration:none;">✉ ${inq.email}</a>` : ''}
-                    ${inq.phone ? `<a href="tel:${inq.phone}" onclick="event.stopPropagation()" style="color:rgba(255,255,255,0.45);text-decoration:none;">📞 ${inq.phone}</a>` : ''}
-                    ${inq.event_date ? `<span>📅 ${inq.event_date} ${daysUntilChip(inq.event_date)}</span>` : ''}
-                    ${inq.venue ? `<span>📍 ${inq.venue}</span>` : ''}
+                    ${inq.email ? `<a href="mailto:${esc(inq.email)}" onclick="event.stopPropagation()" style="color:rgba(255,255,255,0.45);text-decoration:none;">✉ ${esc(inq.email)}</a>` : ''}
+                    ${inq.phone ? `<a href="tel:${esc(inq.phone)}" onclick="event.stopPropagation()" style="color:rgba(255,255,255,0.45);text-decoration:none;">📞 ${esc(inq.phone)}</a>` : ''}
+                    ${inq.event_date ? `<span>📅 ${esc(inq.event_date)} ${daysUntilChip(inq.event_date)}</span>` : ''}
+                    ${inq.venue ? `<span>📍 ${esc(inq.venue)}</span>` : ''}
                   </div>
-                  ${inq.services ? `<div style="font-size:12px;color:rgba(255,255,255,0.3);margin-top:3px;">Services: ${inq.services}</div>` : ''}
+                  ${inq.services ? `<div style="font-size:12px;color:rgba(255,255,255,0.3);margin-top:3px;">Services: ${esc(inq.services)}</div>` : ''}
                 </div>
                 <div style="display:flex;flex-direction:column;align-items:flex-end;gap:4px;flex-shrink:0;">
                   <span style="font-size:11px;color:rgba(255,255,255,0.25);" title="${new Date(inq.created_at).toLocaleString()}">${timeAgo(inq.created_at)}</span>
@@ -2397,8 +2483,8 @@
       const storedNotes = (window._inqNotes || {})[id] || inq.notes || '';
       document.getElementById('eventDetailContent').innerHTML = `
         <div class="modal-title" style="display:flex;align-items:center;gap:12px;">
-          ${inq.name || 'Inquiry'}
-          ${returning ? `<span class="returning-badge">↩ ${returning.label}</span>` : ''}
+          ${esc(inq.name || 'Inquiry')}
+          ${returning ? `<span class="returning-badge">↩ ${esc(returning.label)}</span>` : ''}
         </div>
 
         <div class="stage-stepper" id="stageStepper_${id}">
@@ -2414,27 +2500,27 @@
         <div class="grid-2" style="gap:14px;margin-bottom:16px;">
           <div>
             <label class="form-label">Name</label>
-            <div style="color:#fff;font-size:14px;">${inq.name||'—'}</div>
+            <div style="color:#fff;font-size:14px;">${esc(inq.name||'—')}</div>
           </div>
           <div>
             <label class="form-label">Email</label>
             <div style="font-size:14px;">
-              ${inq.email ? `<a href="mailto:${inq.email}" style="color:var(--cyan);text-decoration:none;">${inq.email}</a>` : '—'}
+              ${inq.email ? `<a href="mailto:${esc(inq.email)}" style="color:var(--cyan);text-decoration:none;">${esc(inq.email)}</a>` : '—'}
             </div>
           </div>
           <div>
             <label class="form-label">Phone</label>
             <div style="font-size:14px;">
-              ${inq.phone ? `<a href="tel:${inq.phone}" style="color:var(--cyan);text-decoration:none;">${inq.phone}</a>` : '—'}
+              ${inq.phone ? `<a href="tel:${esc(inq.phone)}" style="color:var(--cyan);text-decoration:none;">${esc(inq.phone)}</a>` : '—'}
             </div>
           </div>
-          <div><label class="form-label">Event Type</label><div style="color:#fff;font-size:14px;">${inq.event_type||'—'}</div></div>
-          <div><label class="form-label">Event Date</label><div style="color:#fff;font-size:14px;">${inq.event_date||'—'} ${daysUntilChip(inq.event_date)}</div></div>
-          <div><label class="form-label">Venue</label><div style="color:#fff;font-size:14px;">${inq.venue||'—'}</div></div>
+          <div><label class="form-label">Event Type</label><div style="color:#fff;font-size:14px;">${esc(inq.event_type||'—')}</div></div>
+          <div><label class="form-label">Event Date</label><div style="color:#fff;font-size:14px;">${esc(inq.event_date||'—')} ${daysUntilChip(inq.event_date)}</div></div>
+          <div><label class="form-label">Venue</label><div style="color:#fff;font-size:14px;">${esc(inq.venue||'—')}</div></div>
         </div>
 
-        ${inq.services ? `<div style="margin-bottom:12px;"><label class="form-label">Services</label><div style="color:#fff;font-size:14px;">${inq.services}</div></div>` : ''}
-        ${inq.message  ? `<div style="margin-bottom:12px;"><label class="form-label">Message</label><div style="color:rgba(255,255,255,0.7);font-size:14px;line-height:1.6;white-space:pre-wrap;">${inq.message}</div></div>` : ''}
+        ${inq.services ? `<div style="margin-bottom:12px;"><label class="form-label">Services</label><div style="color:#fff;font-size:14px;">${esc(inq.services)}</div></div>` : ''}
+        ${inq.message  ? `<div style="margin-bottom:12px;"><label class="form-label">Message</label><div style="color:rgba(255,255,255,0.7);font-size:14px;line-height:1.6;white-space:pre-wrap;">${esc(inq.message)}</div></div>` : ''}
 
         <div style="margin-bottom:12px;">
           <label class="form-label">Received</label>
@@ -2454,7 +2540,7 @@
         <div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:20px;">
           <button class="btn btn-primary" onclick="saveInquiryWithNotes('${inq.id}')">Save</button>
           <button class="btn btn-primary" onclick="convertInquiryToEvent('${inq.id}')">+ Convert to Event</button>
-          ${inq.email ? `<a href="mailto:${inq.email}?subject=Re: Your Inquiry" class="btn btn-secondary">✉ Email Client</a>` : ''}
+          ${inq.email ? `<a href="mailto:${esc(inq.email)}?subject=Re: Your Inquiry" class="btn btn-secondary">✉ Email Client</a>` : ''}
           <button class="btn btn-secondary" onclick="archiveInquiry('${inq.id}')" style="border-color:rgba(231,76,60,0.4);color:rgba(231,76,60,0.7);">Archive</button>
           <button class="btn btn-secondary" onclick="closeModal('eventDetailModal')">Close</button>
         </div>
@@ -2592,8 +2678,8 @@
           const advanceChip = next ? `<div class="kanban-advance-chip" onclick="event.stopPropagation();advancePipelineStage('${e.id}','${next}')" style="display:none;position:absolute;bottom:8px;right:8px;font-size:10px;font-weight:700;padding:3px 8px;border-radius:10px;background:rgba(31,163,224,0.2);color:var(--cyan);border:1px solid rgba(31,163,224,0.3);cursor:pointer;white-space:nowrap;">→ ${next}</div>` : '';
           const stageCtaHtml = getStageCTAs(status, e.id, e);
           html += `<div class="kanban-card" draggable="true" data-event-id="${e.id}" style="position:relative;" ondragstart="dragStart(event)" ondragend="dragEnd(event)" onclick="openEventDetail('${e.id}')" onmouseenter="this.querySelector('.kanban-advance-chip')&&(this.querySelector('.kanban-advance-chip').style.display='block')" onmouseleave="this.querySelector('.kanban-advance-chip')&&(this.querySelector('.kanban-advance-chip').style.display='none')">
-            <div class="kanban-card-title">${e.name}</div>
-            <div class="kanban-card-client">${e.clientName}</div>
+            <div class="kanban-card-title">${esc(e.name)}</div>
+            <div class="kanban-card-client">${esc(e.clientName)}</div>
             <div class="kanban-card-date">${date} ${daysUntilChip(e.date)}</div>
             <div class="kanban-card-footer"><div class="kanban-card-price">$${e.basePrice}</div></div>
             ${stageCtaHtml ? `<div class="stage-actions" onclick="event.stopPropagation()">${stageCtaHtml}</div>` : ''}
@@ -2791,12 +2877,12 @@
           : `<button class="btn btn-secondary" style="padding:6px 10px;font-size:12px;color:#888;" onclick="event.stopPropagation();toggleArchiveEvent('${e.id}',true)">Archive</button>`;
         const archivedBadge = e.archived ? `<span class="badge badge-archived" style="margin-left:4px;font-size:10px;">archived</span>` : '';
         return `<tr onclick="openEventDetail('${e.id}')" style="cursor:pointer;${e.archived ? 'opacity:0.55;' : ''}">
-          <td>${e.name}${archivedBadge}</td>
-          <td><span class="badge badge-${e.type}">${e.type}</span></td>
+          <td>${esc(e.name)}${archivedBadge}</td>
+          <td><span class="badge badge-${esc(e.type)}">${esc(e.type)}</span></td>
           <td>${date} ${daysUntilChip(e.date)}</td>
-          <td>${e.clientName}</td>
-          <td>${e.venueName}</td>
-          <td><span class="badge badge-${e.status}">${e.status}</span></td>
+          <td>${esc(e.clientName)}</td>
+          <td>${esc(e.venueName)}</td>
+          <td><span class="badge badge-${esc(e.status)}">${esc(e.status)}</span></td>
           <td>$${e.basePrice}</td>
           <td style="display:flex;gap:6px;">${archiveBtn}${deleteBtn}</td>
         </tr>`;
@@ -2837,11 +2923,11 @@
         <div class="detail-page-header">
           <div>
             <div class="detail-page-title">
-              ${event.name}
-              <span class="badge badge-${event.type}" style="font-size:12px;">${event.type}</span>
-              <span class="badge badge-${event.status}" style="font-size:12px;">${event.status}</span>
+              ${esc(event.name)}
+              <span class="badge badge-${esc(event.type)}" style="font-size:12px;">${esc(event.type)}</span>
+              <span class="badge badge-${esc(event.status)}" style="font-size:12px;">${esc(event.status)}</span>
             </div>
-            ${metaParts.length ? `<div class="detail-page-meta">${metaParts.join(' · ')}</div>` : ''}
+            ${metaParts.length ? `<div class="detail-page-meta">${metaParts.map(esc).join(' · ')}</div>` : ''}
           </div>
           <div class="detail-page-actions">
             <button class="btn btn-secondary" onclick="openCreateInvoiceFromEvent('${event.id}')" style="background:rgba(31,163,224,0.15);border-color:var(--cyan);color:var(--cyan);">💳 Invoice</button>
@@ -2886,9 +2972,15 @@
       const events = getDB('events');
       const clientEvents = events.filter(e => e.clientId === clientId || (e.linkedClients && e.linkedClients.includes(clientId)));
 
-      const portalEv = clientEvents.sort((a,b) => new Date(b.date||0) - new Date(a.date||0)).find(e => e.portalPassword);
+      const portalEv    = clientEvents.sort((a,b) => new Date(b.date||0) - new Date(a.date||0)).find(e => e.portalPassword);
       const portalEmail = portalEv?.portalEmail || portalEv?.clientEmail || client.email || '';
       const portalPw    = portalEv?.portalPassword || '';
+      const portalDisabled = !!portalEv?.portalDisabled;
+      const _cpFirst    = (client.name || '').split(' ')[0] || 'there';
+      const cpInviteMsg = portalPw
+        ? `Hey ${_cpFirst} —\n\nYour portal is ready. Log in to review your event details, timeline, and documents.\n\nPortal: https://www.baselinestudiofl.com/portal-client.html\nEmail: ${portalEmail}\nPassword: ${portalPw}\n\nReach out if anything comes up.\n\n— Saul, Baseline Studio`
+        : '';
+      const cpSafeMsg = cpInviteMsg.replace(/`/g,'\\`').replace(/\$/g,'\\$');
 
       const evCards = clientEvents.length
         ? clientEvents.map(e => {
@@ -2948,26 +3040,42 @@
               <button class="btn btn-secondary" onclick="deleteClient('${clientId}')" style="border-color:rgba(231,76,60,0.4);color:rgba(231,76,60,0.8);">🗑 Delete</button>
             </div>
 
-            <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--gray);margin-bottom:16px;">Portal Access</div>
-            ${portalPw ? `
-              <div style="background:rgba(46,204,113,0.06);border:1px solid rgba(46,204,113,0.18);border-radius:8px;padding:14px 16px;margin-bottom:14px;font-size:12px;">
-                <div style="display:flex;justify-content:space-between;margin-bottom:6px;"><span style="color:var(--gray);">Login email</span><code style="color:#2ecc71;">${portalEmail}</code></div>
-                <div style="display:flex;justify-content:space-between;align-items:center;"><span style="color:var(--gray);">Password</span>
-                  <div><code style="color:#2ecc71;">${portalPw}</code>
-                    <button onclick="copyToClipboard('${portalPw}')" style="background:none;border:none;color:var(--cyan);cursor:pointer;font-size:11px;margin-left:8px;">Copy</button>
-                  </div>
+            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;">
+              <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--gray);">Portal Access</div>
+              <label style="display:flex;align-items:center;gap:6px;cursor:pointer;font-size:12px;color:${portalDisabled?'#ff6b6b':'rgba(255,255,255,0.35)'};">
+                <input type="checkbox" id="clientPortalDisabled" ${portalDisabled?'checked':''} onchange="toggleClientPortalDisabled('${clientId}',this.checked)" style="width:13px;height:13px;accent-color:var(--cyan);">
+                ${portalDisabled ? 'Access disabled' : 'Disable access'}
+              </label>
+            </div>
+            <div class="grid-2" style="margin-bottom:12px;">
+              <div class="form-group" style="margin:0;">
+                <label class="form-label">Portal Email</label>
+                <input type="email" class="form-input" id="clientPortalEmail" value="${portalEmail}" placeholder="${client.email||'client@email.com'}">
+              </div>
+              <div class="form-group" style="margin:0;">
+                <label class="form-label">Portal Password</label>
+                <div style="display:flex;gap:6px;">
+                  <input type="text" class="form-input" id="clientPortalPassword" value="${portalPw}" style="font-family:monospace;letter-spacing:.05em;flex:1;" placeholder="No password set">
+                  <button class="btn btn-secondary" style="white-space:nowrap;padding:0 12px;" onclick="generateClientPortalPassword()" title="Generate new password">↺</button>
                 </div>
               </div>
-              <div style="display:flex;gap:8px;margin-bottom:12px;flex-wrap:wrap;">
-                <button class="btn btn-secondary" onclick="sendClientPortalInvite('${clientId}',this)" style="background:rgba(31,163,224,0.1);border-color:rgba(31,163,224,0.4);color:var(--cyan);">🔑 Send Login Info</button>
-                <button class="btn btn-secondary" onclick="sendClientPortalInvite('${clientId}',this,true)" style="background:rgba(243,156,18,0.08);border-color:rgba(243,156,18,0.3);color:#f39c12;">↺ Send Recovery</button>
-              </div>` : `
-              <div style="background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.07);border-radius:8px;padding:12px 14px;margin-bottom:14px;font-size:12px;color:var(--gray);">No portal yet — activates when their first event is created.</div>`}
-            <div style="display:flex;gap:8px;align-items:center;margin-top:8px;">
-              <input type="text" class="form-input" id="newClientPortalPw" placeholder="Set new password…" style="font-size:13px;">
-              <button class="btn btn-secondary" onclick="changeClientPortalPassword('${clientId}')" style="white-space:nowrap;">Update</button>
             </div>
-            <div style="font-size:11px;color:var(--gray);margin-top:6px;">Updates password across all their events.</div>
+            <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:16px;">
+              <button class="btn btn-primary" onclick="saveClientPortalCredentials('${clientId}')">Save Credentials</button>
+              ${portalPw ? `
+                <button class="btn btn-secondary" onclick="copyToClipboard('${portalPw}')">📋 Copy Password</button>
+                <button class="btn btn-secondary" onclick="copyToClipboard(\`${cpSafeMsg}\`)">✉ Copy Invite</button>
+                <button class="btn btn-secondary" onclick="sendClientPortalInvite('${clientId}',this)" style="background:rgba(31,163,224,0.1);border-color:rgba(31,163,224,0.4);color:var(--cyan);">🔑 Send Login</button>
+              ` : ''}
+            </div>
+            ${portalPw ? `
+              <div style="background:var(--black-4);border:1px solid var(--border);border-radius:6px;padding:14px 16px;">
+                <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--gray);margin-bottom:8px;">Invite Preview</div>
+                <pre style="font-size:12px;color:rgba(255,255,255,0.45);white-space:pre-wrap;line-height:1.6;margin:0;">${cpInviteMsg}</pre>
+              </div>
+            ` : `
+              <div style="font-size:12px;color:var(--gray);padding:12px 14px;background:rgba(255,255,255,0.02);border:1px solid rgba(255,255,255,0.06);border-radius:6px;">No portal yet — set credentials above to activate their access.</div>
+            `}
           </div>
 
           <!-- Right col: events -->
@@ -3194,7 +3302,7 @@
         return `<div style="display:flex;align-items:flex-start;gap:10px;margin-bottom:14px;${!isClient ? 'flex-direction:row-reverse;' : ''}">
           <div style="width:32px;height:32px;border-radius:50%;background:rgba(255,255,255,0.08);display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;flex-shrink:0;color:rgba(255,255,255,0.7);">${avatar}</div>
           <div style="display:flex;flex-direction:column;max-width:75%;${!isClient ? 'align-items:flex-end;' : ''}">
-            <div style="background:${bgColor};border:1px solid ${borderC};border-radius:10px;padding:10px 14px;font-size:13px;color:rgba(255,255,255,0.85);">${m.text}</div>
+            <div style="background:${bgColor};border:1px solid ${borderC};border-radius:10px;padding:10px 14px;font-size:13px;color:rgba(255,255,255,0.85);">${esc(m.text)}</div>
             <div style="font-size:10px;color:rgba(255,255,255,0.3);margin-top:4px;">${new Date(m.ts).toLocaleString()}</div>
           </div>
         </div>`;
@@ -3859,43 +3967,48 @@
       const email    = event.portalEmail || event.clientEmail || '';
       const pass     = event.portalPassword || '';
       const disabled = !!event.portalDisabled;
-      const clientFirst = (event.clientName||'').split(' ')[0] || 'there';
-      const inviteMsg = `Hey ${clientFirst} —\n\nYour portal is ready. Log in to review your event details, timeline, and documents.\n\nPortal: https://www.baselinestudiofl.com/portal-client.html\nEmail: ${email}\nPassword: ${pass}\n\nReach out if anything comes up.\n\n— Saul, Baseline Studio`;
+      const clientFirst = (event.clientName || '').split(' ')[0] || 'there';
+      const inviteMsg = pass
+        ? `Hey ${clientFirst} —\n\nYour portal is ready. Log in to review your event details, timeline, and documents.\n\nPortal: https://www.baselinestudiofl.com/portal-client.html\nEmail: ${email}\nPassword: ${pass}\n\nReach out if anything comes up.\n\n— Saul, Baseline Studio`
+        : '';
       const safeMsg = inviteMsg.replace(/`/g,'\\`').replace(/\$/g,'\\$');
+
+      const manageLink = event.clientId
+        ? `<button class="btn btn-secondary" style="font-size:12px;padding:6px 14px;" onclick="navigateToClient('${event.clientId}')">👤 Manage in Client Profile</button>`
+        : '';
+
       return `
-        <div style="margin-bottom:20px;">
-          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;">
-            <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--gray);">Client Portal Credentials</div>
-            <label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:12px;color:${disabled?'#ff6b6b':'rgba(255,255,255,0.5)'};">
-              <input type="checkbox" id="portalDisabledToggle" ${disabled?'checked':''} onchange="togglePortalDisabled('${event.id}',this.checked)" style="width:14px;height:14px;accent-color:var(--cyan);">
-              ${disabled ? 'Portal disabled' : 'Portal enabled'}
-            </label>
-          </div>
-          <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px;">
-            <div class="form-group" style="margin:0;">
-              <label class="form-label">Portal Email</label>
-              <input type="email" class="form-input" id="editPortalEmail" value="${email}" placeholder="${event.clientEmail||'client@email.com'}">
+        <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;margin-bottom:16px;">
+          <label style="display:flex;align-items:center;gap:7px;cursor:pointer;font-size:12px;color:${disabled?'#ff6b6b':'rgba(255,255,255,0.4)'};">
+            <input type="checkbox" ${disabled?'checked':''} onchange="togglePortalDisabled('${event.id}',this.checked)" style="width:13px;height:13px;accent-color:var(--cyan);">
+            ${disabled ? 'Portal disabled' : 'Portal enabled'}
+          </label>
+          ${manageLink}
+        </div>
+        ${pass ? `
+          <div style="background:rgba(46,204,113,0.06);border:1px solid rgba(46,204,113,0.18);border-radius:8px;padding:14px 16px;margin-bottom:14px;">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
+              <span style="font-size:12px;color:var(--gray);">Login email</span>
+              <code style="font-size:12px;color:#2ecc71;">${esc(email)}</code>
             </div>
-            <div class="form-group" style="margin:0;">
-              <label class="form-label">Portal Password</label>
-              <div style="display:flex;gap:6px;">
-                <input type="text" class="form-input" id="editPortalPassword" value="${pass}" style="font-family:monospace;letter-spacing:.06em;flex:1;">
-                <button class="btn btn-secondary" style="white-space:nowrap;padding:0 12px;" onclick="generateNewPortalPassword('${event.id}')" title="Generate new password">↺</button>
+            <div style="display:flex;justify-content:space-between;align-items:center;">
+              <span style="font-size:12px;color:var(--gray);">Password</span>
+              <div style="display:flex;align-items:center;gap:8px;">
+                <code style="font-size:12px;color:#2ecc71;">${esc(pass)}</code>
+                <button onclick="copyToClipboard('${pass}')" style="background:none;border:none;color:var(--cyan);cursor:pointer;font-size:11px;">Copy</button>
               </div>
             </div>
           </div>
-          <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:16px;">
-            <button class="btn btn-primary" onclick="savePortalCredentials('${event.id}')">Save Credentials</button>
-            <button class="btn btn-secondary" onclick="copyToClipboard('${pass}')">📋 Copy Password</button>
+          <div style="display:flex;gap:8px;flex-wrap:wrap;">
+            <button class="btn btn-secondary" onclick="sendPortalInvite('${event.id}')" style="background:rgba(46,204,113,0.1);border-color:rgba(46,204,113,0.35);color:#2ecc71;">🔑 Send Login Info</button>
             <button class="btn btn-secondary" onclick="copyToClipboard(\`${safeMsg}\`)">✉ Copy Invite</button>
-            ${email ? `<a href="mailto:${email}?subject=Your Baseline Studio Portal&body=${encodeURIComponent(inviteMsg)}" class="btn btn-secondary">↗ Open in Email App</a>` : ''}
+            ${email ? `<a href="mailto:${esc(email)}?subject=Your Baseline Studio Portal&body=${encodeURIComponent(inviteMsg)}" class="btn btn-secondary">↗ Email App</a>` : ''}
           </div>
-          <div style="font-size:11px;color:rgba(255,255,255,0.35);margin-bottom:12px;">Client logins are per-event — they match the email and password above, not a Supabase auth account. That's by design.</div>
-        </div>
-        <div style="background:var(--black-4);border:1px solid var(--border);border-radius:6px;padding:14px 16px;">
-          <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--gray);margin-bottom:8px;">Invite Preview</div>
-          <pre style="font-size:12px;color:rgba(255,255,255,0.55);white-space:pre-wrap;line-height:1.6;">${inviteMsg}</pre>
-        </div>`;
+        ` : `
+          <div style="background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.07);border-radius:8px;padding:14px 16px;font-size:13px;color:var(--gray);">
+            No credentials set. ${event.clientId ? `<button onclick="navigateToClient('${event.clientId}')" style="background:none;border:none;color:var(--cyan);cursor:pointer;font-size:13px;padding:0;margin-left:4px;">Set them in the client profile →</button>` : 'Link a client to this event first.'}
+          </div>
+        `}`;
     }
 
     let _lpCleanup = null;
@@ -4618,6 +4731,7 @@
 
     // Document Editor Functions
     function renderDocuments() {
+      seedDefaultTemplates(); // populate starter library if empty
       const templates = getDB('templates');
       const currentUser = BSPortal.getCurrentUser();
       const isDJ = currentUser.role === 'dj';
@@ -6907,7 +7021,7 @@
           <div class="notes-area">
             <div class="notes-box">
               <div class="lbl">Music Notes / Special Requests</div>
-              <div style="font-size:13px;color:#555;line-height:1.6;">${(ev.notes || '').replace(/\n/g,'<br>') || '<span style="color:#ccc;">—</span>'}</div>
+              <div style="font-size:13px;color:#555;line-height:1.6;">${esc(ev.notes || '').replace(/\n/g,'<br>') || '<span style="color:#ccc;">—</span>'}</div>
             </div>
             <div class="notes-box">
               <div class="lbl">DJ/MC Instructions</div>
@@ -7368,6 +7482,330 @@
         }
       }
     });
+
+    // ══════════════════════════════════════════════════════════════════════════
+    // DOCUMENT SYSTEM v2 — Templates, Send, Track, Blasts
+    // ══════════════════════════════════════════════════════════════════════════
+
+    // ── Tab switching ──────────────────────────────────────────────────────────
+    function switchDocTab(tab) {
+      document.querySelectorAll('.doc-tab-btn').forEach(b => b.classList.remove('active'));
+      document.querySelectorAll('.doc-tab-content').forEach(c => c.classList.remove('active'));
+      const btnId = 'docTabBtn' + tab.charAt(0).toUpperCase() + tab.slice(1);
+      const panelId = 'docTab' + tab.charAt(0).toUpperCase() + tab.slice(1);
+      const btn = document.getElementById(btnId);
+      const panel = document.getElementById(panelId);
+      if (btn) btn.classList.add('active');
+      if (panel) panel.classList.add('active');
+      if (tab === 'send') renderSendDocTab();
+      if (tab === 'track') renderTrackTab();
+      if (tab === 'blasts') renderBlastsTab();
+    }
+
+    // ── Seed default templates ────────────────────────────────────────────────
+    function seedDefaultTemplates() {
+      const existing = getDB('templates');
+      if (existing && existing.length > 0) return;
+      const T = [
+        { id: genId(), name: 'DJ Services Agreement', category: 'client', contentHTML: `<h1>DJ Services Agreement</h1><p>This Agreement is made as of <strong>{{current_date}}</strong>, between <strong>Baseline Studio</strong> ("Company") and <strong>{{client_name}}</strong> ("Client").</p><h2>1. Event Details</h2><p><strong>Event Date:</strong> {{event_date}}<br><strong>Event Type:</strong> {{event_type}}<br><strong>Venue:</strong> {{venue_name}}<br><strong>Services:</strong> {{services_list}}</p><h2>2. Compensation</h2><p>Total contract price: <strong>{{total_price}}</strong>. A non-refundable deposit of <strong>{{deposit_amount}}</strong> is due upon signing to hold the date. Remaining balance is due 14 days before the event.<br>{{payment_terms}}</p><h2>3. Services</h2><p>Baseline Studio will provide professional DJ and entertainment services as listed above. Setup begins at least 90 minutes before the event start time unless otherwise agreed in writing.</p><h2>4. Cancellation</h2><p>Cancellations made more than 90 days before the event: deposit is forfeited, no further payment owed. Within 90 days: 50% of remaining balance due. Within 30 days: full remaining balance due.</p><h2>5. Liability</h2><p>Baseline Studio is not liable for circumstances beyond our control. In such cases we will work with the client to reschedule or provide a credit.</p><h2>6. Agreement</h2><p>Both parties have read and agree to these terms.</p><br><table style="width:100%;border-collapse:collapse;"><tr><td style="width:50%;padding-right:20px;vertical-align:top;"><p><strong>Client Signature</strong></p><div style="border-bottom:2px solid #333;height:50px;margin-bottom:8px;"></div><p style="font-size:12px;">Printed Name: ______________________________</p><p style="font-size:12px;">Date: ______________</p></td><td style="width:50%;padding-left:20px;vertical-align:top;"><p><strong>Baseline Studio</strong></p><div style="border-bottom:2px solid #333;height:50px;margin-bottom:8px;"></div><p style="font-size:12px;">Authorized Signature</p><p style="font-size:12px;">Date: ______________</p></td></tr></table>` },
+        { id: genId(), name: 'Cancellation Agreement', category: 'client', contentHTML: `<h1>Event Cancellation Agreement</h1><p>Date: <strong>{{current_date}}</strong></p><p>This agreement is between <strong>Baseline Studio</strong> and <strong>{{client_name}}</strong> regarding the event originally scheduled for <strong>{{event_date}}</strong> at <strong>{{venue_name}}</strong>.</p><h2>Cancellation Terms</h2><p>The parties agree that the DJ Services Agreement for the above event is hereby cancelled effective today.</p><h2>Financial Settlement</h2><ul><li>Original contract total: {{total_price}}</li><li>Deposit previously paid: {{deposit_amount}}</li><li>Additional amount owed by Client: $____________</li><li>Refund to be issued by Baseline Studio: $____________</li></ul><h2>Release</h2><p>Upon settlement of any amounts owed, both parties release each other from all claims arising from the original agreement.</p><br><table style="width:100%;border-collapse:collapse;"><tr><td style="width:50%;padding-right:20px;vertical-align:top;"><p><strong>Client Signature</strong></p><div style="border-bottom:2px solid #333;height:50px;margin-bottom:8px;"></div><p style="font-size:12px;">Printed Name: ______________________________</p><p style="font-size:12px;">Date: ______________</p></td><td style="width:50%;padding-left:20px;vertical-align:top;"><p><strong>Baseline Studio</strong></p><div style="border-bottom:2px solid #333;height:50px;margin-bottom:8px;"></div><p style="font-size:12px;">Date: ______________</p></td></tr></table>` },
+        { id: genId(), name: 'Services Adjustment Agreement', category: 'client', contentHTML: `<h1>Services Adjustment Agreement</h1><p>Date: <strong>{{current_date}}</strong></p><p>This agreement modifies the original DJ Services Agreement between <strong>Baseline Studio</strong> and <strong>{{client_name}}</strong> for the event on <strong>{{event_date}}</strong>.</p><h2>Original Agreement</h2><p>Original Services: [list from original contract]<br>Original Total: [original amount]</p><h2>Modifications</h2><p><strong>Services Added:</strong></p><ul><li>___________________________________________</li></ul><p><strong>Services Removed:</strong></p><ul><li>___________________________________________</li></ul><h2>Revised Pricing</h2><p>Revised Total: {{total_price}}<br>Additional Balance Due: $____________<br>Due Date: {{balance_due_date}}</p><h2>All Other Terms Unchanged</h2><p>All other terms from the original agreement remain in full force.</p><br><table style="width:100%;border-collapse:collapse;"><tr><td style="width:50%;padding-right:20px;vertical-align:top;"><p><strong>Client Signature</strong></p><div style="border-bottom:2px solid #333;height:50px;margin-bottom:8px;"></div><p style="font-size:12px;">Date: ______________</p></td><td style="width:50%;padding-left:20px;vertical-align:top;"><p><strong>Baseline Studio</strong></p><div style="border-bottom:2px solid #333;height:50px;margin-bottom:8px;"></div><p style="font-size:12px;">Date: ______________</p></td></tr></table>` },
+        { id: genId(), name: 'Photo & Video Release', category: 'client', contentHTML: `<h1>Photo &amp; Video Release Form</h1><p>Date: <strong>{{current_date}}</strong> &nbsp;&bull;&nbsp; Event: <strong>{{event_type}}</strong> on <strong>{{event_date}}</strong></p><p>I, <strong>{{client_name}}</strong>, grant Baseline Studio permission to use photos and video from the above event for marketing purposes (website, social media, portfolio). No names or personal details will be shared without additional written consent.</p><p><strong>Optional social media tag permission:</strong><br>[ ] I consent to being tagged in posts featuring my event.<br>Preferred handle: ___________________________</p><br><table style="width:100%;border-collapse:collapse;"><tr><td style="width:50%;vertical-align:top;"><p><strong>Client Signature</strong></p><div style="border-bottom:2px solid #333;height:50px;margin-bottom:8px;"></div><p style="font-size:12px;">Printed Name: ______________________________<br>Date: ______________</p></td><td style="width:50%;"></td></tr></table>` },
+        { id: genId(), name: 'DJ / Performer — Independent Contractor Agreement', category: 'employee', contentHTML: `<h1>Independent Contractor Agreement</h1><p>This agreement is entered into as of <strong>{{current_date}}</strong>, between <strong>Baseline Studio</strong> ("Company") and <strong>_______________________</strong> ("Contractor").</p><h2>1. Services</h2><p>Contractor agrees to provide DJ/Performer services at events as assigned by Baseline Studio, including DJing, MCing, equipment operation, and professional client interaction.</p><h2>2. Independent Contractor Status</h2><p>Contractor is an independent contractor, not an employee. Contractor is responsible for their own taxes, insurance, and expenses unless otherwise agreed in writing.</p><h2>3. Compensation</h2><p>Per-event rate: $____________<br>Payment method: ___________________________<br>Payment timing: Within 5 business days of completed event.</p><h2>4. Equipment</h2><p>Baseline Studio will provide equipment as specified per event. Contractor is responsible for any damage caused by negligence or misuse.</p><h2>5. Confidentiality</h2><p>Contractor agrees not to disclose client information, pricing, or any proprietary business information of Baseline Studio to any third party.</p><h2>6. Cancellation Policy</h2><p>If Contractor cannot perform an assigned event, they must notify Baseline Studio at least 72 hours in advance. Failure to provide adequate notice without a documented emergency may result in forfeiture of that event's compensation.</p><h2>7. Term</h2><p>This agreement is in effect on a per-event basis until terminated in writing by either party.</p><br><table style="width:100%;border-collapse:collapse;"><tr><td style="width:50%;padding-right:20px;vertical-align:top;"><p><strong>Contractor Signature</strong></p><div style="border-bottom:2px solid #333;height:50px;margin-bottom:8px;"></div><p style="font-size:12px;">Printed Name: ______________________________<br>Date: ______________</p></td><td style="width:50%;padding-left:20px;vertical-align:top;"><p><strong>Baseline Studio</strong></p><div style="border-bottom:2px solid #333;height:50px;margin-bottom:8px;"></div><p style="font-size:12px;">Authorized Signature<br>Date: ______________</p></td></tr></table>` },
+        { id: genId(), name: 'Non-Disclosure Agreement (NDA)', category: 'employee', contentHTML: `<h1>Non-Disclosure Agreement</h1><p>This NDA is entered into as of <strong>{{current_date}}</strong>, between <strong>Baseline Studio</strong> ("Company") and <strong>_______________________</strong> ("Recipient").</p><h2>1. Confidential Information</h2><p>"Confidential Information" includes all business information, client data, event details, pricing, and proprietary processes of Baseline Studio not publicly available.</p><h2>2. Obligations</h2><p>Recipient agrees to: (a) keep all Confidential Information strictly confidential; (b) not disclose to any third party without written consent; (c) use it only in connection with services provided to Baseline Studio.</p><h2>3. Duration</h2><p>These obligations remain in effect for 2 years from the date of this agreement, and indefinitely with respect to client personal data.</p><h2>4. Agreement</h2><p>Both parties confirm they have read and agree to these terms.</p><br><table style="width:100%;border-collapse:collapse;"><tr><td style="width:50%;padding-right:20px;vertical-align:top;"><p><strong>Recipient Signature</strong></p><div style="border-bottom:2px solid #333;height:50px;margin-bottom:8px;"></div><p style="font-size:12px;">Printed Name: ______________________________<br>Date: ______________</p></td><td style="width:50%;padding-left:20px;vertical-align:top;"><p><strong>Baseline Studio</strong></p><div style="border-bottom:2px solid #333;height:50px;margin-bottom:8px;"></div><p style="font-size:12px;">Date: ______________</p></td></tr></table>` },
+        { id: genId(), name: 'Equipment Use Policy — Acknowledgment', category: 'employee', contentHTML: `<h1>Equipment Use Policy — Acknowledgment</h1><p>Date: <strong>{{current_date}}</strong></p><p>By signing below, <strong>_______________________</strong> acknowledges receipt and understanding of Baseline Studio's Equipment Use Policy.</p><h2>Policy Summary</h2><ol><li><strong>Care:</strong> All equipment must be handled carefully and transported in provided cases.</li><li><strong>Setup/Teardown:</strong> Follow Baseline Studio's setup and breakdown procedures at every event.</li><li><strong>Damage Reporting:</strong> Any damage, loss, or theft must be reported immediately. Damage from negligence may be charged to the responsible party.</li><li><strong>No Modifications:</strong> No modifications to equipment without written authorization.</li><li><strong>Return:</strong> All equipment returned within 24 hours of the event, in the condition received.</li></ol><br><table style="width:100%;border-collapse:collapse;"><tr><td style="width:50%;vertical-align:top;"><p><strong>Signature</strong></p><div style="border-bottom:2px solid #333;height:50px;margin-bottom:8px;"></div><p style="font-size:12px;">Printed Name: ______________________________<br>Date: ______________</p></td><td style="width:50%;"></td></tr></table>` },
+        { id: genId(), name: 'Code of Conduct Agreement', category: 'employee', contentHTML: `<h1>Code of Conduct Agreement</h1><p>Date: <strong>{{current_date}}</strong></p><p>All Baseline Studio representatives are expected to maintain the highest standards of professionalism. By signing, <strong>_______________________</strong> agrees to the following:</p><ol><li><strong>Appearance:</strong> Arrive professionally dressed per management's guidelines for each event.</li><li><strong>Punctuality:</strong> Arrive at least 90 minutes before event start for setup, or as directed.</li><li><strong>Client Interaction:</strong> Be courteous and professional with all clients and guests at all times.</li><li><strong>No Substances:</strong> No alcohol or impairing substances before or during events while on duty.</li><li><strong>Social Media:</strong> Do not post content from events without explicit written permission from Baseline Studio and the client.</li><li><strong>Confidentiality:</strong> Client names, event details, and pricing are confidential — not to be shared externally.</li></ol><p>Violations may result in removal from an event and/or termination of the working relationship.</p><br><table style="width:100%;border-collapse:collapse;"><tr><td style="width:50%;vertical-align:top;"><p><strong>Signature</strong></p><div style="border-bottom:2px solid #333;height:50px;margin-bottom:8px;"></div><p style="font-size:12px;">Printed Name: ______________________________<br>Date: ______________</p></td><td style="width:50%;"></td></tr></table>` },
+        { id: genId(), name: 'Emergency Contact Form', category: 'employee', contentHTML: `<h1>Emergency Contact Information</h1><p>Date: <strong>{{current_date}}</strong></p><p>Team Member Name: ___________________________<br>Phone: ___________________________<br>Email: ___________________________</p><h2>Primary Emergency Contact</h2><p>Name: ___________________________<br>Relationship: ___________________________<br>Phone: ___________________________</p><h2>Secondary Emergency Contact</h2><p>Name: ___________________________<br>Relationship: ___________________________<br>Phone: ___________________________</p><h2>Medical Information (Optional)</h2><p>Allergies or medical conditions we should be aware of:<br>_______________________________________________</p><p>I confirm the above information is accurate and I will notify Baseline Studio of any changes.</p><br><div style="border-bottom:2px solid #333;height:50px;margin-bottom:8px;width:50%;"></div><p style="font-size:12px;">Signature &nbsp;&nbsp;&nbsp; Date: ______________</p>` }
+      ];
+      setDB('templates', T);
+    }
+
+    // ── Send for Signature tab ─────────────────────────────────────────────────
+    function renderSendDocTab() {
+      const templates = getDB('templates') || [];
+      const events = (getDB('events') || []).filter(e => e.clientEmail || e.portalEmail);
+      const accounts = getDB('accounts') || [];
+      const currentUser = BSPortal.getCurrentUser();
+      const isDJ = currentUser?.role === 'dj';
+      if (isDJ) { document.getElementById('docTabSend').innerHTML = '<div style="padding:40px;text-align:center;color:var(--gray);">Send access is not available for your role.</div>'; return; }
+
+      const tOpts = templates.map(t => `<option value="${t.id}">${t.name}${t.category === 'employee' ? ' [Employee]' : ' [Client]'}</option>`).join('');
+      const evOpts = events.map(e => `<option value="${e.id}">${e.clientName || 'Client'} — ${e.name || e.type || ''} (${e.date || ''})</option>`).join('') || '<option value="">No client events with email on file</option>';
+      const empOpts = accounts.map(a => `<option value="${encodeURIComponent(a.email)}|${encodeURIComponent(a.name)}|${encodeURIComponent(a.role || '')}">${a.name} (${a.role || 'staff'}) — ${a.email}</option>`).join('') || '<option value="">No team accounts yet</option>';
+
+      document.getElementById('docTabSend').innerHTML = `
+        <div style="font-family:'Anton',sans-serif;font-size:22px;margin-bottom:6px;">Send Document for Signature</div>
+        <div style="color:var(--gray);font-size:13px;margin-bottom:28px;">Pick a template, choose who receives it, and send. They sign from their portal.</div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:28px;max-width:1000px;">
+          <div>
+            <div class="form-group">
+              <label class="form-label">Document Template</label>
+              <select class="form-select" id="sendDocTemplate" onchange="previewSendDoc()">
+                <option value="">Select template...</option>${tOpts}
+              </select>
+            </div>
+            <div class="form-group">
+              <label class="form-label">Send to</label>
+              <div style="display:flex;gap:16px;margin-bottom:14px;">
+                <label style="display:flex;align-items:center;gap:6px;cursor:pointer;font-size:13px;"><input type="radio" name="sendDocTarget" value="client" checked onchange="toggleSendDocRecipient()"> Client</label>
+                <label style="display:flex;align-items:center;gap:6px;cursor:pointer;font-size:13px;"><input type="radio" name="sendDocTarget" value="employee" onchange="toggleSendDocRecipient()"> Employee / Team</label>
+              </div>
+              <div id="sendDocClientWrap">
+                <label class="form-label" style="font-size:11px;">Select Client Event</label>
+                <select class="form-select" id="sendDocClientEvent">${evOpts}</select>
+              </div>
+              <div id="sendDocEmployeeWrap" style="display:none;">
+                <label class="form-label" style="font-size:11px;">Select Team Member</label>
+                <select class="form-select" id="sendDocEmployee">${empOpts}</select>
+              </div>
+            </div>
+            <div class="form-group">
+              <label class="form-label">Note to Recipient (Optional)</label>
+              <textarea class="form-textarea" id="sendDocMessage" rows="3" placeholder="Add a short note..."></textarea>
+            </div>
+            <button class="btn btn-primary" style="width:100%;padding:14px;font-size:14px;" onclick="sendDocumentForSignature()">Send for Signature</button>
+          </div>
+          <div>
+            <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--gray);margin-bottom:10px;">Document Preview</div>
+            <div id="sendDocPreviewWrap" style="background:var(--black-4);border:1px solid var(--border);border-radius:8px;padding:16px;min-height:400px;max-height:600px;overflow-y:auto;">
+              <div style="color:var(--gray);font-size:13px;text-align:center;padding-top:60px;">Select a template to preview</div>
+            </div>
+          </div>
+        </div>
+      `;
+    }
+
+    function toggleSendDocRecipient() {
+      const val = document.querySelector('input[name="sendDocTarget"]:checked')?.value;
+      const cw = document.getElementById('sendDocClientWrap');
+      const ew = document.getElementById('sendDocEmployeeWrap');
+      if (cw) cw.style.display = val === 'client' ? 'block' : 'none';
+      if (ew) ew.style.display = val === 'employee' ? 'block' : 'none';
+    }
+
+    function previewSendDoc() {
+      const tid = document.getElementById('sendDocTemplate')?.value;
+      const templates = getDB('templates') || [];
+      const t = templates.find(t => t.id === tid);
+      const wrap = document.getElementById('sendDocPreviewWrap');
+      if (!wrap) return;
+      if (!t) { wrap.innerHTML = '<div style="color:var(--gray);font-size:13px;text-align:center;padding-top:60px;">Select a template to preview</div>'; return; }
+      wrap.innerHTML = `<div style="background:#fff;color:#111;border-radius:4px;padding:28px 32px;font-family:Georgia,serif;font-size:13px;line-height:1.7;">${t.contentHTML || t.content || '(empty)'}</div>`;
+    }
+
+    async function _hashDoc(content) {
+      try {
+        const buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(content));
+        return Array.from(new Uint8Array(buf)).map(b => b.toString(16).padStart(2,'0')).join('').slice(0,20);
+      } catch { return genId(); }
+    }
+
+    async function sendDocumentForSignature() {
+      const tid = document.getElementById('sendDocTemplate')?.value;
+      if (!tid) { showToast('Select a template first', 'error'); return; }
+      const targetType = document.querySelector('input[name="sendDocTarget"]:checked')?.value;
+      const templates = getDB('templates') || [];
+      const template = templates.find(t => t.id === tid);
+      if (!template) return;
+      let recipientEmail = '', recipientName = '', recipientRole = '', recipientType = targetType;
+      if (targetType === 'client') {
+        const evId = document.getElementById('sendDocClientEvent')?.value;
+        if (!evId) { showToast('Select a client event', 'error'); return; }
+        const ev = (getDB('events') || []).find(e => e.id === evId);
+        if (!ev) return;
+        recipientEmail = ev.clientEmail || ev.portalEmail || '';
+        recipientName = ev.clientName || 'Client';
+        recipientRole = 'client';
+      } else {
+        const empVal = document.getElementById('sendDocEmployee')?.value;
+        if (!empVal) { showToast('Select a team member', 'error'); return; }
+        const [e, n, r] = empVal.split('|').map(v => decodeURIComponent(v));
+        recipientEmail = e; recipientName = n; recipientRole = r;
+      }
+      if (!recipientEmail) { showToast('Recipient has no email on file', 'error'); return; }
+      const message = document.getElementById('sendDocMessage')?.value || '';
+      const hash = await _hashDoc(template.contentHTML || '');
+      const inst = {
+        id: genId(), templateId: tid, templateName: template.name, category: template.category || '',
+        recipientEmail, recipientName, recipientRole, recipientType,
+        htmlContent: template.contentHTML || template.content || '',
+        message, status: 'pending', sentAt: Date.now(), documentHash: hash,
+        signedAt: null, signatureData: null
+      };
+      const instances = getDB('document_instances') || [];
+      instances.push(inst);
+      setDB('document_instances', instances);
+      // Email notification
+      BSPortal.sendEmail('generic', {
+        email: recipientEmail,
+        clientName: recipientName,
+        subject: `Document ready for your signature: ${template.name}`,
+        body: `Hi ${recipientName},\n\nA document has been sent to you for your e-signature: ${template.name}.\n\n${message ? message + '\n\n' : ''}Please log in to your Baseline Studio portal to review and sign it.\n\nPortal: ${window.location.origin}/portal-employee.html\n\n— Baseline Studio`
+      }).catch(() => {});
+      showToast(`Sent to ${recipientName}`, 'success');
+      setTimeout(() => switchDocTab('track'), 1100);
+    }
+
+    // ── Track tab ──────────────────────────────────────────────────────────────
+    function renderTrackTab() {
+      const instances = [...(getDB('document_instances') || [])].sort((a,b) => b.sentAt - a.sentAt);
+      const statusBadge = s => ({ pending:`<span class="track-status-badge track-status-pending">Pending</span>`, viewed:`<span class="track-status-badge" style="background:rgba(31,163,224,0.18);color:var(--cyan);">Viewed</span>`, signed:`<span class="track-status-badge track-status-signed">Signed</span>`, declined:`<span class="track-status-badge track-status-declined">Declined</span>` }[s] || `<span class="track-status-badge track-status-pending">Pending</span>`);
+      const rows = instances.map(inst => `<tr>
+        <td style="font-weight:600;max-width:200px;">${inst.templateName}</td>
+        <td>${inst.recipientName}<br><span style="font-size:11px;color:var(--gray);">${inst.recipientEmail}</span></td>
+        <td><span class="badge" style="background:rgba(31,163,224,0.12);color:var(--cyan);font-size:10px;">${inst.recipientType === 'client' ? 'Client' : (inst.recipientRole || 'Employee')}</span></td>
+        <td>${new Date(inst.sentAt).toLocaleDateString()}</td>
+        <td>${statusBadge(inst.status)}</td>
+        <td>${inst.signedAt ? new Date(inst.signedAt).toLocaleDateString() : '—'}</td>
+        <td style="display:flex;gap:6px;flex-wrap:wrap;">
+          ${inst.status === 'signed' ? `<button class="btn btn-secondary" style="padding:4px 8px;font-size:11px;" onclick="viewDocSignature('${inst.id}')">View Sig</button>` : `<button class="btn btn-secondary" style="padding:4px 8px;font-size:11px;" onclick="resendDocInstance('${inst.id}')">Resend</button>`}
+          <button class="btn btn-danger" style="padding:4px 8px;font-size:11px;" onclick="deleteDocInstance('${inst.id}')">Del</button>
+        </td>
+      </tr>`).join('') || `<tr><td colspan="7" style="text-align:center;padding:40px;color:var(--gray);">No documents sent yet. Go to "Send for Signature" to start.</td></tr>`;
+      document.getElementById('docTabTrack').innerHTML = `
+        <div style="font-family:'Anton',sans-serif;font-size:22px;margin-bottom:20px;">Sent Documents &amp; Signatures</div>
+        <div style="background:var(--black-3);border:1px solid var(--border);border-radius:8px;overflow:hidden;">
+          <table style="width:100%;border-collapse:collapse;">
+            <thead><tr>
+              <th>Document</th><th>Recipient</th><th>Type</th><th>Sent</th><th>Status</th><th>Signed</th><th>Actions</th>
+            </tr></thead>
+            <tbody>${rows}</tbody>
+          </table>
+        </div>`;
+    }
+
+    function viewDocSignature(instanceId) {
+      const inst = (getDB('document_instances') || []).find(i => i.id === instanceId);
+      if (!inst || !inst.signatureData) { showToast('No signature on file', 'error'); return; }
+      const sig = inst.signatureData;
+      document.getElementById('sigViewImg').src = sig.signatureDataUrl || '';
+      document.getElementById('sigViewMeta').innerHTML =
+        `Signed by: <strong>${sig.typedName || 'Unknown'}</strong><br>
+         Email: ${inst.recipientEmail}<br>
+         Signed: ${new Date(sig.signedAt).toLocaleString()}<br>
+         Document: ${inst.templateName}<br>
+         Hash: <code style="font-size:10px;">${inst.documentHash || 'N/A'}</code>`;
+      openModal('sigViewModal');
+    }
+
+    async function resendDocInstance(instanceId) {
+      const inst = (getDB('document_instances') || []).find(i => i.id === instanceId);
+      if (!inst) return;
+      await BSPortal.sendEmail('generic', {
+        email: inst.recipientEmail, clientName: inst.recipientName,
+        subject: `Reminder: Signature needed — ${inst.templateName}`,
+        body: `Hi ${inst.recipientName},\n\nThis is a reminder that the document "${inst.templateName}" is waiting for your signature.\n\nLog in here: ${window.location.origin}/portal-employee.html\n\n— Baseline Studio`
+      }).catch(() => {});
+      showToast(`Reminder sent to ${inst.recipientName}`, 'success');
+    }
+
+    function deleteDocInstance(instanceId) {
+      window.confirmCallback = () => {
+        const updated = (getDB('document_instances') || []).filter(i => i.id !== instanceId);
+        setDB('document_instances', updated);
+        closeModal('confirmDialog');
+        renderTrackTab();
+        showToast('Deleted', 'success');
+      };
+      document.getElementById('confirmTitle').textContent = 'Delete Document Record';
+      document.getElementById('confirmMessage').textContent = 'Remove this sent document record? The signature data will be lost.';
+      openModal('confirmDialog');
+    }
+
+    // ── Blasts tab ────────────────────────────────────────────────────────────
+    function renderBlastsTab() {
+      const accounts = getDB('accounts') || [];
+      const blasts = [...(getDB('blasts') || [])].sort((a,b) => b.sentAt - a.sentAt);
+      const currentUser = BSPortal.getCurrentUser();
+      const role = currentUser?.role || 'master';
+      const isOwner = ['master','admin'].includes(role);
+      const isEM = role === 'event-architect';
+      const availRoles = isOwner ? ['All','Owner / Admin','Event Manager','DJ / Performer'] : isEM ? ['Event Manager','DJ / Performer'] : [];
+
+      const roleChips = availRoles.map(r => `<label class="blast-role-chip" id="blastChip_${r.replace(/[^a-z]/gi,'')}" onclick="this.classList.toggle('selected')"><input type="checkbox" class="blast-role-check" value="${r}">${r}</label>`).join('');
+
+      const blastRows = blasts.map(b => {
+        const receipts = (getDB('blast_receipts') || []).filter(r => r.blastId === b.id);
+        return `<div class="blast-record">
+          <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:12px;">
+            <div style="flex:1;min-width:0;">
+              <div style="font-weight:600;margin-bottom:4px;">${b.subject}</div>
+              <div style="font-size:13px;color:var(--gray);margin-bottom:6px;">${(b.body||'').substring(0,120)}${(b.body||'').length>120?'...':''}</div>
+              <div style="font-size:11px;color:var(--gray);display:flex;gap:12px;flex-wrap:wrap;">
+                <span>Sent by ${b.authorName}</span>
+                <span>${new Date(b.sentAt).toLocaleString()}</span>
+                <span>To: ${(b.targetRoles||[]).join(', ')}</span>
+                <span style="color:var(--success);">Acknowledged: ${receipts.length}/${b.recipientCount||'?'}</span>
+              </div>
+            </div>
+            ${b.urgent ? `<span class="badge" style="background:rgba(231,76,60,0.2);color:#e74c3c;flex-shrink:0;font-size:10px;">URGENT</span>` : ''}
+          </div>
+        </div>`;
+      }).join('') || '<div style="text-align:center;padding:32px;color:var(--gray);font-size:13px;">No blasts sent yet.</div>';
+
+      document.getElementById('docTabBlasts').innerHTML = `
+        <div style="font-family:'Anton',sans-serif;font-size:22px;margin-bottom:20px;">Blasts</div>
+        <div class="blast-layout">
+          <div class="blast-panel">
+            <div class="blast-panel-title">Compose Blast</div>
+            ${!availRoles.length ? `<div style="color:var(--gray);font-size:13px;">Your role (${role}) does not have blast permissions.</div>` : `
+            <div class="form-group">
+              <label class="form-label">Subject</label>
+              <input type="text" class="form-input" id="blastSubject" placeholder="e.g. Heads up — schedule change Saturday">
+            </div>
+            <div class="form-group">
+              <label class="form-label">Message</label>
+              <textarea class="form-textarea" id="blastBody" rows="5" placeholder="Write your message..."></textarea>
+            </div>
+            <div class="form-group">
+              <label class="form-label">Send to</label>
+              <div class="blast-role-chips">${roleChips}</div>
+            </div>
+            <div class="form-group" style="display:flex;align-items:center;gap:10px;padding:14px;background:rgba(231,76,60,0.08);border:1px solid rgba(231,76,60,0.2);border-radius:6px;">
+              <input type="checkbox" id="blastUrgent" style="cursor:pointer;width:16px;height:16px;">
+              <label for="blastUrgent" style="font-size:13px;cursor:pointer;color:var(--white);"><strong style="color:#e74c3c;">URGENT</strong> — also send email to all recipients now</label>
+            </div>
+            <button class="btn btn-primary" style="width:100%;padding:14px;font-size:14px;" onclick="sendBlast()">Send Blast</button>
+            `}
+          </div>
+          <div>
+            <div style="font-weight:600;font-size:14px;margin-bottom:14px;">Sent Blasts</div>
+            ${blastRows}
+          </div>
+        </div>`;
+    }
+
+    async function sendBlast() {
+      const subject = (document.getElementById('blastSubject')?.value || '').trim();
+      const body = (document.getElementById('blastBody')?.value || '').trim();
+      const urgent = document.getElementById('blastUrgent')?.checked;
+      const selectedRoles = [...document.querySelectorAll('.blast-role-check:checked')].map(c => c.value);
+      if (!subject) { showToast('Subject is required', 'error'); return; }
+      if (!body) { showToast('Message is required', 'error'); return; }
+      if (!selectedRoles.length) { showToast('Select at least one role', 'error'); return; }
+      const currentUser = BSPortal.getCurrentUser();
+      const accounts = getDB('accounts') || [];
+      const roleMap = { 'All': ['master','admin','event-architect','dj'], 'Owner / Admin': ['master','admin'], 'Event Manager': ['event-architect'], 'DJ / Performer': ['dj'] };
+      const targetKeys = [...new Set(selectedRoles.flatMap(r => roleMap[r] || []))];
+      const recipients = accounts.filter(a => targetKeys.includes(a.role));
+      const blast = {
+        id: genId(), authorId: currentUser?.id||'', authorName: currentUser?.name||'Owner',
+        authorRole: currentUser?.role||'master', subject, body, targetRoles: selectedRoles,
+        urgent, sentAt: Date.now(), recipientCount: recipients.length
+      };
+      const blasts = getDB('blasts') || [];
+      blasts.push(blast);
+      setDB('blasts', blasts);
+      if (urgent && recipients.length) {
+        await Promise.all(recipients.map(r => BSPortal.sendEmail('generic', {
+          email: r.email, clientName: r.name,
+          subject: `[URGENT] ${subject}`,
+          body: `${body}\n\n— ${blast.authorName}, Baseline Studio`
+        }).catch(() => {})));
+      }
+      showToast(`Blast sent to ${recipients.length} team member${recipients.length !== 1 ? 's' : ''}`, 'success');
+      renderBlastsTab();
+    }
 
   </script>
 </body>

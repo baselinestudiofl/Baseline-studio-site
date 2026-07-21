@@ -1,0 +1,665 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="robots" content="noindex, nofollow">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Baseline Studio — Team Portal</title>
+  <link rel="stylesheet" href="fonts/fonts.css">
+  <style>
+    /*
+    ══════════════════════════════════════════════════════
+    SUPABASE SETUP NEEDED
+    Run these SQL statements in your Supabase SQL editor:
+
+    -- 1. RPC: fetch documents assigned to this employee
+    CREATE OR REPLACE FUNCTION get_employee_docs(p_email text)
+    RETURNS jsonb LANGUAGE plpgsql SECURITY DEFINER AS $$
+    DECLARE
+      master_data jsonb;
+      instances jsonb;
+      result jsonb := '[]'::jsonb;
+      inst jsonb;
+    BEGIN
+      SELECT data_value INTO master_data
+      FROM provider_data
+      WHERE data_key = 'document_instances'
+      ORDER BY updated_at DESC LIMIT 1;
+      IF master_data IS NULL THEN RETURN '[]'::jsonb; END IF;
+      FOR inst IN SELECT * FROM jsonb_array_elements(master_data)
+      LOOP
+        IF (inst->>'recipientEmail') ILIKE p_email THEN
+          result := result || jsonb_build_array(inst);
+        END IF;
+      END LOOP;
+      RETURN result;
+    END;$$;
+
+    -- 2. RPC: submit employee signature
+    CREATE OR REPLACE FUNCTION submit_employee_signature(
+      p_employee_email text, p_instance_id text, p_signature_json jsonb
+    ) RETURNS boolean LANGUAGE plpgsql SECURITY DEFINER AS $$
+    DECLARE
+      master_data jsonb; instances jsonb; i int;
+    BEGIN
+      SELECT data_value INTO master_data
+      FROM provider_data WHERE data_key = 'document_instances'
+      ORDER BY updated_at DESC LIMIT 1;
+      IF master_data IS NULL THEN RETURN false; END IF;
+      instances := master_data;
+      FOR i IN 0..(jsonb_array_length(instances)-1) LOOP
+        IF instances->i->>'id' = p_instance_id AND
+           (instances->i->>'recipientEmail') ILIKE p_employee_email THEN
+          instances := jsonb_set(instances, ARRAY[i::text, 'status'], '"signed"'::jsonb);
+          instances := jsonb_set(instances, ARRAY[i::text, 'signedAt'], to_jsonb(extract(epoch from now())*1000));
+          instances := jsonb_set(instances, ARRAY[i::text, 'signatureData'], p_signature_json);
+          UPDATE provider_data SET data_value = instances
+          WHERE data_key = 'document_instances';
+          RETURN true;
+        END IF;
+      END LOOP;
+      RETURN false;
+    END;$$;
+
+    -- 3. RPC: fetch blasts for employee
+    CREATE OR REPLACE FUNCTION get_employee_blasts(p_employee_role text)
+    RETURNS jsonb LANGUAGE plpgsql SECURITY DEFINER AS $$
+    DECLARE
+      master_data jsonb; b jsonb; result jsonb := '[]'::jsonb;
+    BEGIN
+      SELECT data_value INTO master_data
+      FROM provider_data WHERE data_key = 'blasts'
+      ORDER BY updated_at DESC LIMIT 1;
+      IF master_data IS NULL THEN RETURN '[]'::jsonb; END IF;
+      FOR b IN SELECT * FROM jsonb_array_elements(master_data)
+      LOOP
+        IF (b->'targetRoles') @> '"All"'::jsonb
+           OR (b->'targetRoles') @> to_jsonb(p_employee_role)
+        THEN result := result || jsonb_build_array(b); END IF;
+      END LOOP;
+      RETURN result;
+    END;$$;
+
+    -- 4. RPC: acknowledge blast
+    CREATE OR REPLACE FUNCTION acknowledge_blast(
+      p_blast_id text, p_employee_email text, p_employee_name text
+    ) RETURNS boolean LANGUAGE plpgsql SECURITY DEFINER AS $$
+    DECLARE receipts jsonb; new_receipt jsonb;
+    BEGIN
+      SELECT COALESCE(data_value,'[]'::jsonb) INTO receipts
+      FROM provider_data WHERE data_key = 'blast_receipts';
+      new_receipt := jsonb_build_object(
+        'id', gen_random_uuid()::text,
+        'blastId', p_blast_id,
+        'recipientEmail', p_employee_email,
+        'recipientName', p_employee_name,
+        'acknowledgedAt', extract(epoch from now())*1000
+      );
+      receipts := receipts || jsonb_build_array(new_receipt);
+      INSERT INTO provider_data(data_key, data_value)
+      VALUES('blast_receipts', receipts)
+      ON CONFLICT(data_key) DO UPDATE SET data_value = EXCLUDED.data_value;
+      RETURN true;
+    END;$$;
+    ══════════════════════════════════════════════════════
+    */
+
+    :root {
+      --black: #07070d;
+      --black-2: #0e0f1a;
+      --black-3: #161828;
+      --black-4: #1e2030;
+      --white: #fff;
+      --cyan: #1FA3E0;
+      --cyan-dark: #1585b8;
+      --gray: #7a7a8a;
+      --border: rgba(255,255,255,0.08);
+      --border-cyan: rgba(31,163,224,0.18);
+      --success: #2ecc71;
+      --warning: #f39c12;
+      --danger: #e74c3c;
+    }
+
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    html, body { height: 100%; }
+    body { font-family: 'Barlow', sans-serif; background: var(--black); color: var(--white); font-size: 14px; min-height: 100vh; }
+
+    /* ── Login Screen ── */
+    .login-wrap { display: flex; align-items: center; justify-content: center; min-height: 100vh; padding: 20px; background: var(--black); background-image: radial-gradient(ellipse 60% 50% at 80% 10%, rgba(31,163,224,0.06) 0%, transparent 100%), radial-gradient(ellipse 40% 40% at 10% 90%, rgba(20,60,180,0.05) 0%, transparent 100%); }
+    .login-card { background: var(--black-2); border: 1px solid var(--border-cyan); border-radius: 12px; padding: 48px 40px; width: 100%; max-width: 400px; }
+    .login-logo { text-align: center; margin-bottom: 32px; }
+    .login-logo img { height: 40px; width: auto; }
+    .login-title { font-family: 'Anton', sans-serif; font-size: 20px; letter-spacing: .04em; text-align: center; margin-bottom: 6px; }
+    .login-sub { text-align: center; color: var(--gray); font-size: 13px; margin-bottom: 28px; }
+    .login-error { background: rgba(231,76,60,0.12); border: 1px solid rgba(231,76,60,0.3); color: #e74c3c; padding: 10px 14px; border-radius: 6px; font-size: 13px; margin-bottom: 16px; display: none; }
+
+    /* ── App Layout ── */
+    .app-wrap { display: none; flex-direction: column; min-height: 100vh; }
+    .app-topbar { position: sticky; top: 0; background: var(--black-2); border-bottom: 1px solid var(--border); padding: 0 24px; height: 60px; display: flex; align-items: center; justify-content: space-between; z-index: 100; }
+    .app-topbar-logo { font-family: 'Anton', sans-serif; font-size: 14px; letter-spacing: .06em; display: flex; align-items: center; gap: 10px; }
+    .app-topbar-user { display: flex; align-items: center; gap: 12px; font-size: 13px; color: var(--gray); }
+    .app-topbar-name { color: var(--white); font-weight: 600; }
+
+    .app-nav { display: flex; gap: 0; border-bottom: 1px solid var(--border); background: var(--black-2); padding: 0 24px; }
+    .app-nav-btn { padding: 14px 20px; background: transparent; border: none; color: var(--gray); cursor: pointer; font-size: 13px; font-weight: 500; border-bottom: 2px solid transparent; transition: all 0.2s; font-family: 'Barlow', sans-serif; white-space: nowrap; position: relative; }
+    .app-nav-btn:hover { color: var(--white); }
+    .app-nav-btn.active { color: var(--cyan); border-bottom-color: var(--cyan); }
+    .app-nav-badge { position: absolute; top: 8px; right: 8px; background: var(--danger); color: #fff; border-radius: 10px; font-size: 10px; font-weight: 700; padding: 1px 5px; }
+
+    .app-content { flex: 1; padding: 32px 24px; max-width: 1000px; margin: 0 auto; width: 100%; }
+    .app-section { display: none; }
+    .app-section.active { display: block; }
+
+    /* ── Cards & Tables ── */
+    .panel { background: var(--black-3); border: 1px solid var(--border); border-radius: 8px; margin-bottom: 16px; overflow: hidden; }
+    .panel-header { padding: 16px 20px; display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid var(--border); }
+    .panel-title { font-weight: 600; font-size: 15px; }
+    .panel-body { padding: 20px; }
+    .panel-empty { padding: 48px 20px; text-align: center; color: var(--gray); font-size: 13px; }
+
+    .doc-item { padding: 16px 20px; border-bottom: 1px solid var(--border); display: flex; align-items: center; justify-content: space-between; gap: 16px; transition: background 0.15s; }
+    .doc-item:last-child { border-bottom: none; }
+    .doc-item:hover { background: var(--black-4); }
+    .doc-item-name { font-weight: 600; margin-bottom: 4px; }
+    .doc-item-meta { font-size: 12px; color: var(--gray); }
+    .doc-status { display: inline-block; padding: 3px 10px; border-radius: 12px; font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .04em; }
+    .doc-status-pending { background: rgba(243,156,18,0.18); color: #f39c12; }
+    .doc-status-signed { background: rgba(46,204,113,0.18); color: #2ecc71; }
+
+    .blast-item { padding: 16px 20px; border-bottom: 1px solid var(--border); }
+    .blast-item:last-child { border-bottom: none; }
+    .blast-item-subject { font-weight: 600; margin-bottom: 6px; }
+    .blast-item-body { font-size: 13px; color: var(--gray); margin-bottom: 10px; line-height: 1.5; }
+    .blast-item-meta { font-size: 11px; color: var(--gray); }
+
+    /* ── Buttons ── */
+    .btn { padding: 10px 16px; border-radius: 4px; border: none; cursor: pointer; font-family: 'Barlow', sans-serif; font-weight: 600; font-size: 13px; transition: all 0.2s; }
+    .btn-primary { background: var(--cyan); color: var(--black); }
+    .btn-primary:hover { background: var(--cyan-dark); }
+    .btn-secondary { background: var(--black-4); color: var(--white); border: 1px solid var(--border); }
+    .btn-secondary:hover { border-color: var(--cyan); }
+    .btn-success { background: var(--success); color: var(--black); }
+    .btn-sm { padding: 6px 12px; font-size: 12px; }
+
+    /* ── Form inputs ── */
+    .form-group { margin-bottom: 20px; }
+    .form-label { display: block; font-size: 11px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: var(--gray); margin-bottom: 6px; }
+    .form-input { width: 100%; padding: 10px 12px; background: var(--black-4); border: 1px solid var(--border); border-radius: 4px; color: var(--white); font-family: 'Barlow', sans-serif; font-size: 14px; transition: all 0.2s; }
+    .form-input:focus { outline: none; border-color: var(--cyan); }
+
+    /* ── Modal ── */
+    .modal-bg { position: fixed; inset: 0; background: rgba(0,0,0,0.85); backdrop-filter: blur(4px); z-index: 500; display: none; align-items: center; justify-content: center; padding: 16px; }
+    .modal-bg.open { display: flex; }
+    .modal-box { background: var(--black-3); border: 1px solid var(--border); border-radius: 10px; width: 100%; max-width: 620px; max-height: 92vh; overflow-y: auto; padding: 32px; position: relative; }
+    .modal-close { position: absolute; top: 14px; right: 14px; background: var(--black-4); border: none; color: var(--white); width: 28px; height: 28px; border-radius: 4px; cursor: pointer; font-size: 18px; display: flex; align-items: center; justify-content: center; }
+    .modal-close:hover { background: var(--danger); }
+    .modal-title { font-family: 'Anton', sans-serif; font-size: 20px; margin-bottom: 20px; }
+
+    /* ── E-signature pad ── */
+    .esig-section { margin-bottom: 20px; }
+    .esig-label { font-size: 11px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: var(--gray); margin-bottom: 8px; }
+    .esig-canvas-wrap { border: 1px solid var(--border); border-radius: 6px; background: #fff; position: relative; cursor: crosshair; touch-action: none; }
+    .esig-canvas { display: block; border-radius: 6px; width: 100%; }
+    .esig-canvas-clear { position: absolute; bottom: 6px; right: 8px; background: rgba(0,0,0,0.5); color: #fff; border: none; border-radius: 4px; padding: 4px 8px; font-size: 11px; cursor: pointer; font-family: 'Barlow', sans-serif; }
+    .esig-legal { font-size: 11px; color: var(--gray); line-height: 1.5; padding: 12px; background: var(--black-4); border-radius: 4px; border: 1px solid var(--border); }
+    .esig-tabs { display: flex; gap: 0; border-bottom: 1px solid var(--border); margin-bottom: 12px; }
+    .esig-tab { padding: 8px 14px; background: transparent; border: none; color: var(--gray); cursor: pointer; font-size: 12px; font-weight: 600; border-bottom: 2px solid transparent; font-family: 'Barlow', sans-serif; }
+    .esig-tab.active { color: var(--cyan); border-bottom-color: var(--cyan); }
+
+    /* ── Doc preview ── */
+    .doc-preview-frame { background: #fff; color: #111; font-family: Georgia, serif; font-size: 13px; line-height: 1.7; padding: 40px 48px; border-radius: 4px; margin-bottom: 20px; max-height: 400px; overflow-y: auto; border: 1px solid rgba(0,0,0,0.1); }
+    .doc-preview-frame h1 { font-size: 20px; margin-bottom: 14px; }
+    .doc-preview-frame h2 { font-size: 16px; margin-bottom: 10px; margin-top: 16px; }
+    .doc-preview-frame p, .doc-preview-frame li { margin-bottom: 10px; }
+    .doc-preview-frame ul, .doc-preview-frame ol { padding-left: 20px; margin-bottom: 10px; }
+
+    /* ── Toast ── */
+    .toast-wrap { position: fixed; bottom: 20px; right: 20px; z-index: 9999; display: flex; flex-direction: column; gap: 8px; }
+    .toast { padding: 13px 18px; border-radius: 6px; font-size: 13px; font-weight: 500; background: var(--black-3); border: 1px solid var(--border); color: var(--white); animation: toastIn .25s ease-out; box-shadow: 0 4px 20px rgba(0,0,0,0.5); }
+    .toast.success { border-left: 3px solid var(--success); }
+    .toast.error { border-left: 3px solid var(--danger); }
+    .toast.info { border-left: 3px solid var(--cyan); }
+    @keyframes toastIn { from { transform: translateX(60px); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
+
+    /* ── Urgent badge ── */
+    .urgent-badge { display: inline-block; background: rgba(231,76,60,0.18); color: #e74c3c; font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: .06em; padding: 2px 8px; border-radius: 10px; margin-left: 8px; }
+
+    /* ── Mobile ── */
+    @media (max-width: 600px) {
+      .app-content { padding: 20px 16px; }
+      .doc-preview-frame { padding: 20px 16px; }
+      .modal-box { padding: 20px; }
+    }
+  </style>
+</head>
+<body>
+
+<!-- ── Login Screen ─────────────────────────────────────────────────────────── -->
+<div class="login-wrap" id="loginWrap">
+  <div class="login-card">
+    <div class="login-logo">
+      <img src="logo-full.webp" alt="Baseline Studio" onerror="this.style.display='none'">
+    </div>
+    <div class="login-title">TEAM PORTAL</div>
+    <div class="login-sub">Baseline Studio — Staff Access</div>
+    <div class="login-error" id="loginError"></div>
+    <form onsubmit="doLogin(event)">
+      <div class="form-group">
+        <label class="form-label">Email</label>
+        <input type="email" class="form-input" id="loginEmail" required autocomplete="email" placeholder="you@email.com">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Password</label>
+        <input type="password" class="form-input" id="loginPassword" required autocomplete="current-password" placeholder="••••••••">
+      </div>
+      <button type="submit" class="btn btn-primary" style="width:100%;padding:14px;font-size:14px;" id="loginBtn">Sign In</button>
+    </form>
+  </div>
+</div>
+
+<!-- ── App ──────────────────────────────────────────────────────────────────── -->
+<div class="app-wrap" id="appWrap">
+  <div class="app-topbar">
+    <div class="app-topbar-logo">
+      <img src="logo-full.webp" alt="Baseline Studio" style="height:28px;width:auto;" onerror="this.style.display='none'">
+      <span>BASELINE STUDIO</span>
+    </div>
+    <div class="app-topbar-user">
+      <span class="app-topbar-name" id="topbarName"></span>
+      <span id="topbarRole" style="font-size:12px;"></span>
+      <button class="btn btn-secondary btn-sm" onclick="doLogout()">Logout</button>
+    </div>
+  </div>
+
+  <div class="app-nav">
+    <button class="app-nav-btn active" onclick="showSection('docs')" id="navDocs">
+      Documents
+      <span class="app-nav-badge" id="docsBadge" style="display:none;"></span>
+    </button>
+    <button class="app-nav-btn" onclick="showSection('blasts')" id="navBlasts">
+      Blasts
+      <span class="app-nav-badge" id="blastsBadge" style="display:none;"></span>
+    </button>
+  </div>
+
+  <div class="app-content">
+    <!-- Documents Section -->
+    <div class="app-section active" id="sectionDocs">
+      <div style="font-family:'Anton',sans-serif;font-size:24px;margin-bottom:20px;">My Documents</div>
+      <div class="panel" id="docsPanel">
+        <div class="panel-empty" id="docsEmpty" style="display:none;">No documents assigned to you yet.</div>
+        <div id="docsList"></div>
+      </div>
+    </div>
+
+    <!-- Blasts Section -->
+    <div class="app-section" id="sectionBlasts">
+      <div style="font-family:'Anton',sans-serif;font-size:24px;margin-bottom:20px;">Team Blasts</div>
+      <div class="panel" id="blastsPanel">
+        <div class="panel-empty" id="blastsEmpty" style="display:none;">No blasts yet.</div>
+        <div id="blastsList"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ── Sign Document Modal ───────────────────────────────────────────────────── -->
+<div class="modal-bg" id="signModal">
+  <div class="modal-box">
+    <button class="modal-close" onclick="closeSignModal()">×</button>
+    <div class="modal-title" id="signModalTitle">Sign Document</div>
+    <div id="signModalDoc" class="doc-preview-frame"></div>
+    <div style="border-top:1px solid var(--border);padding-top:20px;">
+      <div style="font-weight:600;font-size:14px;margin-bottom:16px;">Your Electronic Signature</div>
+      <div class="esig-section">
+        <div class="esig-label">Full Legal Name</div>
+        <input type="text" class="form-input" id="esigTypedName" placeholder="Type your full name as it appears on legal documents">
+      </div>
+      <div class="esig-section">
+        <div class="esig-label">Draw Your Signature</div>
+        <div class="esig-canvas-wrap" id="sigCanvasWrap">
+          <canvas class="esig-canvas" id="sigCanvas" height="120"></canvas>
+          <button class="esig-canvas-clear" onclick="clearCanvas()">Clear</button>
+        </div>
+      </div>
+      <div class="esig-legal" id="esigLegal">
+        By clicking "Submit Signature" you confirm: (1) you are <span id="esigRecipientName"></span>, (2) this electronic signature is legally binding under the E-SIGN Act (15 U.S.C. § 7001), (3) you have read and agree to the document above, and (4) you intend this digital record to have the same legal effect as a handwritten signature. Signed on <span id="esigTimestamp"></span>.
+      </div>
+      <div style="display:flex;gap:10px;margin-top:16px;">
+        <button class="btn btn-primary" style="flex:1;padding:13px;" onclick="submitSignature()" id="submitSigBtn">Submit Signature</button>
+        <button class="btn btn-secondary" onclick="closeSignModal()">Cancel</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ── Toast Container ───────────────────────────────────────────────────────── -->
+<div class="toast-wrap" id="toastWrap"></div>
+
+<script src="portal-supabase.js?v=11"></script>
+<script>
+  // ── Constants ────────────────────────────────────────────────────────────────
+  // Replace with your actual Supabase URL and anon key
+  // (These are the same values used in portal-supabase.js)
+  const EP_SUPABASE_URL = typeof SUPABASE_URL !== 'undefined' ? SUPABASE_URL : '';
+  const EP_ANON = typeof SUPABASE_ANON !== 'undefined' ? SUPABASE_ANON : '';
+
+  // ── State ────────────────────────────────────────────────────────────────────
+  let _empSession = null;
+  let _empToken = null;
+  let _myDocs = [];
+  let _myBlasts = [];
+  let _myReceipts = [];
+  let _currentSignDocId = null;
+  let _sigPainting = false;
+
+  // ── Toast ────────────────────────────────────────────────────────────────────
+  function showToast(msg, type='info', dur=3500) {
+    const wrap = document.getElementById('toastWrap');
+    const t = document.createElement('div');
+    t.className = `toast ${type}`;
+    t.textContent = msg;
+    wrap.appendChild(t);
+    setTimeout(() => t.remove(), dur);
+  }
+
+  // ── Login ────────────────────────────────────────────────────────────────────
+  async function doLogin(e) {
+    e.preventDefault();
+    const email = document.getElementById('loginEmail').value.trim();
+    const pwd = document.getElementById('loginPassword').value;
+    const btn = document.getElementById('loginBtn');
+    const err = document.getElementById('loginError');
+    err.style.display = 'none';
+    btn.textContent = 'Signing in…';
+    btn.disabled = true;
+    try {
+      const r = await fetch(`${EP_SUPABASE_URL}/auth/v1/token?grant_type=password`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'apikey': EP_ANON },
+        body: JSON.stringify({ email, password: pwd })
+      });
+      const data = await r.json();
+      if (!r.ok || !data.access_token) {
+        err.textContent = data.error_description || data.msg || 'Invalid email or password.';
+        err.style.display = 'block';
+        btn.textContent = 'Sign In'; btn.disabled = false;
+        return;
+      }
+      _empToken = data.access_token;
+      _empSession = {
+        token: data.access_token,
+        userId: data.user.id,
+        email: data.user.email,
+        name: data.user.user_metadata?.name || email.split('@')[0],
+        role: data.user.user_metadata?.role || 'staff'
+      };
+      sessionStorage.setItem('bs_emp_session', JSON.stringify(_empSession));
+      initApp();
+    } catch(ex) {
+      err.textContent = 'Connection error. Please check your internet and try again.';
+      err.style.display = 'block';
+      btn.textContent = 'Sign In'; btn.disabled = false;
+    }
+  }
+
+  async function initApp() {
+    if (!_empSession) return;
+    document.getElementById('loginWrap').style.display = 'none';
+    document.getElementById('appWrap').style.display = 'flex';
+    document.getElementById('topbarName').textContent = _empSession.name;
+    document.getElementById('topbarRole').textContent = _empSession.role;
+    await loadMyData();
+    renderDocs();
+    renderBlasts();
+  }
+
+  // ── Load data from Supabase RPCs ─────────────────────────────────────────────
+  async function callRPC(fn, args) {
+    const r = await fetch(`${EP_SUPABASE_URL}/rest/v1/rpc/${fn}`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'apikey': EP_ANON,
+        'Authorization': `Bearer ${_empToken}`
+      },
+      body: JSON.stringify(args)
+    });
+    if (!r.ok) { console.warn(`RPC ${fn} failed`, r.status); return null; }
+    return r.json();
+  }
+
+  async function loadMyData() {
+    try {
+      const [docs, blasts, receipts] = await Promise.all([
+        callRPC('get_employee_docs', { p_email: _empSession.email }),
+        callRPC('get_employee_blasts', { p_employee_role: _empSession.role }),
+        callRPC('get_blast_receipts_for', { p_email: _empSession.email }).catch(() => [])
+      ]);
+      _myDocs = Array.isArray(docs) ? docs : [];
+      _myBlasts = Array.isArray(blasts) ? blasts.sort((a,b) => b.sentAt - a.sentAt) : [];
+      _myReceipts = Array.isArray(receipts) ? receipts : [];
+    } catch(ex) {
+      console.warn('loadMyData error', ex);
+      // Graceful fallback: show empty state with setup instructions
+      _myDocs = []; _myBlasts = [];
+    }
+    updateBadges();
+  }
+
+  function updateBadges() {
+    const pendingDocs = _myDocs.filter(d => d.status === 'pending').length;
+    const db = document.getElementById('docsBadge');
+    if (db) { db.textContent = pendingDocs; db.style.display = pendingDocs > 0 ? 'inline-block' : 'none'; }
+    const acknowledgedIds = new Set(_myReceipts.map(r => r.blastId));
+    const unreadBlasts = _myBlasts.filter(b => !acknowledgedIds.has(b.id)).length;
+    const bb = document.getElementById('blastsBadge');
+    if (bb) { bb.textContent = unreadBlasts; bb.style.display = unreadBlasts > 0 ? 'inline-block' : 'none'; }
+  }
+
+  // ── Section switching ────────────────────────────────────────────────────────
+  function showSection(sec) {
+    document.querySelectorAll('.app-section').forEach(s => s.classList.remove('active'));
+    document.querySelectorAll('.app-nav-btn').forEach(b => b.classList.remove('active'));
+    document.getElementById('section' + sec.charAt(0).toUpperCase() + sec.slice(1))?.classList.add('active');
+    document.getElementById('nav' + sec.charAt(0).toUpperCase() + sec.slice(1))?.classList.add('active');
+  }
+
+  // ── Documents rendering ──────────────────────────────────────────────────────
+  function renderDocs() {
+    const list = document.getElementById('docsList');
+    const empty = document.getElementById('docsEmpty');
+    if (!_myDocs.length) {
+      empty.style.display = 'block'; list.innerHTML = ''; return;
+    }
+    empty.style.display = 'none';
+    list.innerHTML = _myDocs.map(doc => {
+      const isPending = doc.status === 'pending';
+      const statusBadge = isPending
+        ? `<span class="doc-status doc-status-pending">Needs Signature</span>`
+        : `<span class="doc-status doc-status-signed">Signed ${doc.signedAt ? new Date(doc.signedAt).toLocaleDateString() : ''}</span>`;
+      return `<div class="doc-item">
+        <div style="flex:1;min-width:0;">
+          <div class="doc-item-name">${doc.templateName || 'Document'}</div>
+          <div class="doc-item-meta">Sent ${doc.sentAt ? new Date(doc.sentAt).toLocaleDateString() : ''}${doc.message ? ' — "' + doc.message.substring(0,60) + (doc.message.length > 60 ? '...' : '') + '"' : ''}</div>
+        </div>
+        <div style="display:flex;align-items:center;gap:12px;flex-shrink:0;">
+          ${statusBadge}
+          ${isPending ? `<button class="btn btn-primary btn-sm" onclick="openSignModal('${doc.id}')">Review &amp; Sign</button>` : `<button class="btn btn-secondary btn-sm" onclick="openViewModal('${doc.id}')">View</button>`}
+        </div>
+      </div>`;
+    }).join('');
+  }
+
+  // ── Blasts rendering ─────────────────────────────────────────────────────────
+  function renderBlasts() {
+    const list = document.getElementById('blastsList');
+    const empty = document.getElementById('blastsEmpty');
+    if (!_myBlasts.length) {
+      empty.style.display = 'block'; list.innerHTML = ''; return;
+    }
+    empty.style.display = 'none';
+    const acknowledgedIds = new Set(_myReceipts.map(r => r.blastId));
+    list.innerHTML = _myBlasts.map(blast => {
+      const isAcknowledged = acknowledgedIds.has(blast.id);
+      return `<div class="blast-item" id="blast_${blast.id}" style="${blast.urgent && !isAcknowledged ? 'border-left:3px solid var(--danger);' : ''}">
+        <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:12px;margin-bottom:8px;">
+          <div style="font-weight:600;">${blast.subject}${blast.urgent ? '<span class="urgent-badge">URGENT</span>' : ''}</div>
+          ${isAcknowledged
+            ? `<span style="font-size:11px;color:var(--success);font-weight:700;flex-shrink:0;">Acknowledged</span>`
+            : `<button class="btn btn-success btn-sm" style="flex-shrink:0;" onclick="acknowledgeBlast('${blast.id}')">Acknowledge</button>`}
+        </div>
+        <div class="blast-item-body">${(blast.body || '').replace(/\n/g, '<br>')}</div>
+        <div class="blast-item-meta">From ${blast.authorName || 'Management'} &middot; ${blast.sentAt ? new Date(blast.sentAt).toLocaleString() : ''} &middot; To: ${(blast.targetRoles || []).join(', ')}</div>
+      </div>`;
+    }).join('');
+  }
+
+  // ── Acknowledge blast ────────────────────────────────────────────────────────
+  async function acknowledgeBlast(blastId) {
+    const result = await callRPC('acknowledge_blast', {
+      p_blast_id: blastId,
+      p_employee_email: _empSession.email,
+      p_employee_name: _empSession.name
+    });
+    if (result === false || result === null) {
+      // Graceful local-only acknowledgment
+      _myReceipts.push({ blastId, recipientEmail: _empSession.email, acknowledgedAt: Date.now() });
+    } else {
+      _myReceipts.push({ blastId, recipientEmail: _empSession.email, acknowledgedAt: Date.now() });
+    }
+    updateBadges();
+    renderBlasts();
+    showToast('Acknowledged', 'success');
+  }
+
+  // ── Sign document modal ──────────────────────────────────────────────────────
+  function openSignModal(instanceId) {
+    const doc = _myDocs.find(d => d.id === instanceId);
+    if (!doc) return;
+    _currentSignDocId = instanceId;
+    document.getElementById('signModalTitle').textContent = doc.templateName || 'Document';
+    document.getElementById('signModalDoc').innerHTML = doc.htmlContent || '(Document content unavailable)';
+    document.getElementById('esigRecipientName').textContent = _empSession.name;
+    document.getElementById('esigTimestamp').textContent = new Date().toLocaleString();
+    document.getElementById('esigTypedName').value = _empSession.name;
+    document.getElementById('signModal').classList.add('open');
+    initCanvas();
+  }
+
+  function openViewModal(instanceId) {
+    const doc = _myDocs.find(d => d.id === instanceId);
+    if (!doc) return;
+    _currentSignDocId = instanceId;
+    document.getElementById('signModalTitle').textContent = doc.templateName || 'Document';
+    document.getElementById('signModalDoc').innerHTML = doc.htmlContent || '(Document content unavailable)';
+    const sigArea = document.querySelector('#signModal > .modal-box > div:last-child');
+    if (sigArea) sigArea.style.display = 'none';
+    document.getElementById('signModal').classList.add('open');
+  }
+
+  function closeSignModal() {
+    document.getElementById('signModal').classList.remove('open');
+    _currentSignDocId = null;
+    const sigArea = document.querySelector('#signModal > .modal-box > div:last-child');
+    if (sigArea) sigArea.style.display = 'block';
+  }
+
+  // ── Canvas signature pad ──────────────────────────────────────────────────────
+  let _canvas, _ctx, _sigPoints = [];
+
+  function initCanvas() {
+    _canvas = document.getElementById('sigCanvas');
+    _ctx = _canvas.getContext('2d');
+    const wrap = document.getElementById('sigCanvasWrap');
+    _canvas.width = wrap.offsetWidth || 540;
+    _sigPoints = [];
+    _ctx.clearRect(0, 0, _canvas.width, _canvas.height);
+    _ctx.strokeStyle = '#1a1a1a';
+    _ctx.lineWidth = 2.5;
+    _ctx.lineCap = 'round';
+    _ctx.lineJoin = 'round';
+
+    _canvas.addEventListener('mousedown', startDraw);
+    _canvas.addEventListener('mousemove', draw);
+    _canvas.addEventListener('mouseup', stopDraw);
+    _canvas.addEventListener('mouseleave', stopDraw);
+    _canvas.addEventListener('touchstart', e => { e.preventDefault(); startDraw(e.touches[0]); }, { passive: false });
+    _canvas.addEventListener('touchmove', e => { e.preventDefault(); draw(e.touches[0]); }, { passive: false });
+    _canvas.addEventListener('touchend', stopDraw);
+  }
+
+  function getPos(e) {
+    const r = _canvas.getBoundingClientRect();
+    return { x: (e.clientX - r.left) * (_canvas.width / r.width), y: (e.clientY - r.top) * (_canvas.height / r.height) };
+  }
+
+  function startDraw(e) { _sigPainting = true; const p = getPos(e); _ctx.beginPath(); _ctx.moveTo(p.x, p.y); _sigPoints.push(p); }
+  function draw(e) {
+    if (!_sigPainting) return;
+    const p = getPos(e);
+    _sigPoints.push(p);
+    _ctx.lineTo(p.x, p.y);
+    _ctx.stroke();
+  }
+  function stopDraw() { _sigPainting = false; _ctx.beginPath(); }
+  function clearCanvas() { if (_ctx && _canvas) { _ctx.clearRect(0, 0, _canvas.width, _canvas.height); _sigPoints = []; } }
+
+  // ── Submit signature ──────────────────────────────────────────────────────────
+  async function submitSignature() {
+    const typedName = (document.getElementById('esigTypedName')?.value || '').trim();
+    if (!typedName) { showToast('Enter your full legal name', 'error'); return; }
+    if (!_sigPoints || _sigPoints.length < 5) { showToast('Please draw your signature in the box above', 'error'); return; }
+    const signatureDataUrl = _canvas ? _canvas.toDataURL('image/png') : '';
+    const btn = document.getElementById('submitSigBtn');
+    btn.textContent = 'Submitting…'; btn.disabled = true;
+    const sigData = {
+      typedName,
+      signatureDataUrl,
+      signedAt: Date.now(),
+      signerEmail: _empSession.email,
+      signerName: _empSession.name,
+      points: _sigPoints.length // metadata, not the actual points
+    };
+    const result = await callRPC('submit_employee_signature', {
+      p_employee_email: _empSession.email,
+      p_instance_id: _currentSignDocId,
+      p_signature_json: sigData
+    });
+    btn.textContent = 'Submit Signature'; btn.disabled = false;
+    if (result === true || result === 'true') {
+      showToast('Signed successfully. Your signature is on file.', 'success', 5000);
+      // Update local state
+      const doc = _myDocs.find(d => d.id === _currentSignDocId);
+      if (doc) { doc.status = 'signed'; doc.signedAt = Date.now(); doc.signatureData = sigData; }
+      closeSignModal();
+      updateBadges();
+      renderDocs();
+    } else {
+      // RPC not deployed yet — store locally and show clear message
+      showToast('Signature saved locally. Contact Saul to complete Supabase setup.', 'info', 6000);
+      const doc = _myDocs.find(d => d.id === _currentSignDocId);
+      if (doc) { doc.status = 'signed'; doc.signedAt = Date.now(); doc.signatureData = sigData; }
+      closeSignModal();
+      renderDocs();
+    }
+  }
+
+  // ── Logout ───────────────────────────────────────────────────────────────────
+  function doLogout() {
+    sessionStorage.removeItem('bs_emp_session');
+    _empSession = null; _empToken = null;
+    document.getElementById('appWrap').style.display = 'none';
+    document.getElementById('loginWrap').style.display = 'flex';
+  }
+
+  // ── Session restore ───────────────────────────────────────────────────────────
+  (function restoreSession() {
+    try {
+      const s = JSON.parse(sessionStorage.getItem('bs_emp_session'));
+      if (s && s.token) { _empSession = s; _empToken = s.token; initApp(); }
+    } catch {}
+  })();
+</script>
+</body>
+</html>

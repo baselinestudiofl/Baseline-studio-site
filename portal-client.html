@@ -2110,6 +2110,11 @@
     // getDB / setDB are provided by portal-supabase.js (Supabase-backed in-memory cache).
     // The client portal only reads event data — no writes needed — so these are pass-throughs.
 
+    // ─── HTML escape — always use for user-supplied content in innerHTML ─────────
+    function esc(s) {
+      return String(s ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');
+    }
+
     // ─── Toast notification ───────────────────────────────────────────────────
     function showToast(msg, type) {
       const colours = { success: '#2ecc71', error: '#e74c3c', warning: '#f39c12', info: '#1FA3E0' };
@@ -3506,7 +3511,7 @@
               <div class="message ${msg.from === 'client' ? 'client' : 'team'}">
                 <div class="message-avatar">${(msg.from === 'client' ? currentUser.firstName || currentUser.name || 'You' : 'BS')[0].toUpperCase()}</div>
                 <div>
-                  <div class="message-bubble">${msg.text}</div>
+                  <div class="message-bubble">${esc(msg.text)}</div>
                   <div class="message-time">${new Date(msg.ts).toLocaleString()}</div>
                 </div>
               </div>

@@ -1,7 +1,55 @@
 https://baselinestudiofl.com/* https://www.baselinestudiofl.com/:splat 301
 /blog/blog-post-title-two-t5my5-k4xmd-47fwc-l22ly /blog 301
 /blog/blog-post-title-two-t5my5-k4xmd-47fwc-l22ly.html /blog 301
+
+# ── Main pages ────────────────────────────────────────────────────────────────
 /about.html /about 301
+/blog.html /blog 301
+/corporate.html /corporate 301
+/faq.html /faq 301
+/portfolio.html /portfolio 301
+/pricing.html /pricing 301
+/services.html /services 301
+/services-lighting.html /services-lighting 301
+/services-visual.html /services-visual 301
+/weddings.html /weddings 301
+
+# ── Service pages ─────────────────────────────────────────────────────────────
+/service-audio.html /service-audio 301
+/service-co2-cannon.html /service-co2-cannon 301
+/service-co2-jets.html /service-co2-jets 301
+/service-cold-spark.html /service-cold-spark 301
+/service-dancefloor-lighting.html /service-dancefloor-lighting 301
+/service-dancing-on-cloud.html /service-dancing-on-cloud 301
+/service-dj.html /service-dj 301
+/service-fx.html /service-fx 301
+/service-gobo-projection.html /service-gobo-projection 301
+/service-led.html /service-led 301
+/service-lighting.html /service-lighting 301
+/service-live-musicians.html /service-live-musicians 301
+/service-projection.html /service-projection 301
+/service-stage-lighting.html /service-stage-lighting 301
+/service-tv-displays.html /service-tv-displays 301
+/service-uplighting.html /service-uplighting 301
+
+# ── Location pages ────────────────────────────────────────────────────────────
+/event-production-aventura.html /event-production-aventura 301
+/event-production-brickell.html /event-production-brickell 301
+/event-production-coral-gables.html /event-production-coral-gables 301
+/event-production-doral.html /event-production-doral 301
+/event-production-fort-lauderdale.html /event-production-fort-lauderdale 301
+/event-production-hialeah.html /event-production-hialeah 301
+/event-production-hollywood-fl.html /event-production-hollywood-fl 301
+/event-production-kendall.html /event-production-kendall 301
+
+# ── Venue pages ───────────────────────────────────────────────────────────────
+/venue/bath-club-miami.html /venue/bath-club-miami 301
+/venue/biltmore-coral-gables.html /venue/biltmore-coral-gables 301
+/venue/jw-marriott-miami.html /venue/jw-marriott-miami 301
+/venue/miami-airport-convention-center.html /venue/miami-airport-convention-center 301
+/venue/ritz-carlton-bal-harbour.html /venue/ritz-carlton-bal-harbour 301
+
+# ── Blog posts ────────────────────────────────────────────────────────────────
 /blog/wedding-day-timeline-dj-breakdown.html /blog/wedding-day-timeline-dj-breakdown 301
 /blog/how-much-does-a-wedding-dj-cost-miami.html /blog/how-much-does-a-wedding-dj-cost-miami 301
 /blog/cold-spark-fountains-vs-co2-cannons.html /blog/cold-spark-fountains-vs-co2-cannons 301
