@@ -7,11 +7,11 @@
   <script src="portal-supabase.js?v=2"></script>
   <title>Get an Event Production Quote | Miami, FL | Baseline Studio</title>
 <meta property="og:title" content="Get an Event Production Quote | Miami, FL | Baseline Studio">
-<meta property="og:description" content="Request a free quote for event production in Miami. DJ, lighting, LED walls, special effects, and live musicians. We respond within 24 hours. (786) 302-6056.">
+<meta property="og:description" content="Request a quote for event production in Miami: DJ, lighting, LED walls, special effects, and live musicians. Tell us your date and venue. (786) 302-6056.">
 <meta property="og:type" content="website">
 <meta property="og:url" content="https://www.baselinestudiofl.com/contact">
-<meta property="og:image" content="https://www.baselinestudiofl.com/og-image.jpg">
-  <meta name="description" content="Request a free quote for event production in Miami. DJ, lighting, LED walls, special effects, and live musicians. We respond within 24 hours. (786) 302-6056.">
+<meta property="og:image" content="https://www.baselinestudiofl.com/images/events/event-production-coordinator-miami.jpg">
+  <meta name="description" content="Request a quote for event production in Miami: DJ, lighting, LED walls, special effects, and live musicians. Tell us your date and venue. (786) 302-6056.">
   <link rel="stylesheet" href="fonts/fonts.css">
   <link rel="stylesheet" href="style.css?v=2">
   <style>
@@ -37,14 +37,20 @@
     .cfw-panel { animation: cfwFadeIn .25s ease; }
     @keyframes cfwFadeIn { from { opacity:0; transform:translateY(6px); } to { opacity:1; transform:translateY(0); } }
     .cfw-tile-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-bottom: 24px; }
-    .cfw-tile { background: var(--black-3); border: 1px solid var(--rule); border-radius: 8px; padding: 16px 10px; text-align: center; cursor: pointer; transition: border-color .15s, background .15s; font-size: 13px; font-weight: 500; color: rgba(255,255,255,.65); }
+    /* These are <button> elements (converted from divs for keyboard access), so
+       they need the UA defaults neutralised: buttons don't inherit font-family,
+       and they size to content rather than filling the grid cell. */
+    .cfw-tile { background: var(--black-3); border: 1px solid var(--rule); border-radius: 8px; padding: 16px 10px; text-align: center; cursor: pointer; transition: border-color .15s, background .15s; font-size: 13px; font-weight: 500; color: rgba(255,255,255,.65); font-family: inherit; line-height: 1.4; width: 100%; display: block; -webkit-appearance: none; appearance: none; }
     .cfw-tile:hover { border-color: rgba(31,163,224,.5); background: rgba(31,163,224,.05); color: #fff; }
     .cfw-tile.selected { border-color: var(--cyan); background: rgba(31,163,224,.12); color: #fff; }
     .cfw-tile-icon { display: flex; justify-content: center; align-items: center; margin-bottom: 8px; color: rgba(255,255,255,.45); transition: color .15s; }
     .cfw-tile:hover .cfw-tile-icon { color: rgba(255,255,255,.85); }
     .cfw-tile.selected .cfw-tile-icon { color: var(--cyan); }
     .cfw-chip-grid { display: flex; flex-wrap: wrap; gap: 10px; margin-bottom: 8px; }
-    .cfw-chip { padding: 9px 16px; border: 1px solid var(--rule); border-radius: 100px; font-size: 13px; font-weight: 500; color: rgba(255,255,255,.6); cursor: pointer; transition: border-color .15s, background .15s, color .15s; }
+    /* Also <button> now. `background: transparent` matters here — as divs these
+       had no background declared and inherited the panel; as buttons they would
+       otherwise render with the UA's default grey. */
+    .cfw-chip { padding: 9px 16px; border: 1px solid var(--rule); border-radius: 100px; font-size: 13px; font-weight: 500; color: rgba(255,255,255,.6); cursor: pointer; transition: border-color .15s, background .15s, color .15s; background: transparent; font-family: inherit; line-height: 1.4; -webkit-appearance: none; appearance: none; }
     .cfw-chip:hover { border-color: rgba(31,163,224,.5); color: #fff; }
     .cfw-chip.selected { border-color: var(--cyan); background: rgba(31,163,224,.12); color: #fff; }
     .cfw-nav { display: flex; align-items: center; justify-content: space-between; margin-top: 28px; gap: 12px; }
@@ -88,7 +94,7 @@
   "telephone": "+17863026056",
   "email": "Hello@baselinestudiofl.com",
   "logo": "https://www.baselinestudiofl.com/Logo Full.png",
-  "image": "https://www.baselinestudiofl.com/og-image.jpg",
+  "image": "https://www.baselinestudiofl.com/images/events/event-production-coordinator-miami.jpg",
   "priceRange": "$$",
   "areaServed": [
     {
@@ -134,7 +140,7 @@
   "@type": "WebPage",
   "name": "Contact Baseline Studio | Event Production Quote Miami",
   "url": "https://www.baselinestudiofl.com/contact",
-  "description": "Request a free event production quote from Baseline Studio. DJ, lighting, LED walls, special effects, and live musicians for South Florida events. We respond within 24 hours.",
+  "description": "Request a free event production quote from Baseline Studio. DJ, lighting, LED walls, special effects, and live musicians for South Florida events.",
   "provider": { "@id": "https://www.baselinestudiofl.com/#organization" }
 }
 </script>
@@ -146,12 +152,12 @@
     {
       "@type": "Question",
       "name": "How quickly do you respond to quote requests?",
-      "acceptedAnswer": { "@type": "Answer", "text": "We respond to all inquiries within 24 hours, usually much faster. For urgent requests, call us directly at (786) 302-6056." }
+      "acceptedAnswer": { "@type": "Answer", "text": "We get back to every inquiry quickly. For urgent requests, call us directly at (786) 302-6056." }
     },
     {
       "@type": "Question",
       "name": "What information should I have ready when I contact you?",
-      "acceptedAnswer": { "@type": "Answer", "text": "The more you can share, the better — event date, venue name, expected guest count, services you are interested in, and any specific moments you want to highlight. We will handle the rest." }
+      "acceptedAnswer": { "@type": "Answer", "text": "The more you can share, the better, event date, venue name, expected guest count, services you are interested in, and any specific moments you want to highlight. We will handle the rest." }
     },
     {
       "@type": "Question",
@@ -211,7 +217,7 @@
         <em>your event.</em>
       </h1>
       <p class="page-hero-body reveal reveal-delay-2">
-        Fill out the form and we'll get back to you within one business day — usually same day. No pressure, no sales pitch. Just a straight answer on what we can do for you and what it'll cost.
+        Fill out the form and we'll get back to you within one business day, usually same day. No pressure, no sales pitch. Just a straight answer on what we can do for you and what it'll cost.
       </p>
     </div>
   </section>
@@ -221,7 +227,7 @@
       <div>
         <div class="section-eyebrow reveal">Contact Info</div>
         <h2 class="contact-info-title reveal reveal-delay-1">We're easy<br>to reach.</h2>
-        <p class="contact-info-body reveal reveal-delay-2">Phone, email, or Instagram DM — we respond to all of them. If you'd rather just talk, call or text us directly.</p>
+        <p class="contact-info-body reveal reveal-delay-2">Phone, email, or Instagram DM. We respond to all of them. If you'd rather just talk, call or text us directly.</p>
         <div class="contact-detail reveal reveal-delay-3">
           <div class="contact-detail-item">
             <span class="cd-icon"></span>
@@ -270,13 +276,13 @@
 
         <!-- Step 1: Event type tiles -->
         <div id="cfwStep1" class="cfw-panel">
-          <div class="cfw-tile-grid">
-            <div class="cfw-tile" data-val="Wedding" onclick="cfwSelectTile(this)"><span class="cfw-tile-icon"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg></span>Wedding</div>
-            <div class="cfw-tile" data-val="Quinceañera" onclick="cfwSelectTile(this)"><span class="cfw-tile-icon"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg></span>Quinceañera</div>
-            <div class="cfw-tile" data-val="Bar / Bat Mitzvah" onclick="cfwSelectTile(this)"><span class="cfw-tile-icon"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 3 22 19.5 2 19.5"/><polygon points="12 21 2 4.5 22 4.5"/></svg></span>Bar / Bat Mitzvah</div>
-            <div class="cfw-tile" data-val="Corporate Event" onclick="cfwSelectTile(this)"><span class="cfw-tile-icon"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="7" width="20" height="14" rx="1"/><path d="M16 7V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v2"/><line x1="12" y1="12" x2="12" y2="12.01"/></svg></span>Corporate</div>
-            <div class="cfw-tile" data-val="Birthday / Private Party" onclick="cfwSelectTile(this)"><span class="cfw-tile-icon"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 12 20 22 4 22 4 12"/><rect x="2" y="7" width="20" height="5"/><line x1="12" y1="22" x2="12" y2="7"/><path d="M12 7H7.5a2.5 2.5 0 0 1 0-5C11 2 12 7 12 7z"/><path d="M12 7h4.5a2.5 2.5 0 0 0 0-5C13 2 12 7 12 7z"/></svg></span>Birthday / Party</div>
-            <div class="cfw-tile" data-val="Other" onclick="cfwSelectTile(this)"><span class="cfw-tile-icon"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/><circle cx="5" cy="12" r="1"/></svg></span>Other</div>
+          <div class="cfw-tile-grid" role="group" aria-label="Event type">
+            <button type="button" class="cfw-tile" data-val="Wedding" aria-pressed="false" onclick="cfwSelectTile(this)"><span class="cfw-tile-icon"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg></span>Wedding</button>
+            <button type="button" class="cfw-tile" data-val="Quinceañera" aria-pressed="false" onclick="cfwSelectTile(this)"><span class="cfw-tile-icon"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg></span>Quinceañera</button>
+            <button type="button" class="cfw-tile" data-val="Bar / Bat Mitzvah" aria-pressed="false" onclick="cfwSelectTile(this)"><span class="cfw-tile-icon"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 3 22 19.5 2 19.5"/><polygon points="12 21 2 4.5 22 4.5"/></svg></span>Bar / Bat Mitzvah</button>
+            <button type="button" class="cfw-tile" data-val="Corporate Event" aria-pressed="false" onclick="cfwSelectTile(this)"><span class="cfw-tile-icon"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="7" width="20" height="14" rx="1"/><path d="M16 7V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v2"/><line x1="12" y1="12" x2="12" y2="12.01"/></svg></span>Corporate</button>
+            <button type="button" class="cfw-tile" data-val="Birthday / Private Party" aria-pressed="false" onclick="cfwSelectTile(this)"><span class="cfw-tile-icon"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 12 20 22 4 22 4 12"/><rect x="2" y="7" width="20" height="5"/><line x1="12" y1="22" x2="12" y2="7"/><path d="M12 7H7.5a2.5 2.5 0 0 1 0-5C11 2 12 7 12 7z"/><path d="M12 7h4.5a2.5 2.5 0 0 0 0-5C13 2 12 7 12 7z"/></svg></span>Birthday / Party</button>
+            <button type="button" class="cfw-tile" data-val="Other" aria-pressed="false" onclick="cfwSelectTile(this)"><span class="cfw-tile-icon"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/><circle cx="5" cy="12" r="1"/></svg></span>Other</button>
           </div>
         </div>
 
@@ -284,30 +290,30 @@
         <div id="cfwStep2" class="cfw-panel" style="display:none">
           <div class="form-row">
             <div class="form-group">
-              <label class="form-label">Event Date</label>
+              <label class="form-label" for="cfwDate">Event Date</label>
               <input type="date" class="form-input" id="cfwDate">
             </div>
             <div class="form-group">
-              <label class="form-label">Guest Count <span style="opacity:.5;font-weight:400">(approx.)</span></label>
+              <label class="form-label" for="cfwGuests">Guest Count <span style="opacity:.5;font-weight:400">(approx.)</span></label>
               <input type="number" class="form-input" id="cfwGuests" placeholder="150">
             </div>
           </div>
           <div class="form-group">
-            <label class="form-label">Venue <span style="opacity:.5;font-weight:400">(name or city)</span></label>
+            <label class="form-label" for="cfwVenue">Venue <span style="opacity:.5;font-weight:400">(name or city)</span></label>
             <input type="text" class="form-input" id="cfwVenue" placeholder="The Biltmore, Coral Gables">
           </div>
         </div>
 
         <!-- Step 3: Services -->
         <div id="cfwStep3" class="cfw-panel" style="display:none">
-          <div class="cfw-chip-grid">
-            <div class="cfw-chip" data-val="DJ" onclick="cfwToggleChip(this)">DJ &amp; Entertainment</div>
-            <div class="cfw-chip" data-val="Sound" onclick="cfwToggleChip(this)">Live Sound &amp; Audio</div>
-            <div class="cfw-chip" data-val="LED" onclick="cfwToggleChip(this)">LED Video Walls</div>
-            <div class="cfw-chip" data-val="Uplighting" onclick="cfwToggleChip(this)">Uplighting</div>
-            <div class="cfw-chip" data-val="Bistro Lights" onclick="cfwToggleChip(this)">Bistro String Lights</div>
-            <div class="cfw-chip" data-val="Special Effects" onclick="cfwToggleChip(this)">Special Effects</div>
-            <div class="cfw-chip" data-val="Live Musicians" onclick="cfwToggleChip(this)">Live Musicians</div>
+          <div class="cfw-chip-grid" role="group" aria-label="Services you are interested in">
+            <button type="button" class="cfw-chip" data-val="DJ" aria-pressed="false" onclick="cfwToggleChip(this)">DJ &amp; Entertainment</button>
+            <button type="button" class="cfw-chip" data-val="Sound" aria-pressed="false" onclick="cfwToggleChip(this)">Live Sound &amp; Audio</button>
+            <button type="button" class="cfw-chip" data-val="LED" aria-pressed="false" onclick="cfwToggleChip(this)">LED Video Walls</button>
+            <button type="button" class="cfw-chip" data-val="Uplighting" aria-pressed="false" onclick="cfwToggleChip(this)">Uplighting</button>
+            <button type="button" class="cfw-chip" data-val="Bistro Lights" aria-pressed="false" onclick="cfwToggleChip(this)">Bistro String Lights</button>
+            <button type="button" class="cfw-chip" data-val="Special Effects" aria-pressed="false" onclick="cfwToggleChip(this)">Special Effects</button>
+            <button type="button" class="cfw-chip" data-val="Live Musicians" aria-pressed="false" onclick="cfwToggleChip(this)">Live Musicians</button>
           </div>
           <p style="font-size:12px;color:rgba(255,255,255,.3);margin-top:14px;">Pick everything that applies. We can talk through the rest.</p>
         </div>
@@ -316,21 +322,21 @@
         <div id="cfwStep4" class="cfw-panel" style="display:none">
           <div class="form-row">
             <div class="form-group">
-              <label class="form-label">First Name</label>
+              <label class="form-label" for="cfwFirst">First Name</label>
               <input type="text" class="form-input" id="cfwFirst" placeholder="Jane">
             </div>
             <div class="form-group">
-              <label class="form-label">Last Name</label>
+              <label class="form-label" for="cfwLast">Last Name</label>
               <input type="text" class="form-input" id="cfwLast" placeholder="Smith">
             </div>
           </div>
           <div class="form-row">
             <div class="form-group">
-              <label class="form-label">Email</label>
+              <label class="form-label" for="cfwEmail">Email</label>
               <input type="email" class="form-input" id="cfwEmail" placeholder="jane@email.com">
             </div>
             <div class="form-group">
-              <label class="form-label">Phone <span style="opacity:.5;font-weight:400">(optional)</span></label>
+              <label class="form-label" for="cfwPhone">Phone <span style="opacity:.5;font-weight:400">(optional)</span></label>
               <input type="tel" class="form-input" id="cfwPhone" placeholder="(305) 000-0000">
             </div>
           </div>
@@ -339,8 +345,8 @@
         <!-- Step 5: Message + submit -->
         <div id="cfwStep5" class="cfw-panel" style="display:none">
           <div class="form-group">
-            <label class="form-label">Anything else? <span style="opacity:.5;font-weight:400">(optional)</span></label>
-            <textarea class="form-textarea" id="cfwMessage" placeholder="Vibe, budget range, specific moments you care about — anything helps." style="min-height:110px;"></textarea>
+            <label class="form-label" for="cfwMessage">Anything else? <span style="opacity:.5;font-weight:400">(optional)</span></label>
+            <textarea class="form-textarea" id="cfwMessage" placeholder="Vibe, budget range, specific moments you care about, anything helps." style="min-height:110px;"></textarea>
           </div>
         </div>
 
@@ -353,7 +359,7 @@
         <!-- Hidden form — only used for Web3Forms submission on step 5 -->
         <form id="contact-form" style="display:none">
           <input type="hidden" name="access_key" value="8eb161bf-d25e-41f4-8111-e5ea9a8a200e">
-          <input type="hidden" name="subject" value="New Inquiry — Baseline Studio">
+          <input type="hidden" name="subject" value="New Inquiry, Baseline Studio">
           <input type="hidden" name="from_name" value="Baseline Studio Website">
           <input type="hidden" name="redirect" value="false">
           <input type="checkbox" name="botcheck" style="display:none">
@@ -369,7 +375,7 @@
           <input type="hidden" name="message" id="hMessage">
         </form>
 
-        <div class="form-success" id="form-success">Got it — we'll be in touch within one business day.</div>
+        <div class="form-success" id="form-success">Got it, we'll be in touch within one business day.</div>
       </div>
     </div>
   </section>
@@ -405,12 +411,17 @@
     }
 
     function cfwSelectTile(el) {
-      document.querySelectorAll('#cfwStep1 .cfw-tile').forEach(function(t) { t.classList.remove('selected'); });
+      document.querySelectorAll('#cfwStep1 .cfw-tile').forEach(function(t) {
+        t.classList.remove('selected');
+        t.setAttribute('aria-pressed', 'false');
+      });
       el.classList.add('selected');
+      el.setAttribute('aria-pressed', 'true');
     }
 
     function cfwToggleChip(el) {
-      el.classList.toggle('selected');
+      var on = el.classList.toggle('selected');
+      el.setAttribute('aria-pressed', on ? 'true' : 'false');
     }
 
     function cfwBack() {
