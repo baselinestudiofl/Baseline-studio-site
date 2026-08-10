@@ -2,10 +2,17 @@ https://baselinestudiofl.com/* https://www.baselinestudiofl.com/:splat 301
 /blog/blog-post-title-two-t5my5-k4xmd-47fwc-l22ly /blog 301
 /blog/blog-post-title-two-t5my5-k4xmd-47fwc-l22ly.html /blog 301
 
+# ── Retired URLs (still in Google's index, were 404ing) ───────────────────────
+/blog/2026-07-corporate-event-production-miami /blog/corporate-event-production-miami 301
+/blog/2026-07-corporate-event-production-miami.html /blog/corporate-event-production-miami 301
+/blog/2026-07-live-musicians-for-weddings-miami /blog/live-musicians-for-weddings-miami 301
+/blog/2026-07-live-musicians-for-weddings-miami.html /blog/live-musicians-for-weddings-miami 301
+
 # ── Main pages ────────────────────────────────────────────────────────────────
 /about.html /about 301
 /blog.html /blog 301
 /corporate.html /corporate 301
+/corporate-live-music-miami.html /corporate-live-music-miami 301
 /faq.html /faq 301
 /portfolio.html /portfolio 301
 /pricing.html /pricing 301
