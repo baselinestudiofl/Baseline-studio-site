@@ -364,26 +364,10 @@ nav {
 .reveal-delay-2 { transition-delay: 0.16s; }
 .reveal-delay-3 { transition-delay: 0.24s; }
 
-/* ── LCP fix ──────────────────────────────────────────────────────────────────
-   .reveal starts at opacity:0 and only becomes visible once JavaScript adds
-   .active. On the hero that is self-defeating: the hero is already above the
-   fold, so there is nothing to reveal on scroll, and hiding it means the largest
-   element on the page cannot paint until JS has run. That was holding LCP near
-   4.6s against an FCP of 1.8s -- the image was never the bottleneck.
-   Hero content now paints immediately. Everything below the fold keeps its
-   scroll animation, which is where the effect actually reads. */
-.page-hero .reveal,
-.page-hero-inner .reveal,
-.hero-inner .reveal,
-.hero .reveal,
-.page-hero-title,
-.page-hero-body,
-.page-hero-ctas,
-.hero-headline {
-  opacity: 1 !important;
-  transform: none !important;
-  transition: none !important;
-}
+/* NOTE: the hero fade-in was briefly disabled here on the theory that .reveal's
+   opacity:0 was delaying LCP. Measured before and after: 4.6s -> 4.5s, i.e. noise.
+   It was not the cause, so the animation is back. Don't remove it again without
+   a measurement showing it actually costs something. */
 
 /* ─── FEATURE GRID ─── */
 .feature-grid {
