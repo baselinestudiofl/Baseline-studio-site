@@ -2,6 +2,18 @@ https://baselinestudiofl.com/* https://www.baselinestudiofl.com/:splat 301
 /blog/blog-post-title-two-t5my5-k4xmd-47fwc-l22ly /blog 301
 /blog/blog-post-title-two-t5my5-k4xmd-47fwc-l22ly.html /blog 301
 
+# ── Stale crawls from an older link structure (all confirmed 404 in GSC) ──────
+# /services and /services-store are files, not directories, so these wildcards
+# cannot shadow anything real. The .html targets chain through the clean-URL
+# rules below, which is fine.
+/services/* /:splat 301
+/services-store/* /services 301
+/blog/portfolio.html /portfolio 301
+/blog/service-cold-spark.html /service-cold-spark 301
+/home / 301
+/weddings-lighting /services-lighting 301
+/corporateeventsfl /corporate 301
+
 # ── Retired URLs (still in Google's index, were 404ing) ───────────────────────
 /blog/2026-07-corporate-event-production-miami /blog/corporate-event-production-miami 301
 /blog/2026-07-corporate-event-production-miami.html /blog/corporate-event-production-miami 301
