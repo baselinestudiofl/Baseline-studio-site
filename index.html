@@ -406,12 +406,12 @@
   }
   .split-panel--wedding {
     background-color: #080d0a;
-    background-image: url('images/events/wedding-reception-production-miami.jpg');
+    background-image: url('images/events/wedding-reception-production-miami.webp');
     background-size: cover; background-position: center;
   }
   .split-panel--corporate {
     background-color: #060a0f;
-    background-image: url('images/events/corporate-gala-production-miami.jpg');
+    background-image: url('images/events/corporate-gala-production-miami.webp');
     background-size: cover; background-position: center;
   }
   .split-panel-overlay {
@@ -1257,7 +1257,11 @@
   });
 
   // Contact form — Web3Forms
-  document.getElementById('contactForm').addEventListener('submit', async function(e) {
+  // Legacy handler: this page's form is the conversational one (#hp-contact-form,
+  // handled further down). #contactForm no longer exists here, so guard rather than
+  // throw a TypeError into the console on every homepage load.
+  var legacyForm = document.getElementById('contactForm');
+  if (legacyForm) legacyForm.addEventListener('submit', async function(e) {
     e.preventDefault();
     var form = this;
     var submitBtn = form.querySelector('.btn-submit');
