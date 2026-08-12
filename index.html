@@ -788,16 +788,25 @@
 <section id="hero">
   <!-- Desktop hero — self-hosted video background (desktop only; mobile uses img above) -->
   <div class="vimeo-bg-wrap">
-    <video id="hero-bg-video" autoplay muted loop playsinline poster="hero-poster.webp"></video>
+    <video id="hero-bg-video" autoplay muted loop playsinline preload="none" poster="hero-poster-mobile.webp"></video>
   </div>
   <script>
     (function() {
       var v = document.getElementById('hero-bg-video');
       var isMobile = window.matchMedia('(max-width:768px)').matches;
-      v.src = isMobile ? 'hero-bg-mobile.mp4' : 'hero-bg.mp4';
-      v.poster = isMobile ? 'hero-poster-mobile.webp' : 'hero-poster.webp';
-      v.addEventListener('canplay', function() { v.style.opacity = '1'; }, { once: true });
-      setTimeout(function() { v.style.opacity = '1'; }, 2000);
+      // The poster carries the hero on its own, so show it immediately.
+      if (!isMobile) v.poster = 'hero-poster.webp';
+      v.style.opacity = '1';
+
+      // The video is decoration. On a phone it was 3 MB and most of the page
+      // weight, so phones get the poster only. Desktop loads it after the page
+      // has finished, where it cannot compete with the hero paint.
+      if (isMobile) return;
+      var c = navigator.connection;
+      if (c && (c.saveData || /2g/.test(c.effectiveType || ''))) return;
+      window.addEventListener('load', function() {
+        setTimeout(function() { v.src = 'hero-bg.mp4'; v.load(); }, 300);
+      });
     })();
   </script>
   <div class="hero-content">

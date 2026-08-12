@@ -173,14 +173,25 @@
   </div>
 
   <section class="page-hero page-hero--video">
-    <video id="corporate-bg-video" class="hero-video" autoplay muted loop playsinline></video>
+    <video id="corporate-bg-video" class="hero-video" autoplay muted loop playsinline preload="none" poster="corporate-poster-mobile.webp"></video>
     <script>
       (function() {
-        var v = document.getElementById('corporate-bg-video');
-        v.src = window.matchMedia('(min-width:769px)').matches ? 'corporate-bg-mobile.mp4' : 'corporate-bg-mobile.mp4';
-        v.addEventListener('canplay', function() { v.style.opacity = '1'; }, { once: true });
-        setTimeout(function() { v.style.opacity = '1'; }, 2000);
-      })();
+      var v = document.getElementById('corporate-bg-video');
+      var isMobile = window.matchMedia('(max-width:768px)').matches;
+      // The poster carries the hero on its own, so show it immediately.
+      if (!isMobile) v.poster = 'images/events/corporate-gala-production-miami.webp';
+      v.style.opacity = '1';
+
+      // The video is decoration. On a phone it was 3 MB and most of the page
+      // weight, so phones get the poster only. Desktop loads it after the page
+      // has finished, where it cannot compete with the hero paint.
+      if (isMobile) return;
+      var c = navigator.connection;
+      if (c && (c.saveData || /2g/.test(c.effectiveType || ''))) return;
+      window.addEventListener('load', function() {
+        setTimeout(function() { v.src = 'corporate-bg-mobile.mp4'; v.load(); }, 300);
+      });
+    })();
     </script>
     <div class="page-hero-glow"></div>
     <div class="page-hero-inner">
