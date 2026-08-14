@@ -20,6 +20,9 @@
 <link rel="preconnect" href="https://images.unsplash.com" crossorigin>
 <link rel="dns-prefetch" href="https://images.unsplash.com">
 <!-- Async font load — avoids render-blocking while keeping display:swap for FOUT -->
+  <!-- Hero poster preloads. These do NOT fix LCP: the LCP element here is the H1
+       text, not the poster. See the RESOLVED note in style.css. Kept because the
+       poster is a real above-fold image and high priority is correct for it. -->
   <link rel="preload" as="image" href="hero-poster-mobile.webp" media="(max-width: 768px)" fetchpriority="high">
   <link rel="preload" as="image" href="hero-poster.webp" media="(min-width: 769px)" fetchpriority="high">
   <link rel="preload" as="font" type="font/woff2" crossorigin href="fonts/1Ptgg87LROyAm3Kz-C8CSKlv.woff2">

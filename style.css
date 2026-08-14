@@ -367,7 +367,21 @@ nav {
 /* NOTE: the hero fade-in was briefly disabled here on the theory that .reveal's
    opacity:0 was delaying LCP. Measured before and after: 4.6s -> 4.5s, i.e. noise.
    It was not the cause, so the animation is back. Don't remove it again without
-   a measurement showing it actually costs something. */
+   a measurement showing it actually costs something.
+
+   RESOLVED 2026-08-12. The homepage LCP element is the H1 TEXT, not any image.
+   Lighthouse subparts: TTFB 315ms + element render delay 2131ms, with no image
+   load phase at all. The render delay is Cloudflare's bot-detection script
+   (/cdn-cgi/challenge-platform/scripts/jsd/main.js), injected at the edge, which
+   holds the main thread in one 2188ms long task. 2188 vs 2131 is the whole gap.
+
+   It is injected on every request but only sometimes serves a payload (it 302s
+   with 0 bytes otherwise), which is why PageSpeed swung between 4.9s and 2.1s
+   with nothing in between. Fix is Cloudflare dashboard: Security > Bots >
+   JavaScript Detections. Nothing in this stylesheet, or in any image, can move
+   it. Four separate hypotheses about page code were tested and all were wrong:
+   image weight, this reveal animation, font preload, and hero poster preload.
+   Measure the LCP element first next time. */
 
 /* ─── FEATURE GRID ─── */
 .feature-grid {
