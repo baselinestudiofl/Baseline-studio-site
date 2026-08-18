@@ -24,7 +24,7 @@
        text, not the poster. See the RESOLVED note in style.css. Kept because the
        poster is a real above-fold image and high priority is correct for it. -->
   <link rel="preload" as="image" href="hero-poster-mobile.webp" media="(max-width: 768px)" fetchpriority="high">
-  <link rel="preload" as="image" href="hero-poster.webp" media="(min-width: 769px)" fetchpriority="high">
+  <link rel="preload" as="image" href="hero-poster-desktop.webp" media="(min-width: 769px)" fetchpriority="high">
   <link rel="preload" as="font" type="font/woff2" crossorigin href="fonts/1Ptgg87LROyAm3Kz-C8CSKlv.woff2">
 <link rel="stylesheet" href="fonts/fonts.css">
 <script type="application/ld+json">
@@ -800,7 +800,7 @@
       var v = document.getElementById('hero-bg-video');
       var isMobile = window.matchMedia('(max-width:768px)').matches;
       // The poster carries the hero on its own, so show it immediately.
-      if (!isMobile) v.poster = 'hero-poster.webp';
+      if (!isMobile) v.poster = 'hero-poster-desktop.webp';
       v.style.opacity = '1';
 
       // The video is decoration. On a phone it was 3 MB and most of the page

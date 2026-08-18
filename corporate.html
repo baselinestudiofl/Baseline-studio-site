@@ -12,7 +12,7 @@
 <meta property="og:url" content="https://www.baselinestudiofl.com/corporate">
 <meta property="og:image" content="https://www.baselinestudiofl.com/images/events/corporate-gala-production-miami.jpg">
   <link rel="preload" as="image" href="corporate-poster-mobile.webp" media="(max-width: 768px)" fetchpriority="high">
-  <link rel="preload" as="image" href="images/events/corporate-gala-production-miami.webp" media="(min-width: 769px)" fetchpriority="high">
+  <link rel="preload" as="image" href="corporate-poster-desktop.webp" media="(min-width: 769px)" fetchpriority="high">
   <link rel="preload" as="font" type="font/woff2" crossorigin href="fonts/1Ptgg87LROyAm3Kz-C8CSKlv.woff2">
   <link rel="stylesheet" href="fonts/fonts.css">
   <link rel="stylesheet" href="style.css?v=4">
@@ -186,7 +186,7 @@
       var v = document.getElementById('corporate-bg-video');
       var isMobile = window.matchMedia('(max-width:768px)').matches;
       // The poster carries the hero on its own, so show it immediately.
-      if (!isMobile) v.poster = 'images/events/corporate-gala-production-miami.webp';
+      if (!isMobile) v.poster = 'corporate-poster-desktop.webp';
       v.style.opacity = '1';
 
       // The video is decoration. On a phone it was 3 MB and most of the page
