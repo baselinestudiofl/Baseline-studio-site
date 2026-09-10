@@ -14,15 +14,16 @@
       box-sizing: border-box;
     }
 
+    /* Color tokens alias fable.css so the portal, the CRM and the site share one palette. */
     :root {
-      --dark-bg: #08080e;
-      --card-bg: #111118;
-      --border-color: rgba(255, 255, 255, 0.07);
+      --dark-bg: var(--f-black);
+      --card-bg: var(--f-black-3);
+      --border-color: var(--f-rule);
       --cyan: #1FA3E0;
       --cyan-dark: #1585b8;
       --cyan-light: rgba(31, 163, 224, 0.1);
-      --white: #ffffff;
-      --gray: #888888;
+      --white: var(--f-white);
+      --gray: var(--f-gray);
       --gray-light: rgba(255, 255, 255, 0.8);
       --success: #2ecc71;
       --warning: #f39c12;
@@ -334,6 +335,9 @@
       color: var(--gray);
       flex-shrink: 0;
     }
+    .tab, .ob-chip { border-top: 0; border-left: 0; border-right: 0; background: none; font-family: inherit; -webkit-appearance: none; appearance: none; }
+    .ob-chip { border: 1px solid rgba(255,255,255,0.1); }
+    :focus-visible { outline: 2px solid var(--cyan); outline-offset: 2px; }
 
     .tab:hover {
       color: var(--white);
@@ -359,6 +363,8 @@
       transition: left 0.25s cubic-bezier(0.4,0,0.2,1), width 0.25s cubic-bezier(0.4,0,0.2,1);
       pointer-events: none;
     }
+    #subTabBar { padding: 0 24px; margin-bottom: 0; background: var(--card-bg); flex-shrink: 0; }
+    @media (max-width: 768px) { #subTabBar { padding: 0 6px; } }
 
     /* Card hover lift */
     .card {
@@ -433,7 +439,7 @@
     }
     .qc-chip.expanded:hover { background: rgba(31,163,224,0.1); }
     .qc-time-badge {
-      font-size: 10px;
+      font-size: 11px;
       color: #1FA3E0;
       font-weight: 600;
       font-variant-numeric: tabular-nums;
@@ -549,7 +555,7 @@
       opacity: 0;
       background: none;
       border: none;
-      color: rgba(255,255,255,0.3);
+      color: rgba(255,255,255,0.55);
       font-size: 18px;
       cursor: pointer;
       padding: 0 4px;
@@ -1306,7 +1312,7 @@
 
       /* Quick-add time badge — slightly smaller on mobile */
       .qc-time-badge {
-        font-size: 9px;
+        font-size: 11px;
       }
 
       /* QC chip confirm button — compact on mobile */
@@ -1486,7 +1492,7 @@
       z-index: 1;
     }
     .countdown-label {
-      font-size: 10px;
+      font-size: 11px;
       letter-spacing: 0.22em;
       margin-top: 16px;
       color: color-mix(in srgb, var(--countdown-color, #1FA3E0) 70%, white);
@@ -1547,7 +1553,7 @@
     .badge {
       border-radius: 8px;
       padding: 5px 12px;
-      font-size: 10px;
+      font-size: 11px;
       font-weight: 700;
       letter-spacing: 0.07em;
       text-transform: uppercase;
@@ -1711,7 +1717,7 @@
         text-overflow: ellipsis;
       }
       .nav-right { gap: 10px; flex-shrink: 0; }
-      #eventSwitcher { max-width: 100px; font-size: 10px; }
+      #eventSwitcher { max-width: 100px; font-size: 11px; }
 
       /* ── Tab bar ─────────────────────────────────────────────────── */
       .tab-bar { padding: 0 6px; height: 44px; }
@@ -1939,7 +1945,7 @@
       margin-bottom: 14px;
       outline: none;
     }
-    .ob-input-large::placeholder { color: rgba(255,255,255,0.28); }
+    .ob-input-large::placeholder { color: rgba(255,255,255,0.55); }
     .ob-input-large:focus {
       border-color: rgba(31,163,224,0.5);
       box-shadow: 0 0 0 3px rgba(31,163,224,0.1);
@@ -1963,7 +1969,7 @@
       transition: border-color 0.2s, box-shadow 0.2s;
       margin-bottom: 16px;
     }
-    .ob-textarea-large::placeholder { color: rgba(255,255,255,0.28); }
+    .ob-textarea-large::placeholder { color: rgba(255,255,255,0.55); }
     .ob-textarea-large:focus {
       border-color: rgba(31,163,224,0.5);
       box-shadow: 0 0 0 3px rgba(31,163,224,0.1);
@@ -1978,7 +1984,7 @@
     }
     .ob-skip {
       font-size: 13px;
-      color: rgba(255,255,255,0.3);
+      color: rgba(255,255,255,0.55);
       cursor: pointer;
       background: none;
       border: none;
@@ -2058,7 +2064,7 @@
   <div id="app">
     <!-- Top Navigation -->
     <div class="top-nav">
-      <div class="nav-left" onclick="goHome()">
+      <div class="nav-left" role="button" tabindex="0" onclick="goHome()">
         <span>BASELINE</span>
       </div>
       <div class="nav-center" id="eventNameNav" style="display:flex;align-items:center;justify-content:center;gap:8px;">
@@ -2066,7 +2072,7 @@
         <select id="eventSwitcher" style="display:none;background:#1a1a24;border:1px solid rgba(255,255,255,0.15);color:#fff;padding:3px 8px;border-radius:6px;font-size:11px;cursor:pointer;max-width:140px;" onchange="switchEvent(this.value)"></select>
       </div>
       <div class="nav-right">
-        <div class="profile-avatar" id="profileAvatar" onclick="toggleProfileMenu()">
+        <div class="profile-avatar" role="button" tabindex="0" id="profileAvatar" onclick="toggleProfileMenu()">
           <span id="profileInitial">?</span>
         </div>
         <div class="profile-menu" id="profileMenu">
@@ -2084,11 +2090,11 @@
     <div class="pw-modal-backdrop" id="pwModalBackdrop" onclick="closePwModal(event)">
       <div class="pw-modal" id="pwModal">
         <h3>Update Your Password</h3>
-        <label>Current password</label>
+        <label for="pwCurrent">Current password</label>
         <input type="password" id="pwCurrent" placeholder="Current password">
-        <label>New password</label>
+        <label for="pwNew">New password</label>
         <input type="password" id="pwNew" placeholder="At least 6 characters">
-        <label>Confirm new password</label>
+        <label for="pwConfirm">Confirm new password</label>
         <input type="password" id="pwConfirm" placeholder="Repeat new password">
         <div class="pw-modal-actions">
           <button class="pw-btn-cancel" onclick="closePwModal()">Cancel</button>
@@ -2100,6 +2106,7 @@
 
     <!-- Tab Bar -->
     <div class="tab-bar" id="tabBar"></div>
+    <div class="sub-tabs" id="subTabBar" style="display:none;"></div>
 
     <!-- Content Area -->
     <div class="content-area" id="contentArea"></div>
@@ -2124,6 +2131,18 @@
       document.body.appendChild(t);
       requestAnimationFrame(() => { t.style.opacity = '1'; t.style.transform = 'translateY(0)'; });
       setTimeout(() => { t.style.opacity = '0'; t.style.transform = 'translateY(8px)'; setTimeout(() => t.remove(), 250); }, 3000);
+    }
+
+    // Cheap deletes stay one tap and get an Undo instead of a dialog.
+    function showUndoToast(msg, onUndo) {
+      const t = document.createElement('div');
+      t.style.cssText = 'position:fixed;bottom:24px;right:24px;z-index:9999;display:flex;align-items:center;gap:14px;padding:12px 16px 12px 20px;border-radius:8px;font-size:13px;font-family:var(--font-body);font-weight:500;color:#fff;background:var(--card-bg);border:1px solid var(--border-color);border-left:3px solid var(--cyan);box-shadow:0 4px 20px rgba(0,0,0,.5)';
+      const s = document.createElement('span'); s.textContent = msg;
+      const b = document.createElement('button'); b.type = 'button'; b.textContent = 'Undo';
+      b.style.cssText = 'background:none;border:1px solid var(--cyan);color:var(--cyan);border-radius:4px;padding:5px 10px;font-size:12px;font-weight:600;cursor:pointer;font-family:inherit';
+      const timer = setTimeout(() => t.remove(), 6000);
+      b.onclick = () => { clearTimeout(timer); t.remove(); onUndo(); };
+      t.appendChild(s); t.appendChild(b); document.body.appendChild(t);
     }
 
     // ─── 24h → 12h display ───────────────────────────────────────────────────
@@ -2332,7 +2351,7 @@
     // ============ STATE ============
     let currentUser = null;
     let currentEvent = null;
-    let activeTab = 'my-event';
+    let activeTab = 'event';
 
     // ============ INITIALIZATION ============
     function init() {
@@ -2437,8 +2456,8 @@
       content.innerHTML = `
         <div class="empty-state">
           <h2>We're getting your portal ready.</h2>
-          <p style="color:rgba(255,255,255,0.45);font-size:15px;margin-top:8px;">Shouldn't be long. Everything will be here soon.</p>
-          <p style="margin-top: 28px; font-size: 14px; color: rgba(255,255,255,0.35);">Questions in the meantime? Call us at <span style="color:#1FA3E0;font-weight:600;">(786) 302-6056</span></p>
+          <p style="color:rgba(255,255,255,0.55);font-size:15px;margin-top:8px;">Shouldn't be long. Everything will be here soon.</p>
+          <p style="margin-top: 28px; font-size: 14px; color: rgba(255,255,255,0.55);">Questions in the meantime? Call us at <span style="color:#1FA3E0;font-weight:600;">(786) 302-6056</span></p>
         </div>
       `;
     }
@@ -2446,25 +2465,49 @@
     function renderTabs() {
       const tabBar = document.getElementById('tabBar');
       const tabs = [
-        { id: 'my-event', label: 'My Event' },
-        { id: 'vendors', label: 'Vendors & Venue' },
-        { id: 'timeline', label: 'Timeline' },
-        { id: 'music', label: 'Music' },
-        { id: 'enhancements', label: 'Enhancements' },
-        { id: 'invoices', label: 'Invoices' },
+        { id: 'event',     label: 'Event' },
+        { id: 'music',     label: 'Music' },
         { id: 'documents', label: 'Documents' },
-        { id: 'preferences', label: 'Preferences' },
-        { id: 'messages', label: 'Messages' },
-        { id: 'settings', label: 'Settings' }
+        { id: 'messages',  label: 'Messages' },
+        { id: 'settings',  label: 'Settings' }
       ];
-
       tabBar.innerHTML = tabs.map(tab => `
-        <div class="tab" data-tab="${tab.id}" onclick="setActiveTab('${tab.id}')">
+        <button type="button" class="tab" data-tab="${tab.id}" onclick="setActiveTab('${tab.id}')">
           ${tab.label}
-        </div>
+        </button>
       `).join('') + '<div class="tab-ink" id="tabInk"></div>';
       // Position ink on initial load
       requestAnimationFrame(() => moveTabInk(activeTab));
+    }
+
+    // Five top-level tabs so all of them fit on a phone. Sections that used to be
+    // their own tab live under a second row here, with their original renderers.
+    const SUB_TABS = {
+      event:     [ { id: 'overview',     label: 'Overview',  render: () => renderMyEvent() },
+                   { id: 'timeline',     label: 'Timeline',  render: () => renderTimeline() },
+                   { id: 'vendors',      label: 'Vendors',   render: () => renderVendors() },
+                   { id: 'enhancements', label: 'Add-ons',   render: () => renderEnhancements() } ],
+      music:     [ { id: 'music',        label: 'Music',     render: () => renderMusic() } ],
+      documents: [ { id: 'invoices',     label: 'Invoices',  render: () => renderClientInvoices() },
+                   { id: 'documents',    label: 'Contracts', render: () => renderClientDocuments() } ],
+      messages:  [ { id: 'messages',     label: 'Messages',  render: () => renderMessages() } ],
+      settings:  [ { id: 'preferences',  label: 'Preferences', render: () => renderPreferences() },
+                   { id: 'settings',     label: 'Account',   render: () => renderClientSettings() } ]
+    };
+    // Old tab ids still work anywhere they are linked from.
+    const LEGACY_TABS = { 'my-event': ['event','overview'], vendors: ['event','vendors'], timeline: ['event','timeline'],
+      enhancements: ['event','enhancements'], invoices: ['documents','invoices'], preferences: ['settings','preferences'] };
+    let activeSubTab = null;
+
+    function setSubTab(subId) {
+      const subs = SUB_TABS[activeTab] || [];
+      const sub = subs.find(s => s.id === subId) || subs[0];
+      if (!sub) return;
+      activeSubTab = sub.id;
+      document.querySelectorAll('#subTabBar .sub-tab').forEach(b => b.classList.toggle('active', b.dataset.sub === sub.id));
+      const content = document.getElementById('contentArea');
+      content.innerHTML = '';
+      sub.render();
     }
 
     function moveTabInk(tabId) {
@@ -2478,50 +2521,27 @@
       ink.style.width = tabRect.width + 'px';
     }
 
-    function setActiveTab(tabId) {
+    function setActiveTab(tabId, subId) {
+      if (LEGACY_TABS[tabId]) { [tabId, subId] = [LEGACY_TABS[tabId][0], subId || LEGACY_TABS[tabId][1]]; }
+      if (!SUB_TABS[tabId]) tabId = 'event';
       activeTab = tabId;
 
       // Update tab bar
       document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
-      document.querySelector(`[data-tab="${tabId}"]`).classList.add('active');
+      const tabEl = document.querySelector(`[data-tab="${tabId}"]`);
+      if (tabEl) tabEl.classList.add('active');
       moveTabInk(tabId);
 
-      // Render content
-      const content = document.getElementById('contentArea');
-      content.innerHTML = '';
-
-      switch (tabId) {
-        case 'my-event':
-          renderMyEvent();
-          break;
-        case 'vendors':
-          renderVendors();
-          break;
-        case 'timeline':
-          renderTimeline();
-          break;
-        case 'music':
-          renderMusic();
-          break;
-        case 'enhancements':
-          renderEnhancements();
-          break;
-        case 'invoices':
-          renderClientInvoices();
-          break;
-        case 'documents':
-          renderClientDocuments();
-          break;
-        case 'preferences':
-          renderPreferences();
-          break;
-        case 'messages':
-          renderMessages();
-          break;
-        case 'settings':
-          renderClientSettings();
-          break;
+      // Second row, only where a tab has more than one section
+      const subs = SUB_TABS[tabId];
+      const bar = document.getElementById('subTabBar');
+      if (subs.length > 1) {
+        bar.innerHTML = subs.map(s => `<button type="button" class="sub-tab" data-sub="${s.id}" onclick="setSubTab('${s.id}')">${s.label}</button>`).join('');
+        bar.style.display = '';
+      } else {
+        bar.innerHTML = ''; bar.style.display = 'none';
       }
+      setSubTab(subId);
     }
 
     // ============ TAB: MY EVENT ============
@@ -2578,7 +2598,7 @@
           </div>
           ${(currentEvent.package && currentEvent.total) ? `
             <div style="margin-top:16px;padding:16px;background:rgba(255,255,255,0.03);border-radius:8px;border:1px solid rgba(255,255,255,0.06);">
-              <div style="font-size:12px;color:rgba(255,255,255,0.4);letter-spacing:0.06em;text-transform:uppercase;margin-bottom:8px;">${currentEvent.package}</div>
+              <div style="font-size:12px;color:rgba(255,255,255,0.55);letter-spacing:0.06em;text-transform:uppercase;margin-bottom:8px;">${currentEvent.package}</div>
               <div style="display:flex;justify-content:space-between;font-size:14px;color:rgba(255,255,255,0.6);margin-bottom:4px;"><span>Total</span><span>$${Number(currentEvent.total).toLocaleString()}</span></div>
               <div style="display:flex;justify-content:space-between;font-size:14px;color:rgba(255,255,255,0.6);margin-bottom:8px;"><span>Paid</span><span>$${Number(currentEvent.paid||0).toLocaleString()}</span></div>
               <div style="display:flex;justify-content:space-between;font-size:16px;font-weight:600;color:#1FA3E0;border-top:1px solid rgba(255,255,255,0.07);padding-top:8px;"><span>Balance Due</span><span>$${Math.max(0, Number(currentEvent.total) - Number(currentEvent.paid||0)).toLocaleString()}</span></div>
@@ -2598,7 +2618,7 @@
                 </div>
               </div>
             </div>
-          `).join('') : '<p style="color:rgba(255,255,255,0.4);font-size:14px;">We\'ll have your team assigned and ready to go soon.</p>'}
+          `).join('') : '<p style="color:rgba(255,255,255,0.55);font-size:14px;">We\'ll have your team assigned and ready to go soon.</p>'}
         </div>
 
         <div class="help-section">
@@ -2671,13 +2691,13 @@
                   <button class="btn-danger" onclick="deleteVendor(${idx})">Delete</button>
                 </div>
               </div>
-            `).join('') : '<p style="color:rgba(255,255,255,0.35);font-size:14px;margin-bottom:20px;">No vendors yet. Drop in your photographer, florist, caterer, whoever else we should know about.</p>'}
+            `).join('') : '<p style="color:rgba(255,255,255,0.55);font-size:14px;margin-bottom:20px;">No vendors yet. Drop in your photographer, florist, caterer, whoever else we should know about.</p>'}
           </div>
 
           <div class="card">
             <h3>Add My Vendor</h3>
             <div class="form-group">
-              <label class="form-label">Vendor Type</label>
+              <label class="form-label" for="vendorType">Vendor Type</label>
               <select id="vendorType">
                 <option value="">Select Type</option>
                 <option value="Caterer">Caterer</option>
@@ -2695,24 +2715,24 @@
               </select>
             </div>
             <div class="form-group" style="position:relative;">
-              <label class="form-label">Vendor Name</label>
+              <label class="form-label" for="vendorName">Vendor Name</label>
               <input type="text" id="vendorName" placeholder="Type a name — we might already know them" autocomplete="off">
               <div id="vendorSuggestions" style="display:none;position:absolute;top:100%;left:0;right:0;background:#1a1a24;border:1px solid rgba(31,163,224,0.3);border-radius:6px;overflow:hidden;z-index:100;box-shadow:0 8px 24px rgba(0,0,0,0.5);"></div>
             </div>
             <div class="form-group">
-              <label class="form-label">Contact Name</label>
+              <label class="form-label" for="vendorContactName">Contact Name</label>
               <input type="text" id="vendorContactName" placeholder="Person to contact">
             </div>
             <div class="form-group">
-              <label class="form-label">Phone</label>
+              <label class="form-label" for="vendorPhone">Phone</label>
               <input type="tel" id="vendorPhone" placeholder="(555) 000-0000">
             </div>
             <div class="form-group">
-              <label class="form-label">Email</label>
+              <label class="form-label" for="vendorEmail">Email</label>
               <input type="email" id="vendorEmail" placeholder="vendor@email.com">
             </div>
             <div class="form-group">
-              <label class="form-label">Notes</label>
+              <label class="form-label" for="vendorNotes">Notes</label>
               <textarea id="vendorNotes" placeholder="Any special arrangements or notes..."></textarea>
             </div>
             <button class="btn-primary" onclick="addVendor()">Add Vendor</button>
@@ -2784,10 +2804,10 @@
           const results = await BSPortal.searchVendors(q);
           if (!results.length) { suggestions.style.display = 'none'; return; }
           suggestions.innerHTML = results.map(v => `
-            <div class="vendor-suggestion" onclick="fillVendor(${JSON.stringify(v).replace(/"/g,'&quot;')})">
+            <div class="vendor-suggestion" role="button" tabindex="0" onclick="fillVendor(${JSON.stringify(v).replace(/"/g,'&quot;')})">
               <span>${v.name}</span>
               <span style="font-size:11px;color:#1FA3E0;margin-left:8px;">Baseline has worked with them</span>
-              ${v.category ? `<span style="font-size:11px;color:rgba(255,255,255,0.4);margin-left:8px;">${v.category}</span>` : ''}
+              ${v.category ? `<span style="font-size:11px;color:rgba(255,255,255,0.55);margin-left:8px;">${v.category}</span>` : ''}
             </div>`).join('');
           suggestions.style.display = 'block';
         }, 300);
@@ -2866,7 +2886,7 @@
         <div class="card">
           <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;">
             <div>
-              <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.1em;color:rgba(255,255,255,0.3);margin-bottom:4px;">Timeline</div>
+              <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.1em;color:rgba(255,255,255,0.55);margin-bottom:4px;">Timeline</div>
               <h3 style="margin:0;">Run of Show</h3>
             </div>
             <button class="btn-secondary btn-small" onclick="window.print()">Print</button>
@@ -2874,7 +2894,7 @@
 
           ${suggestions.length > 0 ? `
             <div style="margin-bottom:22px;">
-              <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.12em;color:rgba(255,255,255,0.28);margin-bottom:10px;font-family:'Barlow Condensed',sans-serif;">Quick add — tap, adjust the time, confirm</div>
+              <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.12em;color:rgba(255,255,255,0.55);margin-bottom:10px;font-family:'Barlow Condensed',sans-serif;">Quick add — tap, adjust the time, confirm</div>
               <div style="display:flex;flex-wrap:wrap;gap:7px;align-items:center;">
                 ${suggestions.map(([label, time]) => `
                   <button class="qc-chip" data-label="${label.replace(/"/g,'&quot;')}" data-time="${time}" onclick="expandChip(this)">
@@ -2899,18 +2919,18 @@
                 </div>
               `).join('')}
             </div>
-          ` : `<p style="color:rgba(255,255,255,0.35);font-size:14px;margin-bottom:8px;">Add the moments that matter to you. We'll make sure every one of them lands.</p>`}
+          ` : `<p style="color:rgba(255,255,255,0.55);font-size:14px;margin-bottom:8px;">Add the moments that matter to you. We'll make sure every one of them lands.</p>`}
         </div>
 
         <div class="card">
-          <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.12em;color:rgba(255,255,255,0.28);margin-bottom:12px;font-family:'Barlow Condensed',sans-serif;">Add a Moment</div>
+          <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.12em;color:rgba(255,255,255,0.55);margin-bottom:12px;font-family:'Barlow Condensed',sans-serif;">Add a Moment</div>
           <div class="form-row" style="align-items:flex-end;gap:12px;">
             <div class="form-group" style="margin-bottom:0;flex:0 0 120px;">
-              <label class="form-label" style="font-size:11px;color:rgba(255,255,255,0.45);margin-bottom:6px;">Time</label>
+              <label class="form-label" style="font-size:11px;color:rgba(255,255,255,0.55);margin-bottom:6px;" for="timelineTime">Time</label>
               <input type="time" id="timelineTime">
             </div>
             <div class="form-group" style="margin-bottom:0;flex:1;">
-              <label class="form-label" style="font-size:11px;color:rgba(255,255,255,0.45);margin-bottom:6px;">Moment</label>
+              <label class="form-label" style="font-size:11px;color:rgba(255,255,255,0.55);margin-bottom:6px;" for="timelineLabel">Moment</label>
               <select id="timelineLabel" onchange="if(this.value==='Custom...'){this.style.display='none';document.getElementById('timelineLabelCustom').style.display='block';}">
                 <option value="">Choose a moment</option>
                 ${moments.map(m => `<option value="${m}">${m}</option>`).join('')}
@@ -2938,11 +2958,10 @@
     }
 
     function deleteTimelineItem(idx) {
-      if (currentEvent.timeline) {
-        currentEvent.timeline.splice(idx, 1);
-        saveEvent();
-        renderTimeline();
-      }
+      if (!currentEvent.timeline) return;
+      const removed = currentEvent.timeline.splice(idx, 1)[0];
+      saveEvent(); renderTimeline();
+      showUndoToast('Timeline item removed', () => { currentEvent.timeline.splice(idx, 0, removed); saveEvent(); renderTimeline(); });
     }
 
     // ============ TAB: MUSIC ============
@@ -2959,21 +2978,21 @@
 
           <div style="margin: 20px 0;">
             <div class="form-group">
-              <label class="form-label">Moment / Occasion</label>
+              <label class="form-label" for="musicMoment">Moment / Occasion</label>
               <input type="text" id="musicMoment" placeholder="e.g., First Dance, Cocktail Hour">
             </div>
             <div class="form-row">
               <div class="form-group">
-                <label class="form-label">Song Title</label>
+                <label class="form-label" for="musicTitle">Song Title</label>
                 <input type="text" id="musicTitle" placeholder="Song name">
               </div>
               <div class="form-group">
-                <label class="form-label">Artist</label>
+                <label class="form-label" for="musicArtist">Artist</label>
                 <input type="text" id="musicArtist" placeholder="Artist name">
               </div>
             </div>
             <div class="form-group">
-              <label class="form-label">Category</label>
+              <label class="form-label" for="musicCategory">Category</label>
               <select id="musicCategory">
                 <option value="Must Play">Must Play</option>
                 <option value="Nice to Have">Nice to Have</option>
@@ -3010,11 +3029,11 @@
           <p>Add a Spotify or Apple Music playlist link for reference.</p>
 
           <div class="form-group">
-            <label class="form-label">Playlist URL</label>
+            <label class="form-label" for="playlistUrl">Playlist URL</label>
             <input type="url" id="playlistUrl" placeholder="https://open.spotify.com/playlist/...">
           </div>
           <div class="form-group">
-            <label class="form-label">Label (optional)</label>
+            <label class="form-label" for="playlistLabel">Label (optional)</label>
             <input type="text" id="playlistLabel" placeholder="e.g., Cocktail Hour Vibes">
           </div>
           <button class="btn-primary" onclick="addPlaylist()">Add Playlist</button>
@@ -3068,9 +3087,10 @@
     }
 
     function deleteMusicRequest(idx) {
-      currentEvent.clientMusic.splice(idx, 1);
-      saveEvent();
-      renderMusic();
+      if (!currentEvent.clientMusic) return;
+      const removed = currentEvent.clientMusic.splice(idx, 1)[0];
+      saveEvent(); renderMusic();
+      showUndoToast('Song request removed', () => { currentEvent.clientMusic.splice(idx, 0, removed); saveEvent(); renderMusic(); });
     }
 
     function addPlaylist() {
@@ -3089,9 +3109,10 @@
     }
 
     function deletePlaylist(idx) {
-      currentEvent.clientPlaylists.splice(idx, 1);
-      saveEvent();
-      renderMusic();
+      if (!currentEvent.clientPlaylists) return;
+      const removed = currentEvent.clientPlaylists.splice(idx, 1)[0];
+      saveEvent(); renderMusic();
+      showUndoToast('Playlist removed', () => { currentEvent.clientPlaylists.splice(idx, 0, removed); saveEvent(); renderMusic(); });
     }
 
     function saveDoNotPlay() {
@@ -3127,7 +3148,7 @@
           <h3>Your Event Vibe</h3>
 
           <div class="form-group">
-            <label class="form-label">Overall Vibe</label>
+            <label class="form-label" for="prefVibe">Overall Vibe</label>
             <select id="prefVibe" onchange="toggleOtherVibe()">
               <option value="">Select your vibe</option>
               ${vibes.map(v => `<option value="${v}" ${prefs.vibe === v ? 'selected' : ''}>${v}</option>`).join('')}
@@ -3136,7 +3157,7 @@
 
           ${prefs.vibe === 'Other' ? `
             <div class="form-group">
-              <label class="form-label">Describe your vibe</label>
+              <label class="form-label" for="prefVibeOther">Describe your vibe</label>
               <input type="text" id="prefVibeOther" placeholder="Tell us your vibe" value="${prefs.vibeOther || ''}">
             </div>
           ` : ''}
@@ -3154,7 +3175,7 @@
           </div>
 
           <div class="form-group">
-            <label class="form-label">Color Notes</label>
+            <label class="form-label" for="prefColorNotes">Color Notes</label>
             <textarea id="prefColorNotes" placeholder="Any notes about your colors...">${prefs.colorNotes || ''}</textarea>
           </div>
         </div>
@@ -3163,12 +3184,12 @@
           <h3>Music & Atmosphere</h3>
 
           <div class="form-group">
-            <label class="form-label">How would you describe your ideal music atmosphere?</label>
+            <label class="form-label" for="prefMusicDesc">How would you describe your ideal music atmosphere?</label>
             <textarea id="prefMusicDesc" placeholder="Genres, artists, specific songs you love — the more you give us, the better the night sounds...">${prefs.musicDesc || ''}</textarea>
           </div>
 
           <div class="form-group">
-            <label class="form-label">Guest Count (estimate)</label>
+            <label class="form-label" for="prefGuestCount">Guest Count (estimate)</label>
             <input type="number" id="prefGuestCount" placeholder="Number of guests" value="${prefs.guestCount || ''}">
           </div>
         </div>
@@ -3283,7 +3304,7 @@
                   <input type="color" id="uplightColor2" value="${saved.uplightColor2||'#ffffff'}">
                   <input type="text" id="uplightColor2Text" value="${saved.uplightColor2||'#ffffff'}" placeholder="#hex or color name">
                 </div>
-                <label>Notes</label>
+                <label for="uplightNotes">Notes</label>
                 <textarea id="uplightNotes" rows="2" placeholder="e.g., Match our wedding colors — navy and gold">${saved.uplightNotes||''}</textarea>
               </div>
             </div>
@@ -3299,9 +3320,9 @@
             </label>
             <div id="photoboothOptions" style="display:${saved.photboothEnabled ? 'block' : 'none'};">
               <div class="enhancement-options">
-                <label>Theme / Backdrop</label>
+                <label for="photoboothTheme">Theme / Backdrop</label>
                 <input type="text" id="photoboothTheme" value="${saved.photoboothTheme||''}" placeholder="e.g., Tropical, Black & White, Floral">
-                <label>Custom Overlay Text</label>
+                <label for="photoboothText">Custom Overlay Text</label>
                 <input type="text" id="photoboothText" value="${saved.photoboothText||''}" placeholder="e.g., Maria & Carlos — Oct 12, 2026">
               </div>
             </div>
@@ -3317,7 +3338,7 @@
             </label>
             <div id="projectionOptions" style="display:${saved.projectionEnabled ? 'block' : 'none'};">
               <div class="enhancement-options">
-                <label>What should we display?</label>
+                <label for="projectionDesc">What should we display?</label>
                 <textarea id="projectionDesc" rows="2" placeholder="e.g., Slideshow of our photos, custom monogram, video montage">${saved.projectionDesc||''}</textarea>
               </div>
             </div>
@@ -3410,20 +3431,20 @@
             </div>
             ${!isPaid ? `
             <div style="margin-top:18px;">
-              <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.14em;color:rgba(255,255,255,0.28);margin-bottom:12px;font-family:'Barlow Condensed',sans-serif;">Pay This Invoice</div>
+              <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.14em;color:rgba(255,255,255,0.55);margin-bottom:12px;font-family:'Barlow Condensed',sans-serif;">Pay This Invoice</div>
               <div style="display:flex;flex-direction:column;gap:9px;">
                 <!-- PAYMENT HOOK: Apple Pay — enable when Stripe/Square is connected -->
-                <button disabled style="width:100%;padding:14px 20px;background:#000;border:1.5px solid rgba(255,255,255,0.1);border-radius:10px;color:rgba(255,255,255,0.28);font-size:14px;font-weight:600;cursor:not-allowed;display:flex;align-items:center;justify-content:center;gap:10px;font-family:'Barlow',sans-serif;">
+                <button disabled style="width:100%;padding:14px 20px;background:#000;border:1.5px solid rgba(255,255,255,0.1);border-radius:10px;color:rgba(255,255,255,0.55);font-size:14px;font-weight:600;cursor:not-allowed;display:flex;align-items:center;justify-content:center;gap:10px;font-family:'Barlow',sans-serif;">
                   <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M18.71 19.5c-.83 1.24-1.71 2.45-3.05 2.47-1.34.03-1.77-.79-3.29-.79-1.53 0-2 .77-3.27.82-1.31.05-2.3-1.32-3.14-2.53C4.25 17 2.94 12.45 4.7 9.39c.87-1.52 2.43-2.48 4.12-2.51 1.28-.02 2.5.87 3.29.87.78 0 2.26-1.07 3.8-.91.65.03 2.47.26 3.64 1.98-.09.06-2.17 1.28-2.15 3.81.03 3.02 2.65 4.03 2.68 4.04-.03.07-.42 1.44-1.38 2.83M13 3.5c.73-.83 1.94-1.46 2.94-1.5.13 1.17-.34 2.35-1.04 3.19-.69.85-1.83 1.51-2.95 1.42-.15-1.15.41-2.35 1.05-3.11z"/></svg>
                   Apple Pay — Coming Soon
                 </button>
                 <!-- PAYMENT HOOK: Credit / Debit Card — enable when Stripe/Square is connected -->
-                <button disabled style="width:100%;padding:14px 20px;background:rgba(31,163,224,0.06);border:1.5px solid rgba(31,163,224,0.18);border-radius:10px;color:rgba(255,255,255,0.28);font-size:14px;font-weight:600;cursor:not-allowed;display:flex;align-items:center;justify-content:center;gap:10px;font-family:'Barlow',sans-serif;">
+                <button disabled style="width:100%;padding:14px 20px;background:rgba(31,163,224,0.06);border:1.5px solid rgba(31,163,224,0.18);border-radius:10px;color:rgba(255,255,255,0.55);font-size:14px;font-weight:600;cursor:not-allowed;display:flex;align-items:center;justify-content:center;gap:10px;font-family:'Barlow',sans-serif;">
                   <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M20 4H4c-1.11 0-2 .89-2 2v12c0 1.11.89 2 2 2h16c1.11 0 2-.89 2-2V6c0-1.11-.89-2-2-2zm0 14H4v-6h16v6zm0-10H4V6h16v2z"/></svg>
                   Credit / Debit Card — Coming Soon
                 </button>
               </div>
-              <div style="margin-top:12px;padding:11px 14px;background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.06);border-radius:8px;font-size:12px;color:rgba(255,255,255,0.4);">
+              <div style="margin-top:12px;padding:11px 14px;background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.06);border-radius:8px;font-size:12px;color:rgba(255,255,255,0.55);">
                 Need to pay now? We're happy to help — <span style="color:#1FA3E0;font-weight:600;">(786) 302-6056</span> or <span style="color:#1FA3E0;font-weight:600;">Hello@baselinestudiofl.com</span>
               </div>
             </div>` : ''}
@@ -3440,7 +3461,7 @@
       const content = document.getElementById('contentArea');
 
       if (!allDocs.length) {
-        content.innerHTML = `<div class="card"><h3>Documents</h3><p style="color:rgba(255,255,255,0.4);font-size:14px;margin-bottom:4px;">Your contract and other documents will show up here once they're ready.</p><p style="color:rgba(255,255,255,0.3);font-size:13px;">Need something? Call us at (786) 302-6056.</p></div>`;
+        content.innerHTML = `<div class="card"><h3>Documents</h3><p style="color:rgba(255,255,255,0.55);font-size:14px;margin-bottom:4px;">Your contract and other documents will show up here once they're ready.</p><p style="color:rgba(255,255,255,0.55);font-size:13px;">Need something? Call us at (786) 302-6056.</p></div>`;
         return;
       }
 
@@ -3475,7 +3496,7 @@
         }
       });
 
-      content.innerHTML = `<div class="card" style="margin-bottom:12px;"><h3>Documents</h3><p style="color:rgba(255,255,255,0.4);font-size:13px;margin-top:4px;">Shared by your Baseline Studio team.</p></div>${cards}`;
+      content.innerHTML = `<div class="card" style="margin-bottom:12px;"><h3>Documents</h3><p style="color:rgba(255,255,255,0.55);font-size:13px;margin-top:4px;">Shared by your Baseline Studio team.</p></div>${cards}`;
     }
 
     function printClientDoc(docIdx) {
@@ -3558,7 +3579,7 @@
       const email = (currentUser && currentUser.email) || '';
 
       const inputStyle = 'width:100%;box-sizing:border-box;background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.12);border-radius:8px;padding:12px 14px;color:#fff;font-size:15px;outline:none;font-family:inherit;';
-      const labelStyle = 'display:block;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.08em;color:rgba(255,255,255,0.45);margin-bottom:7px;';
+      const labelStyle = 'display:block;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.08em;color:rgba(255,255,255,0.55);margin-bottom:7px;';
       const cardStyle  = 'background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.1);border-radius:12px;padding:22px;margin-bottom:22px;';
       const headStyle  = 'font-family:Anton,sans-serif;font-size:14px;letter-spacing:0.08em;text-transform:uppercase;color:rgba(255,255,255,0.85);margin-bottom:18px;';
 
@@ -3570,24 +3591,24 @@
             <div style="${headStyle}">Your Info</div>
 
             <div style="margin-bottom:16px;">
-              <label style="${labelStyle}">Name</label>
+              <label style="${labelStyle}" for="settingsName">Name</label>
               <input type="text" id="settingsName" value="${(name).replace(/"/g,'&quot;')}" style="${inputStyle}" placeholder="Your name">
             </div>
 
             <div style="margin-bottom:16px;">
-              <label style="${labelStyle}">Phone</label>
+              <label style="${labelStyle}" for="settingsPhone">Phone</label>
               <input type="tel" id="settingsPhone" value="${(phone).replace(/"/g,'&quot;')}" style="${inputStyle}" placeholder="(305) 000-0000">
             </div>
 
             <div style="margin-bottom:20px;">
               <label style="${labelStyle}">Email</label>
-              <div style="background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.07);border-radius:8px;padding:12px 14px;font-size:15px;color:rgba(255,255,255,0.35);">${email}</div>
-              <div style="font-size:11px;color:rgba(255,255,255,0.3);margin-top:5px;">Your email is your login — it can't be changed here.</div>
+              <div style="background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.07);border-radius:8px;padding:12px 14px;font-size:15px;color:rgba(255,255,255,0.55);">${email}</div>
+              <div style="font-size:11px;color:rgba(255,255,255,0.55);margin-top:5px;">Your email is your login — it can't be changed here.</div>
             </div>
 
             <div style="display:flex;align-items:center;gap:14px;">
               <button onclick="saveClientProfile()" style="background:#1FA3E0;color:#000;border:none;border-radius:8px;padding:11px 22px;font-size:14px;font-weight:700;cursor:pointer;letter-spacing:0.02em;">Save changes</button>
-              <span id="profileSaveFb" style="font-size:13px;color:rgba(255,255,255,0.45);"></span>
+              <span id="profileSaveFb" style="font-size:13px;color:rgba(255,255,255,0.55);"></span>
             </div>
           </div>
 
@@ -3596,29 +3617,29 @@
             <div style="${headStyle}">Change Password</div>
 
             <div style="margin-bottom:16px;">
-              <label style="${labelStyle}">Current password</label>
+              <label style="${labelStyle}" for="settingsPwCur">Current password</label>
               <input type="password" id="settingsPwCur" style="${inputStyle}" placeholder="Your current password">
             </div>
 
             <div style="margin-bottom:16px;">
-              <label style="${labelStyle}">New password</label>
+              <label style="${labelStyle}" for="settingsPwNew">New password</label>
               <input type="password" id="settingsPwNew" style="${inputStyle}" placeholder="At least 6 characters">
             </div>
 
             <div style="margin-bottom:20px;">
-              <label style="${labelStyle}">Confirm new password</label>
+              <label style="${labelStyle}" for="settingsPwConfirm">Confirm new password</label>
               <input type="password" id="settingsPwConfirm" style="${inputStyle}" placeholder="Repeat new password">
             </div>
 
             <div style="display:flex;align-items:center;gap:14px;">
               <button onclick="saveClientPassword()" style="background:#1FA3E0;color:#000;border:none;border-radius:8px;padding:11px 22px;font-size:14px;font-weight:700;cursor:pointer;letter-spacing:0.02em;">Update password</button>
-              <span id="pwSaveFb" style="font-size:13px;color:rgba(255,255,255,0.45);"></span>
+              <span id="pwSaveFb" style="font-size:13px;color:rgba(255,255,255,0.55);"></span>
             </div>
           </div>
 
           <!-- Sign out -->
           <div style="text-align:center;padding-top:4px;">
-            <button onclick="logout()" style="background:none;border:1px solid rgba(255,255,255,0.15);border-radius:8px;padding:10px 22px;color:rgba(255,255,255,0.45);font-size:13px;cursor:pointer;letter-spacing:0.02em;">Sign out</button>
+            <button onclick="logout()" style="background:none;border:1px solid rgba(255,255,255,0.15);border-radius:8px;padding:10px 22px;color:rgba(255,255,255,0.55);font-size:13px;cursor:pointer;letter-spacing:0.02em;">Sign out</button>
           </div>
 
         </div>
@@ -3845,7 +3866,7 @@
           <div class="ob-question">What kind of event are we doing together?</div>
           <div class="ob-sub">Just confirm the type — we'll tailor everything around it.</div>
           <div class="ob-chips" id="obTypeChips">
-            ${types.map(t => `<div class="ob-chip ${cur && t.toLowerCase().startsWith(cur.split(' ')[0]) ? 'selected' : ''}" data-val="${t}" onclick="_obPickChip(this,'obTypeChips')">${t}</div>`).join('')}
+            ${types.map(t => `<button type="button" class="ob-chip ${cur && t.toLowerCase().startsWith(cur.split(' ')[0]) ? 'selected' : ''}" data-val="${t}" onclick="_obPickChip(this,'obTypeChips')">${t}</button>`).join('')}
           </div>
           <div class="ob-actions">
             <button class="ob-skip" onclick="_obNext()">Skip this</button>
@@ -3875,7 +3896,7 @@
           <div class="ob-question">What's the overall vibe?</div>
           <div class="ob-sub">One answer — go with your gut. You can always update it later.</div>
           <div class="ob-chips" id="obVibeChips">
-            ${vibes.map(v => `<div class="ob-chip ${cur === v ? 'selected' : ''}" data-val="${v}" onclick="_obPickChip(this,'obVibeChips')">${v}</div>`).join('')}
+            ${vibes.map(v => `<button type="button" class="ob-chip ${cur === v ? 'selected' : ''}" data-val="${v}" onclick="_obPickChip(this,'obVibeChips')">${v}</button>`).join('')}
           </div>
           <div class="ob-actions">
             <button class="ob-skip" onclick="_obNext()">Skip this</button>
@@ -4104,6 +4125,13 @@
       showClientToast('Document signed successfully!');
       renderClientDocuments();
     }
+  
+    // Keyboard: Enter or Space activates any clickable card that is not a real button.
+    document.addEventListener('keydown', function(e) {
+      const el = e.target;
+      if (!el || el.getAttribute('role') !== 'button' || el.tagName === 'BUTTON') return;
+      if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); el.click(); }
+    });
   </script>
 
   <!-- Client Signature Modal -->
@@ -4111,15 +4139,15 @@
     <div style="background:#111118;border:1px solid rgba(31,163,224,0.25);border-radius:14px;padding:28px 24px;width:480px;max-width:94vw;box-shadow:0 24px 80px rgba(0,0,0,0.7);">
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">
         <div style="font-family:'Anton',sans-serif;font-size:18px;letter-spacing:.04em;">Sign Document</div>
-        <button onclick="closeClientSignModal()" style="background:none;border:none;color:rgba(255,255,255,0.4);font-size:22px;cursor:pointer;line-height:1;padding:0;">×</button>
+        <button onclick="closeClientSignModal()" style="background:none;border:none;color:rgba(255,255,255,0.55);font-size:22px;cursor:pointer;line-height:1;padding:0;">×</button>
       </div>
-      <div id="clientSignDocTitle" style="font-size:13px;color:rgba(255,255,255,0.4);margin-bottom:18px;"></div>
-      <div style="font-size:12px;color:rgba(255,255,255,0.35);margin-bottom:10px;">Draw your signature below</div>
+      <div id="clientSignDocTitle" style="font-size:13px;color:rgba(255,255,255,0.55);margin-bottom:18px;"></div>
+      <div style="font-size:12px;color:rgba(255,255,255,0.55);margin-bottom:10px;">Draw your signature below</div>
       <canvas id="clientSignCanvas" width="432" height="140" style="width:100%;height:140px;background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.1);border-radius:8px;cursor:crosshair;touch-action:none;"></canvas>
       <div style="display:flex;justify-content:space-between;align-items:center;margin-top:16px;flex-wrap:wrap;gap:10px;">
         <button onclick="clearClientSignature()" style="padding:8px 16px;background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.12);border-radius:7px;color:rgba(255,255,255,0.6);font-size:13px;cursor:pointer;font-family:'Barlow',sans-serif;">Clear</button>
         <div style="display:flex;gap:8px;">
-          <button onclick="closeClientSignModal()" style="padding:8px 16px;background:none;border:1px solid rgba(255,255,255,0.12);border-radius:7px;color:rgba(255,255,255,0.4);font-size:13px;cursor:pointer;font-family:'Barlow',sans-serif;">Cancel</button>
+          <button onclick="closeClientSignModal()" style="padding:8px 16px;background:none;border:1px solid rgba(255,255,255,0.12);border-radius:7px;color:rgba(255,255,255,0.55);font-size:13px;cursor:pointer;font-family:'Barlow',sans-serif;">Cancel</button>
           <button onclick="saveClientSignature()" style="padding:8px 20px;background:#1FA3E0;border:none;border-radius:7px;color:#000;font-weight:700;font-size:13px;cursor:pointer;font-family:'Barlow',sans-serif;">Confirm Signature</button>
         </div>
       </div>

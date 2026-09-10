@@ -46,7 +46,7 @@
   .l-feature-icon { width: 32px; height: 32px; border: 1px solid rgba(31,163,224,0.4); border-radius: 6px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; color: var(--cyan); font-family: var(--font-cond); font-size: 0.7rem; font-weight: 700; letter-spacing: 0.1em; }
   .l-feature-text { font-size: 0.85rem; color: rgba(255,255,255,0.7); line-height: 1.5; }
   .l-feature-text strong { color: var(--white); font-weight: 600; }
-  .l-back { position: relative; z-index: 2; font-size: 0.75rem; color: rgba(255,255,255,0.4); letter-spacing: 0.08em; }
+  .l-back { position: relative; z-index: 2; font-size: 0.75rem; color: rgba(255,255,255,0.55); letter-spacing: 0.08em; }
   .l-back a { color: var(--cyan); }
 
   /* RIGHT PANEL */
@@ -75,13 +75,13 @@
   .f-btn-ghost:hover { border-color: rgba(255,255,255,0.3); color: var(--white); }
   .f-err { color: #ff6b6b; font-size: 0.8rem; margin-top: 1rem; display: none; }
   .f-ok  { color: #5cdb95; font-size: 0.8rem; margin-top: 1rem; display: none; }
-  .f-link { display: block; text-align: right; font-size: 0.78rem; color: rgba(255,255,255,0.4); cursor: pointer; margin-top: 0.4rem; background: none; border: none; padding: 0; transition: color 0.2s; }
+  .f-link { display: block; text-align: right; font-size: 0.78rem; color: rgba(255,255,255,0.55); cursor: pointer; margin-top: 0.4rem; background: none; border: none; padding: 0; transition: color 0.2s; }
   .f-link:hover { color: var(--cyan); }
 
   /* FORGOT PASSWORD VIEW */
   #forgot-view { display: none; }
   #forgot-view.active { display: block; }
-  .back-link { display: inline-flex; align-items: center; gap: 0.4rem; font-size: 0.78rem; color: rgba(255,255,255,0.45); cursor: pointer; background: none; border: none; padding: 0; margin-bottom: 2rem; transition: color 0.2s; }
+  .back-link { display: inline-flex; align-items: center; gap: 0.4rem; font-size: 0.78rem; color: rgba(255,255,255,0.55); cursor: pointer; background: none; border: none; padding: 0; margin-bottom: 2rem; transition: color 0.2s; }
   .back-link:hover { color: var(--white); }
   .forgot-title { font-family: var(--font-head); font-size: 1.6rem; text-transform: uppercase; margin-bottom: 0.5rem; }
   .forgot-sub { font-size: 0.85rem; color: var(--gray); margin-bottom: 2rem; line-height: 1.6; }
@@ -93,7 +93,8 @@
     .l-tagline { font-size: 2.5rem; margin-bottom: 1rem; }
     .r-panel { padding: 2rem; }
   }
-</style>
+    :focus-visible { outline: 2px solid #1FA3E0; outline-offset: 2px; }
+  </style>
 <link rel="icon" href="favicon.ico" sizes="any">
 <link rel="icon" href="favicon-32x32.png" type="image/png" sizes="32x32">
 <link rel="icon" href="favicon-16x16.png" type="image/png" sizes="16x16">
@@ -107,13 +108,8 @@
     <img src="logo-full.webp" alt="Baseline Studio" style="height:44px;width:auto;" width="281" height="88">
   </a>
   <div class="l-hero">
-    <h1 class="l-tagline">Execution<br>Starts<br>Here</h1>
-    <div class="l-features">
-      <div class="l-feature"><div class="l-feature-icon">01</div><div class="l-feature-text"><strong>Event Management</strong><br>View, edit, and manage all your events in one place</div></div>
-      <div class="l-feature"><div class="l-feature-icon">02</div><div class="l-feature-text"><strong>Music &amp; Playlists</strong><br>Spotify &amp; Apple Music integration for easy playlist building</div></div>
-      <div class="l-feature"><div class="l-feature-icon">03</div><div class="l-feature-text"><strong>Smart Contracts</strong><br>Auto-filled contracts with e-signature built in</div></div>
-      <div class="l-feature"><div class="l-feature-icon">04</div><div class="l-feature-text"><strong>Client Portal</strong><br>Give clients a beautiful experience to customize their event</div></div>
-    </div>
+    <h1 class="l-tagline">Everything<br>for your event<br>lives here</h1>
+    <div class="l-features"><div class="l-feature"><div class="l-feature-icon" aria-hidden="true">&bull;</div><div class="l-feature-text"><strong>Your event</strong><br>Date, venue, timeline, and who is doing what.</div></div><div class="l-feature"><div class="l-feature-icon" aria-hidden="true">&bull;</div><div class="l-feature-text"><strong>Music</strong><br>Build the playlist, add the do-not-plays, request songs.</div></div><div class="l-feature"><div class="l-feature-icon" aria-hidden="true">&bull;</div><div class="l-feature-text"><strong>Contracts and invoices</strong><br>Sign and pay without printing anything.</div></div><div class="l-feature"><div class="l-feature-icon" aria-hidden="true">&bull;</div><div class="l-feature-text"><strong>Messages</strong><br>Reach us directly. We see it right away.</div></div></div>
   </div>
   <p class="l-back"><a href="/">&#8592; Back to site</a></p>
 </div>
@@ -134,11 +130,11 @@
       <!-- PROVIDER TAB -->
       <div class="tab-panel active" id="tab-provider">
         <div class="f-group">
-          <label class="f-label">Email</label>
+          <label class="f-label" for="pEmail">Email</label>
           <input class="f-input" type="email" id="pEmail" placeholder="you@baselinestudiofl.com" autocomplete="email">
         </div>
         <div class="f-group">
-          <label class="f-label">Password</label>
+          <label class="f-label" for="pPass">Password</label>
           <input class="f-input" type="password" id="pPass" placeholder="&bull;&bull;&bull;&bull;&bull;&bull;&bull;&bull;" autocomplete="current-password">
           <button class="f-link" onclick="showForgot()">Forgot password?</button>
         </div>
@@ -149,11 +145,11 @@
       <!-- CLIENT TAB -->
       <div class="tab-panel" id="tab-client">
         <div class="f-group">
-          <label class="f-label">Email</label>
+          <label class="f-label" for="cEmail">Email</label>
           <input class="f-input" type="email" id="cEmail" placeholder="your@email.com" autocomplete="email">
         </div>
         <div class="f-group">
-          <label class="f-label">Portal Password</label>
+          <label class="f-label" for="cPass">Portal Password</label>
           <input class="f-input" type="password" id="cPass" placeholder="Your event portal code" autocomplete="current-password">
         </div>
         <p class="f-err" id="cErr"></p>
@@ -167,7 +163,7 @@
       <h2 class="forgot-title">Reset Password</h2>
       <p class="forgot-sub">Enter your provider email and we'll send you a link to set a new password.</p>
       <div class="f-group">
-        <label class="f-label">Email Address</label>
+        <label class="f-label" for="fEmail">Email Address</label>
         <input class="f-input" type="email" id="fEmail" placeholder="you@baselinestudiofl.com" autocomplete="email">
       </div>
       <p class="f-err" id="fErr"></p>
@@ -369,7 +365,7 @@ function showEventPicker(email, pass, events) {
           const label   = dateStr ? new Date(dateStr + 'T00:00:00').toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'}) : 'Date TBD';
           return `<button onclick="pickEvent(${i})" style="text-align:left;background:rgba(31,163,224,0.07);border:1px solid rgba(31,163,224,0.25);border-radius:10px;padding:14px 16px;cursor:pointer;color:#fff;font-family:inherit;width:100%;">
             <div style="font-weight:600;font-size:15px;margin-bottom:3px;">${ev.name || 'Event'}</div>
-            <div style="font-size:12px;color:rgba(255,255,255,0.45);">${ev.type || ''} &bull; ${label}</div>
+            <div style="font-size:12px;color:rgba(255,255,255,0.55);">${ev.type || ''} &bull; ${label}</div>
           </button>`;
         }).join('')}
       </div>
