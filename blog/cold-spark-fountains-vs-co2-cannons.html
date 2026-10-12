@@ -137,6 +137,10 @@ footer { background: #050505; padding: 5rem var(--gutter) 2rem; border-top: 1px 
 .post-body li { font-size: 1rem; color: rgba(255,255,255,0.8); line-height: 1.75; margin-bottom: 0.7rem; }
 .post-body a { color: var(--cyan); text-decoration: underline; }
 .post-body strong { color: var(--white); }
+.post-figure { margin: 2.5rem 0; }
+.post-figure picture, .post-figure img { display: block; width: 100%; height: auto; border-radius: 4px; }
+.post-figure figcaption { font-size: 0.86rem; color: rgba(255,255,255,0.55); margin-top: 0.7rem; line-height: 1.5; }
+
 .post-cta { background: rgba(31,163,224,0.07); border: 1px solid rgba(31,163,224,0.15); border-radius: 4px; padding: 2.5rem; margin: 3rem 0; }
 .post-cta p { color: rgba(255,255,255,0.8); margin-bottom: 1.5rem; font-size: 1rem; }
 .related-posts { border-top: 1px solid rgba(255,255,255,0.08); padding-top: 3rem; margin-top: 3rem; }
@@ -208,23 +212,23 @@ footer { background: #050505; padding: 5rem var(--gutter) 2rem; border-top: 1px 
 <body>
 
 <nav id="nav">
-  <a href="../index.html" class="nav-logo">
+  <a href="../" class="nav-logo">
     <img src="../Logo Full.png" alt="Baseline Studio" style="height:44px;width:auto;">
   </a>
   <div class="nav-links">
-    <a href="../weddings.html">Weddings</a>
-    <a href="../corporate.html">Corporate</a>
-    <a href="../services.html">Services</a>
-    <a href="../portfolio.html">Portfolio</a>
-    <a href="../blog.html">Blog</a>
-    <a href="../contact.html" class="nav-cta">Get a Quote</a>
+    <a href="../weddings">Weddings</a>
+    <a href="../corporate">Corporate</a>
+    <a href="../services">Services</a>
+    <a href="../portfolio">Portfolio</a>
+    <a href="../blog">Blog</a>
+    <a href="../contact" class="nav-cta">Get a Quote</a>
   </div>
 </nav>
 
 <div style="padding-top:72px;">
   <div class="blog-hero">
     <nav class="breadcrumb" aria-label="Breadcrumb">
-      <a href="../index.html">Home</a><span>›</span><a href="../blog.html">Blog</a><span>›</span><span>Special Effects</span>
+      <a href="../">Home</a><span>›</span><a href="../blog">Blog</a><span>›</span><span>Special Effects</span>
     </nav>
     <p class="post-label">Special Effects</p>
     <h1 class="post-title">Cold Spark Fountains vs. CO2 Cannons: Which Special Effect Is Right?</h1>
@@ -238,7 +242,16 @@ footer { background: #050505; padding: 5rem var(--gutter) 2rem; border-top: 1px 
   <div style="padding: 0 var(--gutter) 6rem;">
     <div class="section-inner">
       <div class="post-body">
-        <p><strong>Your first dance. Your midnight countdown. Your executive's grand entrance. These moments deserve something memorable.</strong> Both <a href="../service-cold-spark.html">cold spark fountains</a> and <a href="../service-co2-cannon.html">CO2 cannons</a> land hard visually, but they are completely different effects. Here's how to choose.</p>
+        <p><strong>Your first dance. Your midnight countdown. Your executive's grand entrance. These moments deserve something memorable.</strong> Both <a href="../service-cold-spark">cold spark fountains</a> and <a href="../service-co2-cannon">CO2 cannons</a> land hard visually, but they are completely different effects. Here's how to choose.</p>
+
+                <figure class="post-figure">
+          <picture>
+            <source media="(max-width:768px)" srcset="../images/events/cold-spark-vs-co2-comparison-miami-mobile.webp" type="image/webp">
+            <source srcset="../images/events/cold-spark-vs-co2-comparison-miami.webp" type="image/webp">
+            <img src="../images/events/cold-spark-vs-co2-comparison-miami.jpg" alt="Cold spark fountain and CO2 jet firing side by side at a Miami reception showing the difference between the two effects" width="1600" height="1073" loading="lazy" decoding="async">
+          </picture>
+          <figcaption>Sparks on the left, CO2 on the right. These two get confused constantly and they do completely different jobs.</figcaption>
+        </figure>
 
         <h2>What Are Cold Spark Fountains?</h2>
         <p>Cold spark machines use pyrotechnic-free, cold-spark technology to create towers of sparks that shower upward without heat or flame. They're completely safe indoors, ideal for first dances, and create an ethereal, romantic moment. They're approved for most venues, produce no smoke, and leave no residue.</p>
@@ -260,6 +273,15 @@ footer { background: #050505; padding: 5rem var(--gutter) 2rem; border-top: 1px 
         <h2>When to Use Cold Spark Fountains</h2>
         <p>Choose cold sparks for romantic, framing moments. Your first dance under a shower of sparks. A proposal. An anniversary toast. Indoor weddings, grand ballrooms, elegant events. Cold sparks make the couple feel like they're in a snow globe of magic. They're timeless and always work.</p>
 
+                <figure class="post-figure">
+          <picture>
+            <source media="(max-width:768px)" srcset="../images/events/special-effects-grand-entrance-miami-mobile.webp" type="image/webp">
+            <source srcset="../images/events/special-effects-grand-entrance-miami.webp" type="image/webp">
+            <img src="../images/events/special-effects-grand-entrance-miami.jpg" alt="Special effects firing during a grand entrance at a Miami event with guests watching" width="1600" height="1073" loading="lazy" decoding="async">
+          </picture>
+          <figcaption>Effects during a grand entrance. CO2 wants a peak moment, and an entrance is about as clear a peak as you get.</figcaption>
+        </figure>
+
         <h2>When to Use CO2 Cannons</h2>
         <p>Choose CO2 cannons for high-energy surprises. When your favorite song drops. When announcing a big moment. For midnight countdowns. For prize announcements at corporate galas. CO2 cannons make your guests jump, in the best way.</p>
 
@@ -274,8 +296,8 @@ footer { background: #050505; padding: 5rem var(--gutter) 2rem; border-top: 1px 
 
         <div class="post-cta">
           <p>Not sure which effect works for your moment? Send us your event details (venue, timing, vibe) and we'll tell you exactly what we'd recommend and why.</p>
-          <a href="../service-cold-spark.html" class="btn-primary" style="margin-right:1rem;">Cold Spark Details</a>
-          <a href="../contact.html" class="btn-outline">Get a Quote</a>
+          <a href="../service-cold-spark" class="btn-primary" style="margin-right:1rem;">Cold Spark Details</a>
+          <a href="../contact" class="btn-outline">Get a Quote</a>
         </div>
 
         
@@ -343,32 +365,32 @@ footer { background: #050505; padding: 5rem var(--gutter) 2rem; border-top: 1px 
       </div>
       <div class="footer-col">
         <h3>Contact</h3>
-        <p><a href="../contact.html">Contact Us</a></p>
+        <p><a href="../contact">Contact Us</a></p>
         <p><a href="tel:7863026056" onclick="gtag('event','phone_call',{'event_category':'contact','event_label':'blog_cold_spark_fountains_vs_co2_cannons'});">(786) 302-6056</a></p>
         <p><a href="mailto:Hello@baselinestudiofl.com">Hello@baselinestudiofl.com</a></p>
       </div>
       <div class="footer-col">
         <h3>Navigate</h3>
         <ul>
-          <li><a href="../weddings.html">Weddings</a></li>
-          <li><a href="../corporate.html">Corporate</a></li>
-          <li><a href="../services.html">Services</a></li>
-          <li><a href="../portfolio.html">Portfolio</a></li>
-          <li><a href="../blog.html">Blog</a></li>
-          <li><a href="../contact.html">Contact</a></li>
+          <li><a href="../weddings">Weddings</a></li>
+          <li><a href="../corporate">Corporate</a></li>
+          <li><a href="../services">Services</a></li>
+          <li><a href="../portfolio">Portfolio</a></li>
+          <li><a href="../blog">Blog</a></li>
+          <li><a href="../contact">Contact</a></li>
         </ul>
       </div>
       <div class="footer-col">
         <h3>South Florida Markets</h3>
         <ul>
-          <li><a href="../event-production-coral-gables.html">Coral Gables</a></li>
-          <li><a href="../event-production-brickell.html">Brickell</a></li>
-          <li><a href="../event-production-aventura.html">Aventura</a></li>
-          <li><a href="../event-production-fort-lauderdale.html">Fort Lauderdale</a></li>
-          <li><a href="../event-production-doral.html">Doral</a></li>
-          <li><a href="../event-production-hialeah.html">Hialeah</a></li>
-          <li><a href="../event-production-kendall.html">Kendall</a></li>
-          <li><a href="../event-production-hollywood-fl.html">Hollywood, FL</a></li>
+          <li><a href="../event-production-coral-gables">Coral Gables</a></li>
+          <li><a href="../event-production-brickell">Brickell</a></li>
+          <li><a href="../event-production-aventura">Aventura</a></li>
+          <li><a href="../event-production-fort-lauderdale">Fort Lauderdale</a></li>
+          <li><a href="../event-production-doral">Doral</a></li>
+          <li><a href="../event-production-hialeah">Hialeah</a></li>
+          <li><a href="../event-production-kendall">Kendall</a></li>
+          <li><a href="../event-production-hollywood-fl">Hollywood, FL</a></li>
         </ul>
       </div>
       <div class="footer-col">
@@ -383,7 +405,7 @@ footer { background: #050505; padding: 5rem var(--gutter) 2rem; border-top: 1px 
     </div>
     <div class="footer-bottom">
       <p>&copy; 2026 Baseline Studio LLC. All rights reserved. Miami, FL.</p>
-      <a href="../login.html">Client Portal</a>
+      <a href="../login">Client Portal</a>
     </div>
   </div>
 </footer>

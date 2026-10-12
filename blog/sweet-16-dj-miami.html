@@ -103,6 +103,10 @@ footer { background: #050505; padding: 5rem var(--gutter) 2rem; border-top: 1px 
 .post-body li { font-size: 1rem; color: rgba(255,255,255,0.8); line-height: 1.75; margin-bottom: 0.7rem; }
 .post-body a { color: var(--cyan); text-decoration: underline; }
 .post-body strong { color: var(--white); }
+.post-figure { margin: 2.5rem 0; }
+.post-figure picture, .post-figure img { display: block; width: 100%; height: auto; border-radius: 4px; }
+.post-figure figcaption { font-size: 0.86rem; color: rgba(255,255,255,0.55); margin-top: 0.7rem; line-height: 1.5; }
+
 .post-cta { background: rgba(31,163,224,0.07); border: 1px solid rgba(31,163,224,0.15); border-radius: 4px; padding: 2.5rem; margin: 3rem 0; }
 .post-cta p { color: rgba(255,255,255,0.8); margin-bottom: 1.5rem; font-size: 1rem; }
 .related-posts { border-top: 1px solid rgba(255,255,255,0.08); padding-top: 3rem; margin-top: 3rem; }
@@ -207,23 +211,23 @@ footer { background: #050505; padding: 5rem var(--gutter) 2rem; border-top: 1px 
 <body>
 
 <nav id="nav">
-  <a href="../index.html" class="nav-logo">
+  <a href="../" class="nav-logo">
     <img src="../Logo Full.png" alt="Baseline Studio" style="height:44px;width:auto;">
   </a>
   <div class="nav-links">
-    <a href="../weddings.html">Weddings</a>
-    <a href="../corporate.html">Corporate</a>
-    <a href="../services.html">Services</a>
-    <a href="../portfolio.html">Portfolio</a>
-    <a href="../blog.html">Blog</a>
-    <a href="../contact.html" class="nav-cta">Get a Quote</a>
+    <a href="../weddings">Weddings</a>
+    <a href="../corporate">Corporate</a>
+    <a href="../services">Services</a>
+    <a href="../portfolio">Portfolio</a>
+    <a href="../blog">Blog</a>
+    <a href="../contact" class="nav-cta">Get a Quote</a>
   </div>
 </nav>
 
 <div style="padding-top:72px;">
   <div class="blog-hero">
     <nav class="breadcrumb" aria-label="Breadcrumb">
-      <a href="../index.html">Home</a><span>›</span><a href="../blog.html">Blog</a><span>›</span><span>Special Events</span>
+      <a href="../">Home</a><span>›</span><a href="../blog">Blog</a><span>›</span><span>Special Events</span>
     </nav>
     <p class="post-label">Special Events</p>
     <h1 class="post-title">Sweet 16 DJ Miami: What the Production Actually Looks Like</h1>
@@ -250,6 +254,15 @@ footer { background: #050505; padding: 5rem var(--gutter) 2rem; border-top: 1px 
 
         <p>Here is what production for a great Sweet 16 actually looks like, and what to think about before you book.</p>
 
+                <figure class="post-figure">
+          <picture>
+            <source media="(max-width:768px)" srcset="../images/events/sweet-16-dance-friends-miami-mobile.webp" type="image/webp">
+            <source srcset="../images/events/sweet-16-dance-friends-miami.webp" type="image/webp">
+            <img src="../images/events/sweet-16-dance-friends-miami.jpg" alt="Sweet 16 guest dancing with her friends on a packed floor at a Miami party" width="1600" height="1073" loading="lazy" decoding="async">
+          </picture>
+          <figcaption>A Sweet 16 floor full of her friends. Read the room wrong for two songs and you lose them for the rest of the night.</figcaption>
+        </figure>
+
         <h2>What the DJ Actually Does at a Sweet 16</h2>
 
         <p>At a Sweet 16, the DJ is running the event from the moment guests walk in. That means music for the cocktail hour while the birthday girl gets ready, the grand entrance, the spotlight dance, dinner music, and then open dancing through the end of the night. The energy has to build and peak at the right moments. A DJ who reads a Sweet 16 crowd well knows when to push the floor and when to let it breathe.</p>
@@ -264,6 +277,15 @@ footer { background: #050505; padding: 5rem var(--gutter) 2rem; border-top: 1px 
 
         <h3>Open Dancing</h3>
         <p>After the formal moments, the floor opens. This is where the DJ's job really begins. Reading 150 teenagers and their parents in the same room and keeping everyone engaged is a skill. The set can't stay in one place for too long and it can't jump so hard that the adults leave the floor. The best Sweet 16 sets move the crowd without anyone noticing they're being moved.</p>
+
+                <figure class="post-figure">
+          <picture>
+            <source media="(max-width:768px)" srcset="../images/events/dance-floor-lighting-wedding-miami-mobile.webp" type="image/webp">
+            <source srcset="../images/events/dance-floor-lighting-wedding-miami.webp" type="image/webp">
+            <img src="../images/events/dance-floor-lighting-wedding-miami.jpg" alt="Dance floor lighting washing color across a packed floor at a Miami party" width="1600" height="1066" loading="lazy" decoding="async">
+          </picture>
+          <figcaption>Lighting does most of the work before any effect fires. The floor has to already feel like somewhere you want to be.</figcaption>
+        </figure>
 
         <h2>Special Effects for Sweet 16 Parties</h2>
 
@@ -285,11 +307,11 @@ footer { background: #050505; padding: 5rem var(--gutter) 2rem; border-top: 1px 
           <p class="scb-label">Related Services</p>
           <p class="scb-title">Sweet 16 Production</p>
           <div class="scb-links">
-            <a href="../service-dj.html" class="scb-link">DJ Services</a>
-            <a href="../service-cold-spark.html" class="scb-link">Cold Spark Fountains</a>
-            <a href="../service-co2-jets.html" class="scb-link">CO2 Jets</a>
-            <a href="../service-uplighting.html" class="scb-link">Uplighting</a>
-            <a href="../service-gobo-projection.html" class="scb-link">Gobo Projection</a>
+            <a href="../service-dj" class="scb-link">DJ Services</a>
+            <a href="../service-cold-spark" class="scb-link">Cold Spark Fountains</a>
+            <a href="../service-co2-jets" class="scb-link">CO2 Jets</a>
+            <a href="../service-uplighting" class="scb-link">Uplighting</a>
+            <a href="../service-gobo-projection" class="scb-link">Gobo Projection</a>
           </div>
         </div>
 
@@ -304,6 +326,15 @@ footer { background: #050505; padding: 5rem var(--gutter) 2rem; border-top: 1px 
         <p>These events share a lot of DNA but they are not the same thing. A quinceañera has a formal structure with specific traditional moments (the waltz, the changing of the shoes, the last doll, the toast) that follow a cultural script. A Sweet 16 has more flexibility in how it runs. The structure is lighter and the party element is usually more prominent earlier in the night.</p>
 
         <p>That flexibility can work for or against you. A Sweet 16 without a clear run of show can feel unstructured. The grand entrance happens but there is no momentum into the next moment. The spotlight dance comes and the floor clears. We build a full run of show for every event, including Sweet 16s, so the night has shape and energy from start to finish.</p>
+
+                <figure class="post-figure">
+          <picture>
+            <source media="(max-width:768px)" srcset="../images/events/event-production-ballroom-setup-miami-mobile.webp" type="image/webp">
+            <source srcset="../images/events/event-production-ballroom-setup-miami.webp" type="image/webp">
+            <img src="../images/events/event-production-ballroom-setup-miami.jpg" alt="Miami ballroom set up with staging, lighting, and sound before a party begins" width="1600" height="1066" loading="lazy" decoding="async">
+          </picture>
+          <figcaption>The room a few hours out. What the venue allows gets decided long before the first guest arrives.</figcaption>
+        </figure>
 
         <h2>Venues for Sweet 16 Parties in Miami</h2>
 
@@ -331,7 +362,7 @@ footer { background: #050505; padding: 5rem var(--gutter) 2rem; border-top: 1px 
 
         <div class="post-cta">
           <p>Baseline Studio does Sweet 16 parties across Miami, Hialeah, Doral, Kendall, Coral Gables, and South Florida. Bilingual DJ, full lighting, special effects, and a run of show that makes the night feel intentional from the first song to the last.</p>
-          <a href="../contact.html" class="btn-primary">Get a Quote for Your Sweet 16</a>
+          <a href="../contact" class="btn-primary">Get a Quote for Your Sweet 16</a>
         </div>
 
         <h2>Frequently Asked Questions</h2>
@@ -362,19 +393,19 @@ footer { background: #050505; padding: 5rem var(--gutter) 2rem; border-top: 1px 
           <h2>Related</h2>
           <div class="related-grid">
             <div class="related-card">
-              <a href="quinceanera-dj-event-production-miami.html">
+              <a href="quinceanera-dj-event-production-miami">
                 <p class="rc-label">Special Events</p>
                 <h3>Quinceañera DJ &amp; Event Production: The Complete Guide</h3>
               </a>
             </div>
             <div class="related-card">
-              <a href="cold-spark-fountains-vs-co2-cannons.html">
+              <a href="cold-spark-fountains-vs-co2-cannons">
                 <p class="rc-label">Special Effects</p>
                 <h3>Cold Spark Fountains vs. CO2 Cannons</h3>
               </a>
             </div>
             <div class="related-card">
-              <a href="how-much-does-a-wedding-dj-cost-miami.html">
+              <a href="how-much-does-a-wedding-dj-cost-miami">
                 <p class="rc-label">Weddings</p>
                 <h3>How Much Does a Wedding DJ Cost in Miami?</h3>
               </a>
@@ -391,8 +422,8 @@ footer { background: #050505; padding: 5rem var(--gutter) 2rem; border-top: 1px 
   <div class="section-inner">
     <h2>Ready to Plan Your Sweet 16?</h2>
     <p>Tell us your date, your venue, and your vision. We'll put together a quote that fits.</p>
-    <a href="../contact.html" class="btn-primary">Get a Quote</a>
-    <a href="../service-dj.html" class="btn-outline">See Our DJ Services</a>
+    <a href="../contact" class="btn-primary">Get a Quote</a>
+    <a href="../service-dj" class="btn-outline">See Our DJ Services</a>
   </div>
 </div>
 
@@ -403,29 +434,29 @@ footer { background: #050505; padding: 5rem var(--gutter) 2rem; border-top: 1px 
       <div class="footer-col">
         <h3>Services</h3>
         <ul>
-          <li><a href="../service-dj.html">DJ Services</a></li>
-          <li><a href="../service-lighting.html">Event Lighting</a></li>
-          <li><a href="../service-cold-spark.html">Cold Spark</a></li>
-          <li><a href="../service-co2-jets.html">CO2 Jets</a></li>
-          <li><a href="../service-dancing-on-cloud.html">Dancing on Cloud</a></li>
-          <li><a href="../service-led.html">LED Video Walls</a></li>
+          <li><a href="../service-dj">DJ Services</a></li>
+          <li><a href="../service-lighting">Event Lighting</a></li>
+          <li><a href="../service-cold-spark">Cold Spark</a></li>
+          <li><a href="../service-co2-jets">CO2 Jets</a></li>
+          <li><a href="../service-dancing-on-cloud">Dancing on Cloud</a></li>
+          <li><a href="../service-led">LED Video Walls</a></li>
         </ul>
       </div>
       <div class="footer-col">
         <h3>Events</h3>
         <ul>
-          <li><a href="../weddings.html">Weddings</a></li>
-          <li><a href="../corporate.html">Corporate Events</a></li>
-          <li><a href="../services.html">All Services</a></li>
+          <li><a href="../weddings">Weddings</a></li>
+          <li><a href="../corporate">Corporate Events</a></li>
+          <li><a href="../services">All Services</a></li>
         </ul>
       </div>
       <div class="footer-col">
         <h3>Company</h3>
         <ul>
-          <li><a href="../about.html">About</a></li>
-          <li><a href="../portfolio.html">Portfolio</a></li>
-          <li><a href="../blog.html">Blog</a></li>
-          <li><a href="../faq.html">FAQ</a></li>
+          <li><a href="../about">About</a></li>
+          <li><a href="../portfolio">Portfolio</a></li>
+          <li><a href="../blog">Blog</a></li>
+          <li><a href="../faq">FAQ</a></li>
         </ul>
       </div>
       <div class="footer-col">
@@ -437,7 +468,7 @@ footer { background: #050505; padding: 5rem var(--gutter) 2rem; border-top: 1px 
     </div>
     <div class="footer-bottom">
       <p>© 2026 Baseline Studio LLC · Miami, FL · Fully Insured</p>
-      <p><a href="../index.html">baselinestudiofl.com</a></p>
+      <p><a href="../">baselinestudiofl.com</a></p>
     </div>
   </div>
 </footer>

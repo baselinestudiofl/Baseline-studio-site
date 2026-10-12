@@ -137,6 +137,10 @@ footer { background: #050505; padding: 5rem var(--gutter) 2rem; border-top: 1px 
 .post-body li { font-size: 1rem; color: rgba(255,255,255,0.8); line-height: 1.75; margin-bottom: 0.7rem; }
 .post-body a { color: var(--cyan); text-decoration: underline; }
 .post-body strong { color: var(--white); }
+.post-figure { margin: 2.5rem 0; }
+.post-figure picture, .post-figure img { display: block; width: 100%; height: auto; border-radius: 4px; }
+.post-figure figcaption { font-size: 0.86rem; color: rgba(255,255,255,0.55); margin-top: 0.7rem; line-height: 1.5; }
+
 .post-cta { background: rgba(31,163,224,0.07); border: 1px solid rgba(31,163,224,0.15); border-radius: 4px; padding: 2.5rem; margin: 3rem 0; }
 .post-cta p { color: rgba(255,255,255,0.8); margin-bottom: 1.5rem; font-size: 1rem; }
 .related-posts { border-top: 1px solid rgba(255,255,255,0.08); padding-top: 3rem; margin-top: 3rem; }
@@ -208,23 +212,23 @@ footer { background: #050505; padding: 5rem var(--gutter) 2rem; border-top: 1px 
 <body>
 
 <nav id="nav">
-  <a href="../index.html" class="nav-logo">
+  <a href="../" class="nav-logo">
     <img src="../Logo Full.png" alt="Baseline Studio" style="height:44px;width:auto;">
   </a>
   <div class="nav-links">
-    <a href="../weddings.html">Weddings</a>
-    <a href="../corporate.html">Corporate</a>
-    <a href="../services.html">Services</a>
-    <a href="../portfolio.html">Portfolio</a>
-    <a href="../blog.html">Blog</a>
-    <a href="../contact.html" class="nav-cta">Get a Quote</a>
+    <a href="../weddings">Weddings</a>
+    <a href="../corporate">Corporate</a>
+    <a href="../services">Services</a>
+    <a href="../portfolio">Portfolio</a>
+    <a href="../blog">Blog</a>
+    <a href="../contact" class="nav-cta">Get a Quote</a>
   </div>
 </nav>
 
 <div style="padding-top:72px;">
   <div class="blog-hero">
     <nav class="breadcrumb" aria-label="Breadcrumb">
-      <a href="../index.html">Home</a><span>›</span><a href="../blog.html">Blog</a><span>›</span><span>Corporate Events</span>
+      <a href="../">Home</a><span>›</span><a href="../blog">Blog</a><span>›</span><span>Corporate Events</span>
     </nav>
     <p class="post-label">Corporate Events</p>
     <h1 class="post-title">The Complete Guide to LED Video Walls for Corporate Events in Miami</h1>
@@ -238,7 +242,16 @@ footer { background: #050505; padding: 5rem var(--gutter) 2rem; border-top: 1px 
   <div style="padding: 0 var(--gutter) 6rem;">
     <div class="section-inner">
       <div class="post-body">
-        <p><strong>An LED video wall transforms a corporate event from a presentation into something people actually watch.</strong> Live feeds of your keynote speaker. Branded animations. Real-time attendee content. Data visualizations. <a href="../service-led.html">LED video walls</a> have become essential for modern corporate events, product launches, and galas in all of South Florida.</p>
+        <p><strong>An LED video wall transforms a corporate event from a presentation into something people actually watch.</strong> Live feeds of your keynote speaker. Branded animations. Real-time attendee content. Data visualizations. <a href="../service-led">LED video walls</a> have become essential for modern corporate events, product launches, and galas in all of South Florida.</p>
+
+                <figure class="post-figure">
+          <picture>
+            <source media="(max-width:768px)" srcset="../images/events/led-wall-panel-detail-miami-mobile.webp" type="image/webp">
+            <source srcset="../images/events/led-wall-panel-detail-miami.webp" type="image/webp">
+            <img src="../images/events/led-wall-panel-detail-miami.jpg" alt="Close view of LED wall panels showing the pixel pitch and panel seams at a Miami event" width="1600" height="1073" loading="lazy" decoding="async">
+          </picture>
+          <figcaption>Up close you can see the panels and the pixel pitch. That spacing is what decides how close an audience can sit.</figcaption>
+        </figure>
 
         <h2>What Are LED Video Walls?</h2>
         <p>LED video walls are modular panels of light-emitting diodes arranged together to create a large, bright display. Unlike projection, which requires darkness and has limited brightness, LED walls hold their color in any lighting condition. They can be configured into any size or shape, a 10x6-foot wall, a 20x12-foot statement display, a curved wall, even circular or irregular shapes.</p>
@@ -257,6 +270,15 @@ footer { background: #050505; padding: 5rem var(--gutter) 2rem; border-top: 1px 
         <h2>IMAG: Image Magnification for Live Events</h2>
         <p>IMAG is a critical use case for corporate events. Cameras capture your keynote speaker, and the LED wall shows their face 20 feet tall. Audiences in the back see every expression. It creates intimacy and engagement. IMAG requires cameras positioned strategically, a video switcher to choose which camera feeds to the wall, a live video engineer, and audio synchronized with video.</p>
 
+                <figure class="post-figure">
+          <picture>
+            <source media="(max-width:768px)" srcset="../images/events/corporate-product-launch-miami-beach-mobile.webp" type="image/webp">
+            <source srcset="../images/events/corporate-product-launch-miami-beach.webp" type="image/webp">
+            <img src="../images/events/corporate-product-launch-miami-beach.jpg" alt="Corporate product launch on a Miami Beach stage with branded content on the screen behind it" width="1600" height="1073" loading="lazy" decoding="async">
+          </picture>
+          <figcaption>A product launch on Miami Beach. The wall becomes the brand for the night, which is most of why companies want one.</figcaption>
+        </figure>
+
         <h2>Corporate Branding Opportunities</h2>
         <p>An LED wall is a branding canvas. Your company logo animated during entry. Brand colors in the background. Product photography as attendees arrive. Live social media feeds. Real-time sponsor recognition. Animated transitions between speakers. These elements make events feel premium and intentional.</p>
 
@@ -272,12 +294,12 @@ footer { background: #050505; padding: 5rem var(--gutter) 2rem; border-top: 1px 
         <p>LED video walls are a significant production investment, but one that pays for itself in how the event feels. It keeps attendees engaged during speeches, amplifies your branding, and creates content for social media. Events with LED walls feel bigger, sharper, and more memorable. Get a quote based on your specific venue and guest count.</p>
 
         <h2>Baseline Studio's LED Wall Approach</h2>
-        <p>We handle content management, technical setup, live switching, and troubleshooting. We coordinate with your <a href="../service-dj.html">DJ</a>, <a href="../service-audio.html">audio engineer</a>, and lighting team to ensure everything syncs. We test every video file and animation beforehand. We manage live feeds if you want IMAG, and we handle real-time switching between multiple content sources.</p>
+        <p>We handle content management, technical setup, live switching, and troubleshooting. We coordinate with your <a href="../service-dj">DJ</a>, <a href="../service-audio">audio engineer</a>, and lighting team to ensure everything syncs. We test every video file and animation beforehand. We manage live feeds if you want IMAG, and we handle real-time switching between multiple content sources.</p>
 
         <div class="post-cta">
           <p>Tell us your venue, your expected guest count, and what you're trying to accomplish. We'll put together a wall recommendation and a production proposal, and we'll be honest if a smaller setup would serve you better.</p>
-          <a href="../service-led.html" class="btn-primary" style="margin-right:1rem;">LED Video Wall Details</a>
-          <a href="../contact.html" class="btn-outline">Get a Quote</a>
+          <a href="../service-led" class="btn-primary" style="margin-right:1rem;">LED Video Wall Details</a>
+          <a href="../contact" class="btn-outline">Get a Quote</a>
         </div>
 
         
@@ -285,7 +307,7 @@ footer { background: #050505; padding: 5rem var(--gutter) 2rem; border-top: 1px 
         <div class="faq-block">
           <div class="faq-q-item">
             <h3 class="faq-q-text">How much does an LED video wall cost for a Miami corporate event?</h3>
-            <p>LED video wall rental pricing depends on wall size, pixel pitch, and event duration. Larger walls with tighter pixel pitch cost more but look dramatically better in lit environments. We quote every corporate event based on your specific space, <a href="../contact.html">reach out for a proposal.</a></p>
+            <p>LED video wall rental pricing depends on wall size, pixel pitch, and event duration. Larger walls with tighter pixel pitch cost more but look dramatically better in lit environments. We quote every corporate event based on your specific space, <a href="../contact">reach out for a proposal.</a></p>
           </div>
           <div class="faq-q-item">
             <h3 class="faq-q-text">What pixel pitch LED wall should I use for my event?</h3>
@@ -344,32 +366,32 @@ footer { background: #050505; padding: 5rem var(--gutter) 2rem; border-top: 1px 
       </div>
       <div class="footer-col">
         <h3>Contact</h3>
-        <p><a href="../contact.html">Contact Us</a></p>
+        <p><a href="../contact">Contact Us</a></p>
         <p><a href="tel:7863026056" onclick="gtag('event','phone_call',{'event_category':'contact','event_label':'blog_led_video_walls_for_corporate_events_mia'});">(786) 302-6056</a></p>
         <p><a href="mailto:Hello@baselinestudiofl.com">Hello@baselinestudiofl.com</a></p>
       </div>
       <div class="footer-col">
         <h3>Navigate</h3>
         <ul>
-          <li><a href="../weddings.html">Weddings</a></li>
-          <li><a href="../corporate.html">Corporate</a></li>
-          <li><a href="../services.html">Services</a></li>
-          <li><a href="../portfolio.html">Portfolio</a></li>
-          <li><a href="../blog.html">Blog</a></li>
-          <li><a href="../contact.html">Contact</a></li>
+          <li><a href="../weddings">Weddings</a></li>
+          <li><a href="../corporate">Corporate</a></li>
+          <li><a href="../services">Services</a></li>
+          <li><a href="../portfolio">Portfolio</a></li>
+          <li><a href="../blog">Blog</a></li>
+          <li><a href="../contact">Contact</a></li>
         </ul>
       </div>
       <div class="footer-col">
         <h3>South Florida Markets</h3>
         <ul>
-          <li><a href="../event-production-coral-gables.html">Coral Gables</a></li>
-          <li><a href="../event-production-brickell.html">Brickell</a></li>
-          <li><a href="../event-production-aventura.html">Aventura</a></li>
-          <li><a href="../event-production-fort-lauderdale.html">Fort Lauderdale</a></li>
-          <li><a href="../event-production-doral.html">Doral</a></li>
-          <li><a href="../event-production-hialeah.html">Hialeah</a></li>
-          <li><a href="../event-production-kendall.html">Kendall</a></li>
-          <li><a href="../event-production-hollywood-fl.html">Hollywood, FL</a></li>
+          <li><a href="../event-production-coral-gables">Coral Gables</a></li>
+          <li><a href="../event-production-brickell">Brickell</a></li>
+          <li><a href="../event-production-aventura">Aventura</a></li>
+          <li><a href="../event-production-fort-lauderdale">Fort Lauderdale</a></li>
+          <li><a href="../event-production-doral">Doral</a></li>
+          <li><a href="../event-production-hialeah">Hialeah</a></li>
+          <li><a href="../event-production-kendall">Kendall</a></li>
+          <li><a href="../event-production-hollywood-fl">Hollywood, FL</a></li>
         </ul>
       </div>
       <div class="footer-col">
@@ -384,7 +406,7 @@ footer { background: #050505; padding: 5rem var(--gutter) 2rem; border-top: 1px 
     </div>
     <div class="footer-bottom">
       <p>&copy; 2026 Baseline Studio LLC. All rights reserved. Miami, FL.</p>
-      <a href="../login.html">Client Portal</a>
+      <a href="../login">Client Portal</a>
     </div>
   </div>
 </footer>

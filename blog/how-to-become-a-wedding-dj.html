@@ -67,6 +67,10 @@ nav { position: fixed; top: 0; left: 0; width: 100%; z-index: 1000; background: 
 .post-body li { font-size: 1rem; color: rgba(255,255,255,0.8); line-height: 1.75; margin-bottom: 0.7rem; }
 .post-body a { color: var(--cyan); text-decoration: underline; }
 .post-body strong { color: var(--white); }
+.post-figure { margin: 2.5rem 0; }
+.post-figure picture, .post-figure img { display: block; width: 100%; height: auto; border-radius: 4px; }
+.post-figure figcaption { font-size: 0.86rem; color: rgba(255,255,255,0.55); margin-top: 0.7rem; line-height: 1.5; }
+
 .post-cta { background: rgba(31,163,224,0.07); border: 1px solid rgba(31,163,224,0.15); border-radius: 4px; padding: 2.5rem; margin: 3rem 0; }
 .post-cta p { color: rgba(255,255,255,0.8); margin-bottom: 1.5rem; font-size: 1rem; }
 .callout { background: rgba(31,163,224,0.05); border-left: 3px solid var(--cyan); padding: 1.2rem 1.5rem; margin: 2rem 0; border-radius: 0 4px 4px 0; }
@@ -155,23 +159,23 @@ footer { background: #050505; padding: 5rem var(--gutter) 2rem; border-top: 1px 
 <body>
 
 <nav id="nav">
-  <a href="../index.html" class="nav-logo">
+  <a href="../" class="nav-logo">
     <img src="../Logo Full.png" alt="Baseline Studio" style="height:44px;width:auto;">
   </a>
   <div class="nav-links">
-    <a href="../weddings.html">Weddings</a>
-    <a href="../corporate.html">Corporate</a>
-    <a href="../services.html">Services</a>
-    <a href="../portfolio.html">Portfolio</a>
-    <a href="../blog.html">Blog</a>
-    <a href="../contact.html" class="nav-cta">Get a Quote</a>
+    <a href="../weddings">Weddings</a>
+    <a href="../corporate">Corporate</a>
+    <a href="../services">Services</a>
+    <a href="../portfolio">Portfolio</a>
+    <a href="../blog">Blog</a>
+    <a href="../contact" class="nav-cta">Get a Quote</a>
   </div>
 </nav>
 
 <div style="padding-top:72px;">
   <div class="blog-hero">
     <nav class="breadcrumb" aria-label="Breadcrumb">
-      <a href="../index.html">Home</a><span>›</span><a href="../blog.html">Blog</a><span>›</span><span>DJ Industry</span>
+      <a href="../">Home</a><span>›</span><a href="../blog">Blog</a><span>›</span><span>DJ Industry</span>
     </nav>
     <p class="post-label">DJ Industry</p>
     <h1 class="post-title">How to Become a Wedding DJ:<br>What It Actually Takes</h1>
@@ -189,6 +193,15 @@ footer { background: #050505; padding: 5rem var(--gutter) 2rem; border-top: 1px 
         <p><strong>Every year, someone finds us at a wedding and says some version of the same thing: "I've been DJing house parties for years. I'd love to do this for a living. Where do I start?"</strong></p>
 
         <p>It's a reasonable question. And the honest answer: it's more accessible than most industries, but it's harder than most people expect. This is what we've learned building a production company in Miami, and what we wish someone had told us earlier.</p>
+
+                <figure class="post-figure">
+          <picture>
+            <source media="(max-width:768px)" srcset="../images/events/wedding-dj-craft-focus-miami-mobile.webp" type="image/webp">
+            <source srcset="../images/events/wedding-dj-craft-focus-miami.webp" type="image/webp">
+            <img src="../images/events/wedding-dj-craft-focus-miami.jpg" alt="Wedding DJ working the controller mid set at a Miami reception" width="1600" height="1073" loading="lazy" decoding="async">
+          </picture>
+          <figcaption>Hands on the controller mid set. The gear matters far less than knowing what to do with it.</figcaption>
+        </figure>
 
         <h2>Start With the Right Gear, Not the Best Gear</h2>
         <p>There's a false choice that paralyzes a lot of aspiring DJs: buy cheap gear and look unprofessional, or spend a fortune on a setup you can't yet justify. The right answer is neither.</p>
@@ -218,6 +231,15 @@ footer { background: #050505; padding: 5rem var(--gutter) 2rem; border-top: 1px 
         <p>Club DJing and wedding DJing are related skills, but they're not the same job. At a club, your audience self-selected. They're there to dance. At a wedding, you have 18-year-olds and 75-year-olds on the same floor, and both need to feel included at different points in the night.</p>
         <p>You also have a program to manage. The first dance has one chance to go right. The grand exit is a production moment. Being a great wedding DJ means mastering all of it: the music, the MC work, the coordination with the couple, the coordinator, and the venue. It's a more complex performance than most people realize.</p>
 
+                <figure class="post-figure">
+          <picture>
+            <source media="(max-width:768px)" srcset="../images/events/full-production-wedding-palm-beach-mobile.webp" type="image/webp">
+            <source srcset="../images/events/full-production-wedding-palm-beach.webp" type="image/webp">
+            <img src="../images/events/full-production-wedding-palm-beach.jpg" alt="Full production wedding setup with lighting and sound at a Palm Beach venue" width="1600" height="1073" loading="lazy" decoding="async">
+          </picture>
+          <figcaption>A full production wedding in Palm Beach. You do not start here. You start second chairing nights like this one.</figcaption>
+        </figure>
+
         <h2>Get Your First Gigs the Right Way</h2>
         <ul>
           <li><strong>Work as an assistant first.</strong> Reach out to established DJ companies and offer to help with load-ins and setup. You'll learn more in 20 real events than six months of practice in a bedroom.</li>
@@ -236,12 +258,12 @@ footer { background: #050505; padding: 5rem var(--gutter) 2rem; border-top: 1px 
 
         <h2>What It Takes to Last</h2>
         <p>The DJs who build sustainable careers in this industry share a few traits: they're obsessively reliable (no missed gigs, no late arrivals, no chasing for communication), they keep evolving with music and technology, and they build genuine relationships with venue coordinators, photographers, planners, and other DJs.</p>
-        <p>The events industry in South Florida is smaller than it looks. Reputation travels fast in both directions. Read more about how we approach this on our <a href="../about.html">about page</a>.</p>
+        <p>The events industry in South Florida is smaller than it looks. Reputation travels fast in both directions. Read more about how we approach this on our <a href="../about">about page</a>.</p>
 
         <div class="post-cta">
           <p>Serious about breaking into the industry and want to connect with our team? We're always open to conversations with people who are genuinely committed to this work.</p>
-          <a href="../service-dj.html" class="btn-primary">Our DJ Services</a>
-          <a href="../contact.html" class="btn-outline">Get in Touch</a>
+          <a href="../service-dj" class="btn-primary">Our DJ Services</a>
+          <a href="../contact" class="btn-outline">Get in Touch</a>
         </div>
 
         
@@ -309,32 +331,32 @@ footer { background: #050505; padding: 5rem var(--gutter) 2rem; border-top: 1px 
       </div>
       <div class="footer-col">
         <h3>Contact</h3>
-        <p><a href="../contact.html">Contact Us</a></p>
+        <p><a href="../contact">Contact Us</a></p>
         <p><a href="tel:7863026056" onclick="gtag('event','phone_call',{'event_category':'contact','event_label':'blog_how_to_become_a_wedding_dj'});">(786) 302-6056</a></p>
         <p><a href="mailto:Hello@baselinestudiofl.com">Hello@baselinestudiofl.com</a></p>
       </div>
       <div class="footer-col">
         <h3>Navigate</h3>
         <ul>
-          <li><a href="../weddings.html">Weddings</a></li>
-          <li><a href="../corporate.html">Corporate</a></li>
-          <li><a href="../services.html">Services</a></li>
-          <li><a href="../portfolio.html">Portfolio</a></li>
-          <li><a href="../blog.html">Blog</a></li>
-          <li><a href="../contact.html">Contact</a></li>
+          <li><a href="../weddings">Weddings</a></li>
+          <li><a href="../corporate">Corporate</a></li>
+          <li><a href="../services">Services</a></li>
+          <li><a href="../portfolio">Portfolio</a></li>
+          <li><a href="../blog">Blog</a></li>
+          <li><a href="../contact">Contact</a></li>
         </ul>
       </div>
       <div class="footer-col">
         <h3>South Florida Markets</h3>
         <ul>
-          <li><a href="../event-production-coral-gables.html">Coral Gables</a></li>
-          <li><a href="../event-production-brickell.html">Brickell</a></li>
-          <li><a href="../event-production-aventura.html">Aventura</a></li>
-          <li><a href="../event-production-fort-lauderdale.html">Fort Lauderdale</a></li>
-          <li><a href="../event-production-doral.html">Doral</a></li>
-          <li><a href="../event-production-hialeah.html">Hialeah</a></li>
-          <li><a href="../event-production-kendall.html">Kendall</a></li>
-          <li><a href="../event-production-hollywood-fl.html">Hollywood, FL</a></li>
+          <li><a href="../event-production-coral-gables">Coral Gables</a></li>
+          <li><a href="../event-production-brickell">Brickell</a></li>
+          <li><a href="../event-production-aventura">Aventura</a></li>
+          <li><a href="../event-production-fort-lauderdale">Fort Lauderdale</a></li>
+          <li><a href="../event-production-doral">Doral</a></li>
+          <li><a href="../event-production-hialeah">Hialeah</a></li>
+          <li><a href="../event-production-kendall">Kendall</a></li>
+          <li><a href="../event-production-hollywood-fl">Hollywood, FL</a></li>
         </ul>
       </div>
       <div class="footer-col">
@@ -349,7 +371,7 @@ footer { background: #050505; padding: 5rem var(--gutter) 2rem; border-top: 1px 
     </div>
     <div class="footer-bottom">
       <p>&copy; 2026 Baseline Studio LLC. All rights reserved. Miami, FL.</p>
-      <a href="../login.html">Client Portal</a>
+      <a href="../login">Client Portal</a>
     </div>
   </div>
 </footer>

@@ -67,6 +67,10 @@ nav { position: fixed; top: 0; left: 0; width: 100%; z-index: 1000; background: 
 .post-body li { font-size: 1rem; color: rgba(255,255,255,0.8); line-height: 1.75; margin-bottom: 0.7rem; }
 .post-body a { color: var(--cyan); text-decoration: underline; }
 .post-body strong { color: var(--white); }
+.post-figure { margin: 2.5rem 0; }
+.post-figure picture, .post-figure img { display: block; width: 100%; height: auto; border-radius: 4px; }
+.post-figure figcaption { font-size: 0.86rem; color: rgba(255,255,255,0.55); margin-top: 0.7rem; line-height: 1.5; }
+
 .post-cta { background: rgba(31,163,224,0.07); border: 1px solid rgba(31,163,224,0.15); border-radius: 4px; padding: 2.5rem; margin: 3rem 0; }
 .post-cta p { color: rgba(255,255,255,0.8); margin-bottom: 1.5rem; font-size: 1rem; }
 .callout { background: rgba(31,163,224,0.05); border-left: 3px solid var(--cyan); padding: 1.2rem 1.5rem; margin: 2rem 0; border-radius: 0 4px 4px 0; }
@@ -155,23 +159,23 @@ footer { background: #050505; padding: 5rem var(--gutter) 2rem; border-top: 1px 
 <body>
 
 <nav id="nav">
-  <a href="../index.html" class="nav-logo">
+  <a href="../" class="nav-logo">
     <img src="../Logo Full.png" alt="Baseline Studio" style="height:44px;width:auto;">
   </a>
   <div class="nav-links">
-    <a href="../weddings.html">Weddings</a>
-    <a href="../corporate.html">Corporate</a>
-    <a href="../services.html">Services</a>
-    <a href="../portfolio.html">Portfolio</a>
-    <a href="../blog.html">Blog</a>
-    <a href="../contact.html" class="nav-cta">Get a Quote</a>
+    <a href="../weddings">Weddings</a>
+    <a href="../corporate">Corporate</a>
+    <a href="../services">Services</a>
+    <a href="../portfolio">Portfolio</a>
+    <a href="../blog">Blog</a>
+    <a href="../contact" class="nav-cta">Get a Quote</a>
   </div>
 </nav>
 
 <div style="padding-top:72px;">
   <div class="blog-hero">
     <nav class="breadcrumb" aria-label="Breadcrumb">
-      <a href="../index.html">Home</a><span>›</span><a href="../blog.html">Blog</a><span>›</span><span>DJ Industry</span>
+      <a href="../">Home</a><span>›</span><a href="../blog">Blog</a><span>›</span><span>DJ Industry</span>
     </nav>
     <p class="post-label">DJ Industry</p>
     <h1 class="post-title">How to Start an Event Production Business:<br>Lessons from 10+ Years in Miami</h1>
@@ -190,9 +194,18 @@ footer { background: #050505; padding: 5rem var(--gutter) 2rem; border-top: 1px 
 
         <p>The distance between those two points wasn't a straight line. This is what we'd tell our younger selves, and what anyone thinking about starting an event production business should understand going in.</p>
 
+                <figure class="post-figure">
+          <picture>
+            <source media="(max-width:768px)" srcset="../images/events/event-production-business-load-in-miami-mobile.webp" type="image/webp">
+            <source srcset="../images/events/event-production-business-load-in-miami.webp" type="image/webp">
+            <img src="../images/events/event-production-business-load-in-miami.jpg" alt="Event production crew loading gear into a Miami venue from a truck" width="1600" height="1073" loading="lazy" decoding="async">
+          </picture>
+          <figcaption>Load in. This is most of the job, and it is the part nobody pictures when they decide to start a company.</figcaption>
+        </figure>
+
         <h2>Define What You're Actually Building</h2>
         <p>Event production is a broad term. It can mean a solo DJ with a couple of speakers. It can mean a 15-person crew with a warehouse full of lighting inventory. Before you spend a dollar on gear, get clear on what you're building and who you're building it for.</p>
-        <p>The businesses that fail early are almost always the ones that tried to serve everyone. They said yes to the backyard house party and the luxury <a href="../weddings.html">wedding</a> in the same weekend and couldn't build a reputation in either market. Pick a lane. That clarity shapes every decision, what gear you invest in, how you price, where you show up, what you turn down.</p>
+        <p>The businesses that fail early are almost always the ones that tried to serve everyone. They said yes to the backyard house party and the luxury <a href="../weddings">wedding</a> in the same weekend and couldn't build a reputation in either market. Pick a lane. That clarity shapes every decision, what gear you invest in, how you price, where you show up, what you turn down.</p>
 
         <h2>Gear Strategy: Buy vs. Rent Until You Know</h2>
         <p>The temptation when starting is to buy everything. Don't. In the early years, rent what you don't have. The rental cost eats your margin, but it gives you the flexibility to take on varied events while you figure out what gear you actually need at high frequency.</p>
@@ -214,6 +227,15 @@ footer { background: #050505; padding: 5rem var(--gutter) 2rem; border-top: 1px 
         </ul>
         <p>Train everyone to your standards before they're in front of a client. There are no dress rehearsals in live events.</p>
 
+                <figure class="post-figure">
+          <picture>
+            <source media="(max-width:768px)" srcset="../images/events/corporate-award-ceremony-coral-gables-mobile.webp" type="image/webp">
+            <source srcset="../images/events/corporate-award-ceremony-coral-gables.webp" type="image/webp">
+            <img src="../images/events/corporate-award-ceremony-coral-gables.jpg" alt="Corporate award ceremony on stage at a Coral Gables venue with stage lighting and audio" width="1600" height="1066" loading="lazy" decoding="async">
+          </picture>
+          <figcaption>A corporate award ceremony in Coral Gables. Corporate work comes from referrals, and referrals come from nights like this going quietly well.</figcaption>
+        </figure>
+
         <h2>Build Your Reputation Intentionally</h2>
         <p>In this industry, your reputation is your marketing budget. Every event coordinator in Miami talks to every other coordinator. If you're the vendor who shows up late or causes friction with the venue team, that reputation spreads faster than any bad review. If you're the vendor who is calm, overprepared, and makes everyone else's job easier, that also spreads, and turns into referrals.</p>
         <p>Specific things that build reputation faster than anything else:</p>
@@ -226,19 +248,19 @@ footer { background: #050505; padding: 5rem var(--gutter) 2rem; border-top: 1px 
 
         <h2>Pricing for Sustainability</h2>
         <p>Most new production businesses make the same mistake: they underprice to compete. Know your real cost of doing business, gear depreciation and maintenance, insurance, vehicle costs, overhead, and your own time for planning, communication, and execution. When you know your floor, you can price above it with confidence.</p>
-        <p>Clients who understand value will pay for it. Clients who only want the lowest price are usually the most demanding and difficult to work with anyway. See how we structure our pricing on our <a href="../contact.html">services page</a>.</p>
+        <p>Clients who understand value will pay for it. Clients who only want the lowest price are usually the most demanding and difficult to work with anyway. See how we structure our pricing on our <a href="../contact">services page</a>.</p>
 
         <h2>Technology Is Your Leverage</h2>
         <p>Invest in the software infrastructure early: a proper CRM and contract management system, online payment processing, and a client portal where questionnaires, timelines, and communications live in one place. This isn't overhead, it's the difference between looking like a real company and looking like a side hustle. Clients notice, and it reduces the communication burden on you dramatically as you scale.</p>
 
         <h2>The Long Game</h2>
         <p>Building an event production business from scratch takes longer than most people expect. The first year is about survival. The second is about refining. The third year is when compounding starts: referrals from couples whose friends are now getting married, venue relationships generating consistent bookings, a reputation that does some of the selling for you.</p>
-        <p>Stay patient. Stay disciplined. Say no to work that doesn't fit your direction, even when you need the revenue. Every event you produce is either building or eroding the reputation you're working to establish. Learn more about how we built ours on our <a href="../about.html">about page</a>.</p>
+        <p>Stay patient. Stay disciplined. Say no to work that doesn't fit your direction, even when you need the revenue. Every event you produce is either building or eroding the reputation you're working to establish. Learn more about how we built ours on our <a href="../about">about page</a>.</p>
 
         <div class="post-cta">
           <p>Based in South Florida and want to connect about the industry? We're always open to conversations with people who are serious about building something real in this space.</p>
-          <a href="../services.html" class="btn-primary">Our Services</a>
-          <a href="../contact.html" class="btn-outline">Get in Touch</a>
+          <a href="../services" class="btn-primary">Our Services</a>
+          <a href="../contact" class="btn-outline">Get in Touch</a>
         </div>
 
         
@@ -306,32 +328,32 @@ footer { background: #050505; padding: 5rem var(--gutter) 2rem; border-top: 1px 
       </div>
       <div class="footer-col">
         <h3>Contact</h3>
-        <p><a href="../contact.html">Contact Us</a></p>
+        <p><a href="../contact">Contact Us</a></p>
         <p><a href="tel:7863026056" onclick="gtag('event','phone_call',{'event_category':'contact','event_label':'blog_how_to_start_event_production_business'});">(786) 302-6056</a></p>
         <p><a href="mailto:Hello@baselinestudiofl.com">Hello@baselinestudiofl.com</a></p>
       </div>
       <div class="footer-col">
         <h3>Navigate</h3>
         <ul>
-          <li><a href="../weddings.html">Weddings</a></li>
-          <li><a href="../corporate.html">Corporate</a></li>
-          <li><a href="../services.html">Services</a></li>
-          <li><a href="../portfolio.html">Portfolio</a></li>
-          <li><a href="../blog.html">Blog</a></li>
-          <li><a href="../contact.html">Contact</a></li>
+          <li><a href="../weddings">Weddings</a></li>
+          <li><a href="../corporate">Corporate</a></li>
+          <li><a href="../services">Services</a></li>
+          <li><a href="../portfolio">Portfolio</a></li>
+          <li><a href="../blog">Blog</a></li>
+          <li><a href="../contact">Contact</a></li>
         </ul>
       </div>
       <div class="footer-col">
         <h3>South Florida Markets</h3>
         <ul>
-          <li><a href="../event-production-coral-gables.html">Coral Gables</a></li>
-          <li><a href="../event-production-brickell.html">Brickell</a></li>
-          <li><a href="../event-production-aventura.html">Aventura</a></li>
-          <li><a href="../event-production-fort-lauderdale.html">Fort Lauderdale</a></li>
-          <li><a href="../event-production-doral.html">Doral</a></li>
-          <li><a href="../event-production-hialeah.html">Hialeah</a></li>
-          <li><a href="../event-production-kendall.html">Kendall</a></li>
-          <li><a href="../event-production-hollywood-fl.html">Hollywood, FL</a></li>
+          <li><a href="../event-production-coral-gables">Coral Gables</a></li>
+          <li><a href="../event-production-brickell">Brickell</a></li>
+          <li><a href="../event-production-aventura">Aventura</a></li>
+          <li><a href="../event-production-fort-lauderdale">Fort Lauderdale</a></li>
+          <li><a href="../event-production-doral">Doral</a></li>
+          <li><a href="../event-production-hialeah">Hialeah</a></li>
+          <li><a href="../event-production-kendall">Kendall</a></li>
+          <li><a href="../event-production-hollywood-fl">Hollywood, FL</a></li>
         </ul>
       </div>
       <div class="footer-col">
@@ -346,7 +368,7 @@ footer { background: #050505; padding: 5rem var(--gutter) 2rem; border-top: 1px 
     </div>
     <div class="footer-bottom">
       <p>&copy; 2026 Baseline Studio LLC. All rights reserved. Miami, FL.</p>
-      <a href="../login.html">Client Portal</a>
+      <a href="../login">Client Portal</a>
     </div>
   </div>
 </footer>

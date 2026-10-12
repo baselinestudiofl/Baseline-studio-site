@@ -67,6 +67,10 @@ nav { position: fixed; top: 0; left: 0; width: 100%; z-index: 1000; background: 
 .post-body li { font-size: 1rem; color: rgba(255,255,255,0.8); line-height: 1.75; margin-bottom: 0.7rem; }
 .post-body a { color: var(--cyan); text-decoration: underline; }
 .post-body strong { color: var(--white); }
+.post-figure { margin: 2.5rem 0; }
+.post-figure picture, .post-figure img { display: block; width: 100%; height: auto; border-radius: 4px; }
+.post-figure figcaption { font-size: 0.86rem; color: rgba(255,255,255,0.55); margin-top: 0.7rem; line-height: 1.5; }
+
 .post-cta { background: rgba(31,163,224,0.07); border: 1px solid rgba(31,163,224,0.15); border-radius: 4px; padding: 2.5rem; margin: 3rem 0; }
 .post-cta p { color: rgba(255,255,255,0.8); margin-bottom: 1.5rem; font-size: 1rem; }
 .callout { background: rgba(31,163,224,0.05); border-left: 3px solid var(--cyan); padding: 1.2rem 1.5rem; margin: 2rem 0; border-radius: 0 4px 4px 0; }
@@ -160,23 +164,23 @@ footer { background: #050505; padding: 5rem var(--gutter) 2rem; border-top: 1px 
 <body>
 
 <nav id="nav">
-  <a href="../index.html" class="nav-logo">
+  <a href="../" class="nav-logo">
     <img src="../Logo Full.png" alt="Baseline Studio" style="height:44px;width:auto;">
   </a>
   <div class="nav-links">
-    <a href="../weddings.html">Weddings</a>
-    <a href="../corporate.html">Corporate</a>
-    <a href="../services.html">Services</a>
-    <a href="../portfolio.html">Portfolio</a>
-    <a href="../blog.html">Blog</a>
-    <a href="../contact.html" class="nav-cta">Get a Quote</a>
+    <a href="../weddings">Weddings</a>
+    <a href="../corporate">Corporate</a>
+    <a href="../services">Services</a>
+    <a href="../portfolio">Portfolio</a>
+    <a href="../blog">Blog</a>
+    <a href="../contact" class="nav-cta">Get a Quote</a>
   </div>
 </nav>
 
 <div style="padding-top:72px;">
   <div class="blog-hero">
     <nav class="breadcrumb" aria-label="Breadcrumb">
-      <a href="../index.html">Home</a><span>›</span><a href="../blog.html">Blog</a><span>›</span><span>Weddings</span>
+      <a href="../">Home</a><span>›</span><a href="../blog">Blog</a><span>›</span><span>Weddings</span>
     </nav>
     <p class="post-label">Wedding Planning</p>
     <h1 class="post-title">Your Wedding Day Timeline:<br>A DJ's Hour-by-Hour Breakdown</h1>
@@ -193,7 +197,16 @@ footer { background: #050505; padding: 5rem var(--gutter) 2rem; border-top: 1px 
 
         <p><strong>Most wedding timelines are built around the photographer's shot list and the caterer's plating schedule.</strong> Which makes sense, but it leaves out one of the most important variables: the music and energy arc of your entire event.</p>
 
-        <p>This is how we think about your timeline, built from everything we know about how South Florida <a href="../weddings.html">weddings</a> actually run, and where things most often go wrong.</p>
+        <p>This is how we think about your timeline, built from everything we know about how South Florida <a href="../weddings">weddings</a> actually run, and where things most often go wrong.</p>
+
+                <figure class="post-figure">
+          <picture>
+            <source media="(max-width:768px)" srcset="../images/events/wedding-day-timeline-load-in-miami-mobile.webp" type="image/webp">
+            <source srcset="../images/events/wedding-day-timeline-load-in-miami.webp" type="image/webp">
+            <img src="../images/events/wedding-day-timeline-load-in-miami.jpg" alt="Crew loading in wedding audio and lighting gear early in the day at a Miami venue" width="1600" height="1073" loading="lazy" decoding="async">
+          </picture>
+          <figcaption>Load in happens hours before any of the phases below. The timeline starts long before guests see anything.</figcaption>
+        </figure>
 
         <h2>Phase 1: Ceremony (30-60 Minutes)</h2>
         <p>We run a dedicated audio setup for the ceremony space, wireless lapel mic on the officiant, a handheld for readings, and carefully selected prelude music that builds atmosphere before guests are even seated.</p>
@@ -205,7 +218,7 @@ footer { background: #050505; padding: 5rem var(--gutter) 2rem; border-top: 1px 
 
         <h2>Phase 2: Cocktail Hour (60 Minutes)</h2>
         <p>Cocktail hour music is one of the most underestimated elements of the day. It's the first thing guests hear after the ceremony, and it calibrates their energy for everything that follows.</p>
-        <p>We favor melodic house, jazzy covers, or classic hits at low-to-mid tempo. A live saxophonist paired with the DJ is one of our most requested setups, see our <a href="../service-live-musicians.html">live musician add-ons</a>. The goal is warm, social energy, not background music that disappears, and not a party that peaks before dinner even starts.</p>
+        <p>We favor melodic house, jazzy covers, or classic hits at low-to-mid tempo. A live saxophonist paired with the DJ is one of our most requested setups, see our <a href="../service-live-musicians">live musician add-ons</a>. The goal is warm, social energy, not background music that disappears, and not a party that peaks before dinner even starts.</p>
 
         <div class="callout">
           <p>60 minutes is the sweet spot. At 45 minutes guests feel rushed; at 90 minutes the energy plateaus and you lose momentum going into dinner.</p>
@@ -214,6 +227,15 @@ footer { background: #050505; padding: 5rem var(--gutter) 2rem; border-top: 1px 
         <h2>Phase 3: Grand Entrance &amp; Dinner (60-90 Minutes)</h2>
         <p>The grand entrance is our first true production moment. We sequence the wedding party introductions then transition straight into the first dance without dead air. During dinner, we manage the full program: parent dances, toasts, cake cutting, and dinner music that's lively enough to feel festive but controlled enough that conversation can happen.</p>
         <p><strong>The biggest timeline killer: too many toasts.</strong> More than 3-4 toasts and guests start checking their phones. Lock your toast order in advance and give every speaker a time limit. We've seen 4-minute toasts that were perfect and 12-minute toasts that emptied a room.</p>
+
+        <figure class="post-figure">
+          <picture>
+            <source media="(max-width:768px)" srcset="../images/events/wedding-reception-production-miami-mobile.webp" type="image/webp">
+            <source srcset="../images/events/wedding-reception-production-miami.webp" type="image/webp">
+            <img src="../images/events/wedding-reception-production-miami.jpg" alt="Packed wedding reception dance floor with production lighting at a Miami venue" width="1600" height="1073" loading="lazy" decoding="async">
+          </picture>
+          <figcaption>Open floor. This is the stretch the whole timeline exists to protect.</figcaption>
+        </figure>
 
         <h2>Phase 4: Dancing &amp; Open Floor (2-3 Hours)</h2>
         <p>This is where years of experience separate experienced DJs from everyone else. We start with familiar, accessible songs that bring everyone out. We build energy through the first hour, hit a peak at around 90 minutes when the room is warm, then read where the crowd wants to go.</p>
@@ -250,8 +272,8 @@ footer { background: #050505; padding: 5rem var(--gutter) 2rem; border-top: 1px 
 
         <div class="post-cta">
           <p>Want us to build a custom timeline for your wedding? We start every event with a discovery call to map out your day.</p>
-          <a href="../weddings.html" class="btn-primary">See Wedding Packages</a>
-          <a href="../contact.html" class="btn-outline">Start a Discovery Call</a>
+          <a href="../weddings" class="btn-primary">See Wedding Packages</a>
+          <a href="../contact" class="btn-outline">Start a Discovery Call</a>
         </div>
 
         
@@ -323,32 +345,32 @@ footer { background: #050505; padding: 5rem var(--gutter) 2rem; border-top: 1px 
       </div>
       <div class="footer-col">
         <h3>Contact</h3>
-        <p><a href="../contact.html">Contact Us</a></p>
+        <p><a href="../contact">Contact Us</a></p>
         <p><a href="tel:7863026056" onclick="gtag('event','phone_call',{'event_category':'contact','event_label':'blog_wedding_day_timeline_dj_breakdown'});">(786) 302-6056</a></p>
         <p><a href="mailto:Hello@baselinestudiofl.com">Hello@baselinestudiofl.com</a></p>
       </div>
       <div class="footer-col">
         <h3>Navigate</h3>
         <ul>
-          <li><a href="../weddings.html">Weddings</a></li>
-          <li><a href="../corporate.html">Corporate</a></li>
-          <li><a href="../services.html">Services</a></li>
-          <li><a href="../portfolio.html">Portfolio</a></li>
-          <li><a href="../blog.html">Blog</a></li>
-          <li><a href="../contact.html">Contact</a></li>
+          <li><a href="../weddings">Weddings</a></li>
+          <li><a href="../corporate">Corporate</a></li>
+          <li><a href="../services">Services</a></li>
+          <li><a href="../portfolio">Portfolio</a></li>
+          <li><a href="../blog">Blog</a></li>
+          <li><a href="../contact">Contact</a></li>
         </ul>
       </div>
       <div class="footer-col">
         <h3>South Florida Markets</h3>
         <ul>
-          <li><a href="../event-production-coral-gables.html">Coral Gables</a></li>
-          <li><a href="../event-production-brickell.html">Brickell</a></li>
-          <li><a href="../event-production-aventura.html">Aventura</a></li>
-          <li><a href="../event-production-fort-lauderdale.html">Fort Lauderdale</a></li>
-          <li><a href="../event-production-doral.html">Doral</a></li>
-          <li><a href="../event-production-hialeah.html">Hialeah</a></li>
-          <li><a href="../event-production-kendall.html">Kendall</a></li>
-          <li><a href="../event-production-hollywood-fl.html">Hollywood, FL</a></li>
+          <li><a href="../event-production-coral-gables">Coral Gables</a></li>
+          <li><a href="../event-production-brickell">Brickell</a></li>
+          <li><a href="../event-production-aventura">Aventura</a></li>
+          <li><a href="../event-production-fort-lauderdale">Fort Lauderdale</a></li>
+          <li><a href="../event-production-doral">Doral</a></li>
+          <li><a href="../event-production-hialeah">Hialeah</a></li>
+          <li><a href="../event-production-kendall">Kendall</a></li>
+          <li><a href="../event-production-hollywood-fl">Hollywood, FL</a></li>
         </ul>
       </div>
       <div class="footer-col">
@@ -363,7 +385,7 @@ footer { background: #050505; padding: 5rem var(--gutter) 2rem; border-top: 1px 
     </div>
     <div class="footer-bottom">
       <p>&copy; 2026 Baseline Studio LLC. All rights reserved. Miami, FL.</p>
-      <a href="../login.html">Client Portal</a>
+      <a href="../login">Client Portal</a>
     </div>
   </div>
 </footer>
