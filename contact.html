@@ -438,6 +438,8 @@
       var email        = document.getElementById('cfwEmail').value.trim();
       var phone        = document.getElementById('cfwPhone').value.trim();
       var message      = document.getElementById('cfwMessage').value.trim();
+      // Internal copy only (Web3Forms, CRM, internal email). The client's thank-you keeps the plain message.
+      var leadMessage  = message + (typeof window.bsLeadSource === 'function' ? window.bsLeadSource() : '');
 
       // Populate hidden form
       document.getElementById('hFirst').value    = firstName;
@@ -449,7 +451,7 @@
       document.getElementById('hVenue').value    = venue;
       document.getElementById('hGuests').value   = guests;
       document.getElementById('hServices').value = services;
-      document.getElementById('hMessage').value  = message;
+      document.getElementById('hMessage').value  = leadMessage;
 
       var form = document.getElementById('contact-form');
       var formData = new FormData(form);
@@ -466,14 +468,14 @@
           fetch(sbUrl + '/rest/v1/rpc/submit_lead', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json', 'apikey': sbAnon },
-            body: JSON.stringify({ p_name: (firstName + ' ' + lastName).trim(), p_email: email, p_phone: phone, p_type: eventType || 'inquiry', p_date: eventDate, p_venue: venue, p_services: services, p_message: message })
+            body: JSON.stringify({ p_name: (firstName + ' ' + lastName).trim(), p_email: email, p_phone: phone, p_type: eventType || 'inquiry', p_date: eventDate, p_venue: venue, p_services: services, p_message: leadMessage })
           }).catch(function() {});
 
           // Edge Function emails
           var edgeUrl = sbUrl + '/functions/v1/send-email';
           var edgeH   = { 'Content-Type': 'application/json', 'apikey': sbAnon, 'Authorization': 'Bearer ' + sbAnon };
           fetch(edgeUrl, { method: 'POST', headers: edgeH, body: JSON.stringify({ type: 'contact_thankyou', email: email, firstName: firstName, message: message }) }).catch(function() {});
-          fetch(edgeUrl, { method: 'POST', headers: edgeH, body: JSON.stringify({ type: 'internal_lead', firstName: firstName, lastName: lastName, email: email, phone: phone, eventType: eventType, eventDate: eventDate, venue: venue, guestCount: guests, services: services, message: message }) }).catch(function() {});
+          fetch(edgeUrl, { method: 'POST', headers: edgeH, body: JSON.stringify({ type: 'internal_lead', firstName: firstName, lastName: lastName, email: email, phone: phone, eventType: eventType, eventDate: eventDate, venue: venue, guestCount: guests, services: services, message: leadMessage }) }).catch(function() {});
 
           // Show success
           for (var i = 1; i <= cfwTotal; i++) { var el = document.getElementById('cfwStep' + i); if (el) el.style.display = 'none'; }
@@ -484,7 +486,7 @@
           document.getElementById('cfwBack').style.display = 'none';
           var msg = document.getElementById('form-success');
           msg.classList.add('show');
-          if (typeof gtag !== 'undefined') gtag('event', 'form_submit', { 'event_category': 'contact', 'event_label': 'quote_request' });
+          if (typeof gtag !== 'undefined') gtag('event', 'generate_lead', { 'event_category': 'contact', 'event_label': 'quote_request' });
         } else {
           alert('Something went wrong. Email us at Hello@baselinestudiofl.com or call (786) 302-6056.');
           btn.disabled = false;
@@ -589,5 +591,6 @@
       });
     });
   </script>
+<script src="/lead-source.js" defer></script>
 </body>
 </html>
