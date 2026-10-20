@@ -24,6 +24,8 @@
     --font-head: 'Anton', Impact, sans-serif;
     --font-body: 'Barlow', system-ui, sans-serif;
     --font-cond: 'Barlow Condensed', sans-serif;
+    /* T6 contrast tokens: text-3 is the floor for any text; border-ui is for inputs, buttons and toggles (3:1). The 0.1 rule stays decorative. */
+    --text-1: #f4f6f8; --text-2: rgba(255,255,255,0.72); --text-3: rgba(255,255,255,0.62); --border-ui: rgba(255,255,255,0.38);
   }
   html, body { height: 100%; }
   body { background: var(--black); color: var(--white); font-family: var(--font-body); display: flex; min-height: 100vh; }
@@ -43,7 +45,7 @@
   .l-tagline { font-family: var(--font-head); font-size: clamp(2.5rem, 5vw, 4.5rem); text-transform: uppercase; line-height: 0.95; margin-bottom: 2rem; }
   .l-features { display: flex; flex-direction: column; gap: 1.2rem; }
   .l-feature { display: flex; align-items: flex-start; gap: 1rem; }
-  .l-feature-icon { width: 32px; height: 32px; border: 1px solid rgba(31,163,224,0.4); border-radius: 6px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; color: var(--cyan); font-family: var(--font-cond); font-size: 0.7rem; font-weight: 700; letter-spacing: 0.1em; }
+  .l-feature-icon { width: 32px; height: 32px; border: 1px solid rgba(31,163,224,0.4); border-radius: 6px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; color: var(--cyan); font-family: var(--font-cond); font-size: 12px; font-weight: 700; letter-spacing: 0.1em; }
   .l-feature-text { font-size: 0.85rem; color: rgba(255,255,255,0.7); line-height: 1.5; }
   .l-feature-text strong { color: var(--white); font-weight: 600; }
   .l-back { position: relative; z-index: 2; font-size: 0.75rem; color: rgba(255,255,255,0.55); letter-spacing: 0.08em; }
@@ -65,14 +67,14 @@
   /* FORM */
   .f-group { margin-bottom: 1.4rem; }
   .f-label { display: block; font-size: 0.72rem; font-weight: 600; letter-spacing: 0.12em; text-transform: uppercase; color: rgba(255,255,255,0.55); margin-bottom: 0.5rem; }
-  .f-input { width: 100%; background: var(--black-2); border: 1px solid var(--border); color: var(--white); font-family: var(--font-body); font-size: 0.95rem; padding: 0.8rem 1rem; outline: none; transition: border-color 0.2s; border-radius: 2px; }
+  .f-input { width: 100%; background: var(--black-2); border: 1px solid var(--border-ui); color: var(--white); font-family: var(--font-body); font-size: 0.95rem; padding: 0.8rem 1rem; outline: none; transition: border-color 0.2s; border-radius: 2px; }
   .f-input:focus { border-color: var(--cyan); }
-  .f-input::placeholder { color: rgba(255,255,255,0.2); }
-  .f-btn { width: 100%; padding: 1rem; background: var(--cyan); border: none; color: var(--white); font-family: var(--font-body); font-size: 0.82rem; font-weight: 700; letter-spacing: 0.14em; text-transform: uppercase; cursor: pointer; transition: background 0.2s; margin-top: 0.5rem; border-radius: 2px; }
+  .f-input::placeholder { color: var(--text-3); }
+  .f-btn { width: 100%; padding: 1rem; background: var(--cyan); border: none; color: #07070d; font-family: var(--font-body); font-size: 0.82rem; font-weight: 700; letter-spacing: 0.14em; text-transform: uppercase; cursor: pointer; transition: background 0.2s; margin-top: 0.5rem; border-radius: 2px; }
   .f-btn:hover { background: var(--cyan-dark); }
   .f-btn:disabled { opacity: 0.6; cursor: not-allowed; }
-  .f-btn-ghost { width: 100%; padding: 0.8rem; background: none; border: 1px solid var(--border); color: rgba(255,255,255,0.5); font-family: var(--font-body); font-size: 0.8rem; font-weight: 600; letter-spacing: 0.1em; text-transform: uppercase; cursor: pointer; transition: all 0.2s; margin-top: 0.6rem; border-radius: 2px; }
-  .f-btn-ghost:hover { border-color: rgba(255,255,255,0.3); color: var(--white); }
+  .f-btn-ghost { width: 100%; padding: 0.8rem; background: none; border: 1px solid var(--border-ui); color: rgba(255,255,255,0.5); font-family: var(--font-body); font-size: 0.8rem; font-weight: 600; letter-spacing: 0.1em; text-transform: uppercase; cursor: pointer; transition: all 0.2s; margin-top: 0.6rem; border-radius: 2px; }
+  .f-btn-ghost:hover { border-color: var(--border-ui); color: var(--white); }
   .f-err { color: #ff6b6b; font-size: 0.8rem; margin-top: 1rem; display: none; }
   .f-ok  { color: #5cdb95; font-size: 0.8rem; margin-top: 1rem; display: none; }
   .f-link { display: block; text-align: right; font-size: 0.78rem; color: rgba(255,255,255,0.55); cursor: pointer; margin-top: 0.4rem; background: none; border: none; padding: 0; transition: color 0.2s; }
@@ -363,7 +365,7 @@ function showEventPicker(email, pass, events) {
         ${events.map((ev, i) => {
           const dateStr = ev.date || ev.eventDate || '';
           const label   = dateStr ? new Date(dateStr + 'T00:00:00').toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'}) : 'Date TBD';
-          return `<button onclick="pickEvent(${i})" style="text-align:left;background:rgba(31,163,224,0.07);border:1px solid rgba(31,163,224,0.25);border-radius:10px;padding:14px 16px;cursor:pointer;color:#fff;font-family:inherit;width:100%;">
+          return `<button onclick="pickEvent(${i})" style="text-align:left;background:rgba(31,163,224,0.07);border:1px solid rgba(31,163,224,0.65);border-radius:10px;padding:14px 16px;cursor:pointer;color:#fff;font-family:inherit;width:100%;">
             <div style="font-weight:600;font-size:15px;margin-bottom:3px;">${ev.name || 'Event'}</div>
             <div style="font-size:12px;color:rgba(255,255,255,0.55);">${ev.type || ''} &bull; ${label}</div>
           </button>`;

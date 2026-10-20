@@ -112,12 +112,17 @@
       --white: #fff;
       --cyan: #1FA3E0;
       --cyan-dark: #1585b8;
-      --gray: #7a7a8a;
+      --gray: #8a8f98;
       --border: rgba(255,255,255,0.08);
       --border-cyan: rgba(31,163,224,0.18);
       --success: #2ecc71;
       --warning: #f39c12;
       --danger: #e74c3c;
+      /* T6 contrast tokens: text-3 is the floor for any text; border-ui is for inputs, buttons and toggles (3:1). The 0.08 rule stays decorative. */
+      --text-1: #f4f6f8;
+      --text-2: rgba(255,255,255,0.72);
+      --text-3: rgba(255,255,255,0.62);
+      --border-ui: rgba(255,255,255,0.38);
     }
 
     * { margin: 0; padding: 0; box-sizing: border-box; }
@@ -144,7 +149,7 @@
     .app-nav-btn { padding: 14px 20px; background: transparent; border: none; color: var(--gray); cursor: pointer; font-size: 13px; font-weight: 500; border-bottom: 2px solid transparent; transition: all 0.2s; font-family: 'Barlow', sans-serif; white-space: nowrap; position: relative; }
     .app-nav-btn:hover { color: var(--white); }
     .app-nav-btn.active { color: var(--cyan); border-bottom-color: var(--cyan); }
-    .app-nav-badge { position: absolute; top: 8px; right: 8px; background: var(--danger); color: #fff; border-radius: 10px; font-size: 10px; font-weight: 700; padding: 1px 5px; }
+    .app-nav-badge { position: absolute; top: 8px; right: 8px; background: var(--danger); color: #07070d; border-radius: 10px; font-size: 12px; font-weight: 700; padding: 1px 5px; }
 
     .app-content { flex: 1; padding: 32px 24px; max-width: 1000px; margin: 0 auto; width: 100%; }
     .app-section { display: none; }
@@ -170,13 +175,13 @@
     .blast-item:last-child { border-bottom: none; }
     .blast-item-subject { font-weight: 600; margin-bottom: 6px; }
     .blast-item-body { font-size: 13px; color: var(--gray); margin-bottom: 10px; line-height: 1.5; }
-    .blast-item-meta { font-size: 11px; color: var(--gray); }
+    .blast-item-meta { font-size: 12px; color: var(--gray); }
 
     /* ── Buttons ── */
     .btn { padding: 10px 16px; border-radius: 4px; border: none; cursor: pointer; font-family: 'Barlow', sans-serif; font-weight: 600; font-size: 13px; transition: all 0.2s; }
     .btn-primary { background: var(--cyan); color: var(--black); }
     .btn-primary:hover { background: var(--cyan-dark); }
-    .btn-secondary { background: var(--black-4); color: var(--white); border: 1px solid var(--border); }
+    .btn-secondary { background: var(--black-4); color: var(--white); border: 1px solid var(--border-ui); }
     .btn-secondary:hover { border-color: var(--cyan); }
     .btn-success { background: var(--success); color: var(--black); }
     .btn-sm { padding: 6px 12px; font-size: 12px; }
@@ -184,7 +189,7 @@
     /* ── Form inputs ── */
     .form-group { margin-bottom: 20px; }
     .form-label { display: block; font-size: 11px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: var(--gray); margin-bottom: 6px; }
-    .form-input { width: 100%; padding: 10px 12px; background: var(--black-4); border: 1px solid var(--border); border-radius: 4px; color: var(--white); font-family: 'Barlow', sans-serif; font-size: 14px; transition: all 0.2s; }
+    .form-input { width: 100%; padding: 10px 12px; background: var(--black-4); border: 1px solid var(--border-ui); border-radius: 4px; color: var(--white); font-family: 'Barlow', sans-serif; font-size: 14px; transition: all 0.2s; }
     .form-input:focus { outline: none; border-color: var(--cyan); }
 
     /* ── Modal ── */
@@ -200,8 +205,8 @@
     .esig-label { font-size: 11px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: var(--gray); margin-bottom: 8px; }
     .esig-canvas-wrap { border: 1px solid var(--border); border-radius: 6px; background: #fff; position: relative; cursor: crosshair; touch-action: none; }
     .esig-canvas { display: block; border-radius: 6px; width: 100%; }
-    .esig-canvas-clear { position: absolute; bottom: 6px; right: 8px; background: rgba(0,0,0,0.5); color: #fff; border: none; border-radius: 4px; padding: 4px 8px; font-size: 11px; cursor: pointer; font-family: 'Barlow', sans-serif; }
-    .esig-legal { font-size: 11px; color: var(--gray); line-height: 1.5; padding: 12px; background: var(--black-4); border-radius: 4px; border: 1px solid var(--border); }
+    .esig-canvas-clear { position: absolute; bottom: 6px; right: 8px; background: rgba(0,0,0,0.5); color: #fff; border: none; border-radius: 4px; padding: 4px 8px; font-size: 12px; cursor: pointer; font-family: 'Barlow', sans-serif; }
+    .esig-legal { font-size: 12px; color: var(--text-3); line-height: 1.5; padding: 12px; background: var(--black-4); border-radius: 4px; border: 1px solid var(--border); }
     .esig-tabs { display: flex; gap: 0; border-bottom: 1px solid var(--border); margin-bottom: 12px; }
     .esig-tab { padding: 8px 14px; background: transparent; border: none; color: var(--gray); cursor: pointer; font-size: 12px; font-weight: 600; border-bottom: 2px solid transparent; font-family: 'Barlow', sans-serif; }
     .esig-tab.active { color: var(--cyan); border-bottom-color: var(--cyan); }
@@ -222,7 +227,7 @@
     @keyframes toastIn { from { transform: translateX(60px); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
 
     /* ── Urgent badge ── */
-    .urgent-badge { display: inline-block; background: rgba(231,76,60,0.18); color: #e74c3c; font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: .06em; padding: 2px 8px; border-radius: 10px; margin-left: 8px; }
+    .urgent-badge { display: inline-block; background: rgba(231,76,60,0.18); color: #f26a5c; font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .06em; padding: 2px 8px; border-radius: 10px; margin-left: 8px; }
 
     /* ── Mobile ── */
     @media (max-width: 600px) {
@@ -336,7 +341,7 @@
 <!-- ── Toast Container ───────────────────────────────────────────────────────── -->
 <div class="toast-wrap" id="toastWrap"></div>
 
-<script src="portal-supabase.js?v=11"></script>
+<script src="portal-supabase.js?v=12"></script>
 <script>
   // ── Constants ────────────────────────────────────────────────────────────────
   // Replace with your actual Supabase URL and anon key
@@ -506,7 +511,7 @@
         <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:12px;margin-bottom:8px;">
           <div style="font-weight:600;">${blast.subject}${blast.urgent ? '<span class="urgent-badge">URGENT</span>' : ''}</div>
           ${isAcknowledged
-            ? `<span style="font-size:11px;color:var(--success);font-weight:700;flex-shrink:0;">Acknowledged</span>`
+            ? `<span style="font-size:12px;color:var(--success);font-weight:700;flex-shrink:0;">Acknowledged</span>`
             : `<button class="btn btn-success btn-sm" style="flex-shrink:0;" onclick="acknowledgeBlast('${blast.id}')">Acknowledge</button>`}
         </div>
         <div class="blast-item-body">${(blast.body || '').replace(/\n/g, '<br>')}</div>

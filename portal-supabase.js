@@ -1,5 +1,6 @@
 /**
  * portal-supabase.js — Baseline Studio Portal Data Layer
+ * v12 — sendEmail returns {ok,id}|{ok:false,error,detail} on every status; createProviderUser uses the signed-in JWT and no longer sends email.
  * v2 — bulletproof saving: token refresh, retry queue, localStorage backup,
  *       pre-load write queue, save-status pill, beforeunload guard.
  */
@@ -571,25 +572,26 @@ window.BSPortal = {
   },
 
   async createProviderUser(email, password, name, role) {
-    // Step 1: Create / update the Supabase auth user via invite-provider edge function.
-    // This function uses the service role key (set as a secret in the dashboard by Saul).
-    // Account creation succeeds even if the follow-up email fails.
-    let accountResult = { error: 'invite-provider function not deployed' };
+    // Creates / updates the Supabase auth user via the invite-provider edge function.
+    // Authenticated with the signed-in user's JWT (master role required server-side), NOT the anon key.
+    // Does NOT send the invite email; callers send provider_invite themselves and report that result separately.
+    if (!_token) return { ok: false, error: 'Not signed in. Sign in again and retry.' };
     try {
       const r = await fetch(INVITE_FN_URL, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'apikey': SUPABASE_ANON, 'Authorization': 'Bearer ' + SUPABASE_ANON },
+        headers: { 'Content-Type': 'application/json', 'apikey': SUPABASE_ANON, 'Authorization': `Bearer ${_token}` },
         body: JSON.stringify({ email, password, name, role })
       });
-      accountResult = await r.json();
+      let data = null;
+      try { data = await r.json(); } catch (e) { data = null; }
+      if (!data) return { ok: false, error: 'HTTP ' + r.status };
+      if (!r.ok || data.ok === false || data.error) {
+        return { ok: false, error: data.error || data.message || data.msg || ('HTTP ' + r.status), detail: data.detail };
+      }
+      return { ok: true, userId: data.userId };
     } catch (e) {
-      accountResult = { error: String(e) };
+      return { ok: false, error: String(e) };
     }
-
-    // Step 2: Send invitation email — non-blocking; email failure does NOT affect account creation.
-    this.sendEmail('provider_invite', { email, password, name, role }).catch(() => {});
-
-    return accountResult;
   },
 
   async sendEmail(type, payload) {
@@ -599,10 +601,15 @@ window.BSPortal = {
         headers: { 'Content-Type': 'application/json', 'apikey': SUPABASE_ANON, 'Authorization': 'Bearer ' + SUPABASE_ANON },
         body: JSON.stringify({ type, ...payload })
       });
-      const data = await r.json();
-      if (!r.ok) { console.warn('[sendEmail] error:', data); return { error: data.error || 'Email failed' }; }
-      return { ok: true };
-    } catch (e) { console.warn('[sendEmail] network error:', e); return { error: String(e) }; }
+      let data = null;
+      try { data = await r.json(); } catch (e) { data = null; }
+      if (!data) { console.warn('[sendEmail] non-JSON response, status', r.status); return { ok: false, error: 'HTTP ' + r.status }; }
+      if (!r.ok || data.ok === false || data.error) {
+        console.warn('[sendEmail] error:', data);
+        return { ok: false, error: data.error || ('HTTP ' + r.status), detail: data.detail };
+      }
+      return { ok: true, id: data.id };
+    } catch (e) { console.warn('[sendEmail] network error:', e); return { ok: false, error: String(e) }; }
   },
 
   // Re-fetch all provider data from Supabase and refresh window.DB

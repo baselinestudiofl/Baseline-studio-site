@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Baseline Studio - Your Event</title>
-  <script src="portal-supabase.js?v=11"></script>
+  <script src="portal-supabase.js?v=12"></script>
   <script src="lighting-preview.js?v=2"></script>
   <link rel="stylesheet" href="fonts/fonts.css">
   <style>
@@ -30,6 +30,11 @@
       --font-head: 'Anton', Impact, sans-serif;
       --font-body: 'Barlow', system-ui, sans-serif;
       --font-condensed: 'Barlow Condensed', 'Barlow', system-ui, sans-serif;
+      /* T6 contrast tokens: text-3 is the floor for any text; border-ui is for inputs, buttons and toggles (3:1). The 0.08 rule stays decorative. */
+      --text-1: #f4f6f8;
+      --text-2: rgba(255,255,255,0.72);
+      --text-3: rgba(255,255,255,0.62);
+      --border-ui: rgba(255,255,255,0.38);
       --glow-cyan: 0 0 32px rgba(31,163,224,0.35);
       --card-shadow: 0 4px 40px rgba(0,0,0,0.55), 0 1px 0 rgba(255,255,255,0.04) inset;
     }
@@ -159,7 +164,7 @@
     }
 
     .profile-menu-event {
-      font-size: 11px;
+      font-size: 12px;
       color: var(--cyan);
       margin-top: 2px;
       white-space: nowrap;
@@ -243,7 +248,7 @@
     .pw-modal input {
       width: 100%;
       background: rgba(255,255,255,0.05);
-      border: 1px solid rgba(255,255,255,0.12);
+      border: 1px solid var(--border-ui);
       border-radius: 6px;
       color: var(--white);
       padding: 9px 12px;
@@ -439,7 +444,7 @@
     }
     .qc-chip.expanded:hover { background: rgba(31,163,224,0.1); }
     .qc-time-badge {
-      font-size: 11px;
+      font-size: 12px;
       color: #1FA3E0;
       font-weight: 600;
       font-variant-numeric: tabular-nums;
@@ -448,7 +453,7 @@
     .qc-time-input {
       width: 96px;
       background: rgba(255,255,255,0.06);
-      border: 1px solid rgba(255,255,255,0.12);
+      border: 1px solid var(--border-ui);
       border-radius: 6px;
       padding: 3px 7px;
       color: #1FA3E0;
@@ -459,7 +464,7 @@
     }
     .qc-time-input:focus {
       outline: none;
-      border-color: rgba(31,163,224,0.5);
+      border-color: rgba(31,163,224,0.65);
       box-shadow: 0 0 0 2px rgba(31,163,224,0.12);
       background: rgba(31,163,224,0.06);
     }
@@ -483,7 +488,7 @@
     .qc-cancel {
       background: none;
       border: none;
-      color: rgba(255,255,255,0.25);
+      color: var(--text-3);
       font-size: 14px;
       cursor: pointer;
       padding: 2px 4px;
@@ -638,7 +643,7 @@
     .enhancement-options label { font-size: 12px; color: var(--gray); display: block; margin-bottom: 6px; margin-top: 10px; }
     .enhancement-options label:first-child { margin-top: 0; }
     .enhancement-options input[type="text"],
-    .enhancement-options textarea { width: 100%; box-sizing: border-box; background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.1); color: #fff; border-radius: 6px; padding: 8px; font-family: inherit; font-size: 13px; }
+    .enhancement-options textarea { width: 100%; box-sizing: border-box; background: rgba(255,255,255,0.06); border: 1px solid var(--border-ui); color: #fff; border-radius: 6px; padding: 8px; font-family: inherit; font-size: 13px; }
     .enhancement-options textarea { resize: vertical; }
 
     .card.hero {
@@ -832,7 +837,7 @@
     input, textarea, select {
       width: 100%;
       background: rgba(255,255,255,0.04);
-      border: 1px solid rgba(255,255,255,0.09);
+      border: 1px solid var(--border-ui);
       color: var(--white);
       padding: 11px 14px;
       border-radius: 8px;
@@ -843,7 +848,7 @@
     }
 
     input:hover, textarea:hover, select:hover {
-      border-color: rgba(255,255,255,0.16);
+      border-color: var(--border-ui);
       background: rgba(255,255,255,0.06);
     }
 
@@ -873,7 +878,7 @@
     }
 
     input::placeholder, textarea::placeholder {
-      color: rgba(255,255,255,0.25);
+      color: var(--text-3);
     }
 
     select option {
@@ -955,13 +960,13 @@
 
     .btn-secondary {
       background: rgba(31,163,224,0.07);
-      border: 1px solid rgba(31,163,224,0.3);
+      border: 1px solid rgba(31,163,224,0.65);
       color: var(--cyan);
     }
 
     .btn-secondary:hover {
       background: rgba(31,163,224,0.15);
-      border-color: rgba(31,163,224,0.55);
+      border-color: rgba(31,163,224,0.9);
     }
 
     .btn-small {
@@ -972,8 +977,8 @@
 
     .btn-danger {
       background: transparent;
-      border: 1px solid rgba(244, 67, 54, 0.5);
-      color: rgba(244, 67, 54, 0.8);
+      border: 1px solid rgba(244,67,54,0.75);
+      color: #f44336;
       padding: 6px 12px;
       font-size: 12px;
     }
@@ -1147,7 +1152,7 @@
     }
 
     .message-time {
-      font-size: 11px;
+      font-size: 12px;
       color: var(--gray);
       margin-top: 4px;
     }
@@ -1295,7 +1300,7 @@
       /* Nav — make the event switcher not clip */
       #eventSwitcher {
         max-width: 110px;
-        font-size: 11px;
+        font-size: 12px;
       }
 
       /* Timeline rows — label should truncate cleanly, not overflow */
@@ -1312,7 +1317,7 @@
 
       /* Quick-add time badge — slightly smaller on mobile */
       .qc-time-badge {
-        font-size: 11px;
+        font-size: 12px;
       }
 
       /* QC chip confirm button — compact on mobile */
@@ -1328,7 +1333,7 @@
 
       /* Form group labels */
       .form-label {
-        font-size: 11px;
+        font-size: 12px;
       }
 
       /* Stat/countdown section centering */
@@ -1492,7 +1497,7 @@
       z-index: 1;
     }
     .countdown-label {
-      font-size: 11px;
+      font-size: 12px;
       letter-spacing: 0.22em;
       margin-top: 16px;
       color: color-mix(in srgb, var(--countdown-color, #1FA3E0) 70%, white);
@@ -1529,12 +1534,12 @@
 
     .btn-secondary {
       background: rgba(31,163,224,0.07);
-      border: 1px solid rgba(31,163,224,0.22);
+      border: 1px solid rgba(31,163,224,0.65);
     }
 
     .btn-secondary:hover {
       background: rgba(31,163,224,0.15);
-      border-color: rgba(31,163,224,0.48);
+      border-color: rgba(31,163,224,0.9);
       box-shadow: 0 0 0 3px rgba(31,163,224,0.07);
     }
 
@@ -1633,11 +1638,11 @@
     input, textarea, select {
       border-radius: 10px;
       background: rgba(255,255,255,0.04);
-      border-color: rgba(255,255,255,0.09);
+      border-color: var(--border-ui);
     }
     input:focus, textarea:focus, select:focus {
       background: rgba(31,163,224,0.04);
-      border-color: rgba(31,163,224,0.52);
+      border-color: rgba(31,163,224,0.65);
       box-shadow: 0 0 0 3px rgba(31,163,224,0.1), 0 1px 0 rgba(31,163,224,0.18) inset;
     }
 
@@ -1717,7 +1722,7 @@
         text-overflow: ellipsis;
       }
       .nav-right { gap: 10px; flex-shrink: 0; }
-      #eventSwitcher { max-width: 100px; font-size: 11px; }
+      #eventSwitcher { max-width: 100px; font-size: 12px; }
 
       /* ── Tab bar ─────────────────────────────────────────────────── */
       .tab-bar { padding: 0 6px; height: 44px; }
@@ -1787,7 +1792,7 @@
       .vendor-card { flex-direction: column; align-items: flex-start; gap: 8px; }
 
       /* ── QC chips / inline add ───────────────────────────────────── */
-      .qc-chip { font-size: 11px; padding: 5px 10px; }
+      .qc-chip { font-size: 12px; padding: 5px 10px; }
       .qc-confirm { padding: 4px 10px; font-size: 12px; }
       .qc-time-input { width: 82px; }
 
@@ -1802,7 +1807,7 @@
       .card { padding: 12px; }
       h1 { font-size: 24px; }
       .countdown-number { font-size: 44px; }
-      .tab { padding: 10px 10px; font-size: 11px; }
+      .tab { padding: 10px 10px; font-size: 12px; }
     }
 
     /* ── Onboarding Wizard ────────────────────────────────────────────────── */
@@ -1845,7 +1850,7 @@
     }
     .ob-sub {
       font-size: 14px;
-      color: rgba(255,255,255,0.42);
+      color: var(--text-3);
       margin-bottom: 28px;
       line-height: 1.55;
     }
@@ -1877,7 +1882,7 @@
     }
     .ob-chip.selected {
       background: rgba(31,163,224,0.14);
-      border-color: rgba(31,163,224,0.55);
+      border-color: rgba(31,163,224,0.65);
       color: #1FA3E0;
       box-shadow: 0 0 0 1px rgba(31,163,224,0.18), 0 4px 14px rgba(31,163,224,0.12);
     }
@@ -1921,7 +1926,7 @@
       display: flex;
       align-items: center;
       justify-content: center;
-      font-size: 11px;
+      font-size: 12px;
       font-weight: 800;
       transition: all 0.18s;
     }
@@ -1934,7 +1939,7 @@
     .ob-input-large {
       width: 100%;
       background: rgba(255,255,255,0.05);
-      border: 1px solid rgba(255,255,255,0.1);
+      border: 1px solid var(--border-ui);
       border-radius: 12px;
       color: #fff;
       font-size: 16px;
@@ -1947,7 +1952,7 @@
     }
     .ob-input-large::placeholder { color: rgba(255,255,255,0.55); }
     .ob-input-large:focus {
-      border-color: rgba(31,163,224,0.5);
+      border-color: rgba(31,163,224,0.65);
       box-shadow: 0 0 0 3px rgba(31,163,224,0.1);
       background: rgba(31,163,224,0.03);
     }
@@ -1956,7 +1961,7 @@
       width: 100%;
       min-height: 100px;
       background: rgba(255,255,255,0.05);
-      border: 1px solid rgba(255,255,255,0.1);
+      border: 1px solid var(--border-ui);
       border-radius: 12px;
       color: #fff;
       font-size: 15px;
@@ -1971,7 +1976,7 @@
     }
     .ob-textarea-large::placeholder { color: rgba(255,255,255,0.55); }
     .ob-textarea-large:focus {
-      border-color: rgba(31,163,224,0.5);
+      border-color: rgba(31,163,224,0.65);
       box-shadow: 0 0 0 3px rgba(31,163,224,0.1);
       background: rgba(31,163,224,0.03);
     }
@@ -2025,7 +2030,7 @@
     }
     .ob-welcome-body {
       font-size: 15px;
-      color: rgba(255,255,255,0.48);
+      color: var(--text-3);
       line-height: 1.65;
       max-width: 340px;
       margin: 0 auto 32px;
@@ -2069,7 +2074,7 @@
       </div>
       <div class="nav-center" id="eventNameNav" style="display:flex;align-items:center;justify-content:center;gap:8px;">
         <span id="eventNameText">My Event</span>
-        <select id="eventSwitcher" style="display:none;background:#1a1a24;border:1px solid rgba(255,255,255,0.15);color:#fff;padding:3px 8px;border-radius:6px;font-size:11px;cursor:pointer;max-width:140px;" onchange="switchEvent(this.value)"></select>
+        <select id="eventSwitcher" style="display:none;background:#1a1a24;border:1px solid var(--border-ui);color:#fff;padding:3px 8px;border-radius:6px;font-size:12px;cursor:pointer;max-width:140px;" onchange="switchEvent(this.value)"></select>
       </div>
       <div class="nav-right">
         <div class="profile-avatar" role="button" tabindex="0" id="profileAvatar" onclick="toggleProfileMenu()">
@@ -2806,8 +2811,8 @@
           suggestions.innerHTML = results.map(v => `
             <div class="vendor-suggestion" role="button" tabindex="0" onclick="fillVendor(${JSON.stringify(v).replace(/"/g,'&quot;')})">
               <span>${v.name}</span>
-              <span style="font-size:11px;color:#1FA3E0;margin-left:8px;">Baseline has worked with them</span>
-              ${v.category ? `<span style="font-size:11px;color:rgba(255,255,255,0.55);margin-left:8px;">${v.category}</span>` : ''}
+              <span style="font-size:12px;color:#1FA3E0;margin-left:8px;">Baseline has worked with them</span>
+              ${v.category ? `<span style="font-size:12px;color:rgba(255,255,255,0.55);margin-left:8px;">${v.category}</span>` : ''}
             </div>`).join('');
           suggestions.style.display = 'block';
         }, 300);
@@ -2926,11 +2931,11 @@
           <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.12em;color:rgba(255,255,255,0.55);margin-bottom:12px;font-family:'Barlow Condensed',sans-serif;">Add a Moment</div>
           <div class="form-row" style="align-items:flex-end;gap:12px;">
             <div class="form-group" style="margin-bottom:0;flex:0 0 120px;">
-              <label class="form-label" style="font-size:11px;color:rgba(255,255,255,0.55);margin-bottom:6px;" for="timelineTime">Time</label>
+              <label class="form-label" style="font-size:12px;color:rgba(255,255,255,0.55);margin-bottom:6px;" for="timelineTime">Time</label>
               <input type="time" id="timelineTime">
             </div>
             <div class="form-group" style="margin-bottom:0;flex:1;">
-              <label class="form-label" style="font-size:11px;color:rgba(255,255,255,0.55);margin-bottom:6px;" for="timelineLabel">Moment</label>
+              <label class="form-label" style="font-size:12px;color:rgba(255,255,255,0.55);margin-bottom:6px;" for="timelineLabel">Moment</label>
               <select id="timelineLabel" onchange="if(this.value==='Custom...'){this.style.display='none';document.getElementById('timelineLabelCustom').style.display='block';}">
                 <option value="">Choose a moment</option>
                 ${moments.map(m => `<option value="${m}">${m}</option>`).join('')}
@@ -3060,7 +3065,7 @@
           <p>Tell us about songs, artists, or genres to avoid.</p>
           <div style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:12px;">
             ${['Chicken Dance','Macarena','YMCA','Cotton-Eye Joe','Electric Slide','Cha Cha Slide'].map(song => `
-              <button style="background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.12);color:rgba(255,255,255,0.6);font-family:Barlow,sans-serif;font-size:12px;padding:5px 12px;border-radius:20px;cursor:pointer;" onclick="addDNPChip('${song}')">+ ${song}</button>
+              <button style="background:rgba(255,255,255,0.06);border:1px solid var(--border-ui);color:rgba(255,255,255,0.6);font-family:Barlow,sans-serif;font-size:12px;padding:5px 12px;border-radius:20px;cursor:pointer;" onclick="addDNPChip('${song}')">+ ${song}</button>
             `).join('')}
           </div>
           <textarea id="doNotPlayText" placeholder="Songs, artists, or genres that are off-limits. Be specific — we'll respect it.">${doNotPlay}</textarea>
@@ -3346,7 +3351,7 @@
 
           <div class="enhancement-section" style="border-bottom:none;padding-bottom:0;">
             <div style="font-weight:600;font-size:14px;margin-bottom:8px;"> Anything Else?</div>
-            <textarea id="otherEnhancements" style="width:100%;box-sizing:border-box;background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.1);color:#fff;border-radius:6px;padding:8px;font-family:inherit;resize:vertical;font-size:13px;" rows="3" placeholder="Cold sparklers, fog machine, custom monogram, pipe & drape...">${saved.otherEnhancements||''}</textarea>
+            <textarea id="otherEnhancements" style="width:100%;box-sizing:border-box;background:rgba(255,255,255,0.06);border:1px solid var(--border-ui);color:#fff;border-radius:6px;padding:8px;font-family:inherit;resize:vertical;font-size:13px;" rows="3" placeholder="Cold sparklers, fog machine, custom monogram, pipe & drape...">${saved.otherEnhancements||''}</textarea>
           </div>
 
           <button onclick="saveEnhancements()" style="margin-top:16px;width:100%;padding:13px;background:var(--accent, #1FA3E0);border:none;border-radius:8px;color:#000;font-weight:700;cursor:pointer;font-size:14px;letter-spacing:0.5px;">Save My Selections</button>
@@ -3484,9 +3489,9 @@
               <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;margin-bottom:12px;">
                 <h4 style="font-size:16px;margin:0;">${doc.label || doc.name || 'Document'}</h4>
                 <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
-                  ${alreadySig ? `<span style="font-size:11px;font-weight:700;color:#2ecc71;background:rgba(46,204,113,0.1);padding:4px 10px;border-radius:20px;border:1px solid rgba(46,204,113,0.25);">✓ Signed ${signedAt}</span>` : ''}
+                  ${alreadySig ? `<span style="font-size:12px;font-weight:700;color:#2ecc71;background:rgba(46,204,113,0.1);padding:4px 10px;border-radius:20px;border:1px solid rgba(46,204,113,0.25);">✓ Signed ${signedAt}</span>` : ''}
                   ${needsSig   ? `<button onclick="openClientSignModal(${idx})" style="padding:6px 14px;background:#1FA3E0;border:none;border-radius:6px;color:#000;font-weight:700;cursor:pointer;font-size:12px;">Sign Document</button>` : ''}
-                  <button onclick="printClientDoc(${idx})" style="padding:6px 14px;background:rgba(255,255,255,0.07);border:1px solid rgba(255,255,255,0.12);border-radius:6px;color:rgba(255,255,255,0.7);font-weight:600;cursor:pointer;font-size:12px;">Print / PDF</button>
+                  <button onclick="printClientDoc(${idx})" style="padding:6px 14px;background:rgba(255,255,255,0.07);border:1px solid var(--border-ui);border-radius:6px;color:rgba(255,255,255,0.7);font-weight:600;cursor:pointer;font-size:12px;">Print / PDF</button>
                 </div>
               </div>
               <div style="background:rgba(255,255,255,0.04);border-radius:8px;padding:16px;font-size:13px;color:rgba(255,255,255,0.8);line-height:1.7;max-height:300px;overflow-y:auto;">
@@ -3578,7 +3583,7 @@
       const phone = currentEvent.clientPhone || (currentUser && currentUser.phone) || '';
       const email = (currentUser && currentUser.email) || '';
 
-      const inputStyle = 'width:100%;box-sizing:border-box;background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.12);border-radius:8px;padding:12px 14px;color:#fff;font-size:15px;outline:none;font-family:inherit;';
+      const inputStyle = 'width:100%;box-sizing:border-box;background:rgba(255,255,255,0.06);border:1px solid var(--border-ui);border-radius:8px;padding:12px 14px;color:#fff;font-size:15px;font-family:inherit;';
       const labelStyle = 'display:block;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.08em;color:rgba(255,255,255,0.55);margin-bottom:7px;';
       const cardStyle  = 'background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.1);border-radius:12px;padding:22px;margin-bottom:22px;';
       const headStyle  = 'font-family:Anton,sans-serif;font-size:14px;letter-spacing:0.08em;text-transform:uppercase;color:rgba(255,255,255,0.85);margin-bottom:18px;';
@@ -3603,7 +3608,7 @@
             <div style="margin-bottom:20px;">
               <label style="${labelStyle}">Email</label>
               <div style="background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.07);border-radius:8px;padding:12px 14px;font-size:15px;color:rgba(255,255,255,0.55);">${email}</div>
-              <div style="font-size:11px;color:rgba(255,255,255,0.55);margin-top:5px;">Your email is your login — it can't be changed here.</div>
+              <div style="font-size:12px;color:rgba(255,255,255,0.55);margin-top:5px;">Your email is your login — it can't be changed here.</div>
             </div>
 
             <div style="display:flex;align-items:center;gap:14px;">
@@ -3639,7 +3644,7 @@
 
           <!-- Sign out -->
           <div style="text-align:center;padding-top:4px;">
-            <button onclick="logout()" style="background:none;border:1px solid rgba(255,255,255,0.15);border-radius:8px;padding:10px 22px;color:rgba(255,255,255,0.55);font-size:13px;cursor:pointer;letter-spacing:0.02em;">Sign out</button>
+            <button onclick="logout()" style="background:none;border:1px solid var(--border-ui);border-radius:8px;padding:10px 22px;color:rgba(255,255,255,0.55);font-size:13px;cursor:pointer;letter-spacing:0.02em;">Sign out</button>
           </div>
 
         </div>
@@ -3679,7 +3684,7 @@
       if (nw.length < 6) { setFb('New password must be at least 6 characters.', false); return; }
       if (nw !== conf) { setFb('Passwords do not match.', false); return; }
 
-      if (fb) { fb.textContent = 'Updating…'; fb.style.color = 'rgba(255,255,255,0.45)'; }
+      if (fb) { fb.textContent = 'Updating…'; fb.style.color = 'var(--text-3)'; }
 
       try {
         const SUPABASE_URL  = 'https://jkdhkwcxnwpiufeyrnso.supabase.co';
@@ -3742,7 +3747,7 @@
         document.body.appendChild(pill);
       }
       clearTimeout(pill._t);
-      pill.innerHTML = '<span style="color:#e74c3c;">⚠ Couldn\'t save</span><button onclick="(function(){var p=document.getElementById(\'_saveErrorPill\');p.style.transform=\'translateY(80px)\';p.style.opacity=\'0\';' + (retryFn ? 'window._clientSaveRetryFn&&window._clientSaveRetryFn();' : '') + '})()" style="background:rgba(231,76,60,0.2);border:1px solid rgba(231,76,60,0.4);color:#e74c3c;font-family:Barlow,sans-serif;font-size:12px;font-weight:700;padding:4px 12px;border-radius:8px;cursor:pointer;">Retry</button>';
+      pill.innerHTML = '<span style="color:#f26a5c;">⚠ Couldn\'t save</span><button onclick="(function(){var p=document.getElementById(\'_saveErrorPill\');p.style.transform=\'translateY(80px)\';p.style.opacity=\'0\';' + (retryFn ? 'window._clientSaveRetryFn&&window._clientSaveRetryFn();' : '') + '})()" style="background:rgba(231,76,60,0.2);border:1px solid rgba(231,76,60,0.75);color:#f26a5c;font-family:Barlow,sans-serif;font-size:12px;font-weight:700;padding:4px 12px;border-radius:8px;cursor:pointer;">Retry</button>';
       window._clientSaveRetryFn = retryFn;
       pill.style.transform = 'translateY(0)';
       pill.style.opacity = '1';
@@ -4143,15 +4148,15 @@
       </div>
       <div id="clientSignDocTitle" style="font-size:13px;color:rgba(255,255,255,0.55);margin-bottom:18px;"></div>
       <div style="font-size:12px;color:rgba(255,255,255,0.55);margin-bottom:10px;">Draw your signature below</div>
-      <canvas id="clientSignCanvas" width="432" height="140" style="width:100%;height:140px;background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.1);border-radius:8px;cursor:crosshair;touch-action:none;"></canvas>
+      <canvas id="clientSignCanvas" width="432" height="140" style="width:100%;height:140px;background:rgba(255,255,255,0.04);border:1px solid var(--border-ui);border-radius:8px;cursor:crosshair;touch-action:none;"></canvas>
       <div style="display:flex;justify-content:space-between;align-items:center;margin-top:16px;flex-wrap:wrap;gap:10px;">
-        <button onclick="clearClientSignature()" style="padding:8px 16px;background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.12);border-radius:7px;color:rgba(255,255,255,0.6);font-size:13px;cursor:pointer;font-family:'Barlow',sans-serif;">Clear</button>
+        <button onclick="clearClientSignature()" style="padding:8px 16px;background:rgba(255,255,255,0.06);border:1px solid var(--border-ui);border-radius:7px;color:rgba(255,255,255,0.6);font-size:13px;cursor:pointer;font-family:'Barlow',sans-serif;">Clear</button>
         <div style="display:flex;gap:8px;">
-          <button onclick="closeClientSignModal()" style="padding:8px 16px;background:none;border:1px solid rgba(255,255,255,0.12);border-radius:7px;color:rgba(255,255,255,0.55);font-size:13px;cursor:pointer;font-family:'Barlow',sans-serif;">Cancel</button>
+          <button onclick="closeClientSignModal()" style="padding:8px 16px;background:none;border:1px solid var(--border-ui);border-radius:7px;color:rgba(255,255,255,0.55);font-size:13px;cursor:pointer;font-family:'Barlow',sans-serif;">Cancel</button>
           <button onclick="saveClientSignature()" style="padding:8px 20px;background:#1FA3E0;border:none;border-radius:7px;color:#000;font-weight:700;font-size:13px;cursor:pointer;font-family:'Barlow',sans-serif;">Confirm Signature</button>
         </div>
       </div>
-      <p style="font-size:11px;color:rgba(255,255,255,0.25);margin-top:14px;line-height:1.5;">By clicking "Confirm Signature" you confirm this is your authorized signature for this document.</p>
+      <p style="font-size:12px;color:var(--text-3);margin-top:14px;line-height:1.5;">By clicking "Confirm Signature" you confirm this is your authorized signature for this document.</p>
     </div>
   </div>
 </body>
