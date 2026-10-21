@@ -1483,14 +1483,66 @@
         const pick = BSContracts.pickTemplate(ev, templates);
         const opts = templates.map(t => `<option value="${_evA(t.id)}"${pick.template && pick.template.id === t.id ? ' selected' : ''}>${esc(t.name)}</option>`).join('');
         const hint = !pick.template ? 'No templates yet. Add one under Documents.' : (pick.typeUnknown ? 'This event has no recognized type, so the generic agreement is selected. Set the event type to get the matching one.' : 'Picked for this event: ' + pick.template.name + '. Choose another if you need a different one.');
-        html = `<div class="field"><label class="field-label" for="csTemplate">Agreement</label><select class="input" id="csTemplate">${opts}</select><div class="field-hint">${esc(hint)}</div></div>
+        const co = BSContracts.contractOptions(ev);
+        const contactBits = [ev.clientName, ev.clientEmail || ev.portalEmail, ev.clientPhone].filter(Boolean).join(', ');
+        const segBtn = (v, label) => `<button type="button" class="seg-btn${co.powerSource === v ? ' active' : ''}" role="radio" aria-checked="${co.powerSource === v ? 'true' : 'false'}" data-power="${v}">${label}</button>`;
+        const details = `<fieldset class="cs-group"><legend class="cs-legend">Contract details</legend>
+          <div class="field"><label class="field-label" for="csCompany">Company</label><input class="input cs-in" id="csCompany" type="text" autocomplete="off" value="${_evA(co.company)}" placeholder="Leave blank if the client is a person"><div class="field-hint">When set, the company is the client on the contract.</div></div>
+          <div class="field"><span class="field-label">Contact</span><div class="cs-ro" id="csContact">${contactBits ? esc(contactBits) : 'No contact on this event yet.'}</div></div>
+          <div class="cs-row"><div class="field"><label class="field-label" for="csSignerName">Signer name</label><input class="input cs-in" id="csSignerName" type="text" autocomplete="off" value="${_evA(co.signerName)}" placeholder="Not known yet"></div>
+            <div class="field"><label class="field-label" for="csSignerTitle">Signer title</label><input class="input cs-in" id="csSignerTitle" type="text" autocomplete="off" value="${_evA(co.signerTitle)}" placeholder="Not known yet"></div></div>
+          <div class="field"><span class="field-label" id="csPowerL">Power</span><div class="seg cs-seg" id="csPower" role="radiogroup" aria-labelledby="csPowerL">${segBtn('venue', 'Venue power')}${segBtn('generator', 'Our generator')}${segBtn('client_generator', 'Client generator')}</div><div class="field-hint">Our generator means we bring and run one. Client generator means the client provides one.</div></div>
+        </fieldset>`;
+        html = `<div id="csStepDetails">${details}<div class="field"><label class="field-label" for="csTemplate">Agreement</label><select class="input" id="csTemplate">${opts}</select><div class="field-hint">${esc(hint)}</div></div>
           <div class="ev-switch-list">
             ${_evSwitchRow('csShare', 'Share with client', 'Shows in their portal.', true)}
             ${_evSwitchRow('csSign', 'Require signature', 'They sign in the portal.', true)}
             ${canDeposit ? _evSwitchRow('csDeposit', 'Also send deposit invoice', pct + '%, ' + _evMoneyStr(dep), true) : ''}
-          </div>`;
+          </div></div><div id="csStepEdit" hidden></div>`;
       }
+      let stage = 'details';
+      let edited = false;
+      const readOpts = function (dlg) {
+        const pw = dlg.querySelector('#csPower [aria-checked="true"]');
+        return {
+          clientCompany: (dlg.querySelector('#csCompany').value || '').trim(),
+          signerName: (dlg.querySelector('#csSignerName').value || '').trim(),
+          signerTitle: (dlg.querySelector('#csSignerTitle').value || '').trim(),
+          powerSource: pw ? pw.getAttribute('data-power') : 'venue'
+        };
+      };
+      const goStage = function (dlg, to) {
+        stage = to;
+        dlg.classList.toggle('ce-sheet', to === 'edit');
+        const d1 = dlg.querySelector('#csStepDetails'), d2 = dlg.querySelector('#csStepEdit');
+        if (d1) d1.hidden = to !== 'details';
+        if (d2) d2.hidden = to !== 'edit';
+        const t = dlg.querySelector('.dlg-title'); if (t) t.textContent = to === 'edit' ? 'Review and edit' : 'Create contract';
+        const pb = dlg.querySelector('[data-primary]'); if (pb) pb.textContent = to === 'edit' ? 'Send contract' : 'Review and edit';
+        const sb = dlg.querySelector('.dlg-foot .btn-secondary'); if (sb) sb.textContent = to === 'edit' ? 'Back' : 'Cancel';
+        const body = dlg.querySelector('.dlg-body'); if (body) body.scrollTop = 0;
+      };
+      const mergeText = function (e2, tmpl) {
+        let h = BSContracts.mergeForEvent(tmpl.contentHTML || tmpl.content || '', e2, (typeof _contractEnv === 'function') ? _contractEnv() : { invoices: getDB('invoices') || [], settings: getDB('settings') || {} });
+        if (/agreement|contract|proposal/i.test(tmpl.name || '') && typeof _injectAddenda === 'function') h = _injectAddenda(h, e2);
+        return h;
+      };
       const run = async function (dlg) {
+        if (!resend && stage === 'details') {
+          const tSel = dlg.querySelector('#csTemplate');
+          if (!tSel || !tSel.value) { showToast('Pick an agreement first.', 'warning'); return false; }
+          const tm = (getDB('templates') || []).find(t => t.id === tSel.value);
+          if (!tm) { showToast('That agreement is missing. Pick another.', 'warning'); return false; }
+          if (typeof _ceEditorHtml !== 'function') { showToast('Reload the page to edit contracts.', 'warning'); return false; }
+          const evNow = (getDB('events') || []).find(e => e.id === eventId) || ev;
+          const merged = mergeText(Object.assign({}, evNow, readOpts(dlg)), tm);
+          const host = dlg.querySelector('#csStepEdit');
+          host.innerHTML = '<p class="ev-sheet-note" data-user-content>Check the wording and change anything you need. Then send it.</p>' + _ceEditorHtml(merged);
+          if (typeof _ceWire === 'function') _ceWire(host, Object.assign({}, evNow, readOpts(dlg)));
+          goStage(dlg, 'edit');
+          const ar = host.querySelector('#ceArea'); if (ar) { edited = false; ar.addEventListener('input', () => { edited = true; }); ar.focus(); }
+          return false;
+        }
         const share = dlg.querySelector('#csShare').getAttribute('aria-checked') === 'true';
         const sign = dlg.querySelector('#csSign').getAttribute('aria-checked') === 'true';
         const depEl = dlg.querySelector('#csDeposit');
@@ -1510,8 +1562,10 @@
         } else {
           const tmpl = (getDB('templates') || []).find(t => t.id === tplSel.value);
           if (!tmpl) return false;
-          let docHTML = BSContracts.mergeForEvent(tmpl.contentHTML || tmpl.content || '', e2, (typeof _contractEnv === 'function') ? _contractEnv() : { invoices: getDB('invoices') || [], settings: getDB('settings') || {} });
-          if (/agreement|contract|proposal/i.test(tmpl.name || '') && typeof _injectAddenda === 'function') docHTML = _injectAddenda(docHTML, e2);
+          const o = readOpts(dlg);
+          e2.clientCompany = o.clientCompany; e2.signerName = o.signerName; e2.signerTitle = o.signerTitle; e2.powerSource = o.powerSource;
+          let docHTML = (typeof _ceRead === 'function') ? _ceRead(dlg.querySelector('#csStepEdit')) : '';
+          if (!docHTML || !String(docHTML).replace(/<[^>]*>/g, '').trim()) { showToast('The contract text is empty. Go back and review it again.', 'warning'); return false; }
           e2.docs.push({ id: genId(), name: tmpl.name, contentHTML: docHTML, templateId: tmpl.id, createdAt: Date.now(), signedAt: null, signature: null,
             fromTemplate: true, requiresSignature: sign, sharedWithClient: share });
         }
@@ -1526,11 +1580,22 @@
         _evRefresh(e2);
         return true;
       };
-      return CRMUI.sheet({
+      const dlg = CRMUI.sheet({
         id: 'contractSheet', title: resend ? 'Resend contract' : 'Create contract', html,
-        secondary: { label: 'Cancel' },
-        primary: { label: resend ? 'Resend contract' : 'Send contract', onClick: run }
+        secondary: { label: 'Cancel', onClick: function (d) {
+          if (stage !== 'edit') return undefined;
+          if (!edited) { goStage(d, 'details'); return false; }
+          return _evConfirm({ title: 'Discard your edits?', body: 'Going back builds the contract again from the details, so your changes to the text are lost.', confirmLabel: 'Discard edits', danger: true })
+            .then(yes => { if (yes) goStage(d, 'details'); return false; });
+        } },
+        primary: { label: resend ? 'Resend contract' : 'Review and edit', onClick: run }
       });
+      if (dlg) {
+        dlg.querySelectorAll('#csPower .seg-btn').forEach(b => b.addEventListener('click', () => {
+          dlg.querySelectorAll('#csPower .seg-btn').forEach(x => { const on = x === b; x.classList.toggle('active', on); x.setAttribute('aria-checked', on ? 'true' : 'false'); });
+        }));
+      }
+      return dlg;
     }
 
     // ============================================================================

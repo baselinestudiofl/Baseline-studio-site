@@ -404,7 +404,8 @@
       return {
         notify: _getNotifySettings(),
         business: Object.assign({ name: '', address: '' }, st.business || {}),
-        inventory: Object.assign({ enabled: true, scan: true, nextTag: 1 }, st.inventory || {})
+        inventory: Object.assign({ enabled: true, scan: true, nextTag: 1 }, st.inventory || {}),
+        contractAiUrl: String(st.contractAiUrl || '').trim()
       };
     }
 
@@ -426,7 +427,7 @@
 
     // What changed on screen compared with what is saved. { notify, business, inventory, terms, count }
     function _setDiff() {
-      const out = { notify: 0, business: 0, inventory: 0, terms: 0, count: 0 };
+      const out = { notify: 0, business: 0, inventory: 0, terms: 0, assistant: 0, count: 0 };
       if (!document.getElementById('setLayout')) return out;
       const s = _setStored(), ns = _setReadNotify();
       Object.keys(_NOTIFY_SWITCHES).forEach(k => { if (!!ns[k] !== !!s.notify[k]) out.notify++; });
@@ -439,7 +440,8 @@
         const t = BSContracts.getTerms(getDB('settings')), raw = _contractTermsRaw();
         BSContracts.TERM_FIELDS.forEach(f => { if (String(raw[f.key]).trim() === '' || Number(raw[f.key]) !== Number(t[f.key])) out.terms++; });
       }
-      out.count = out.notify + out.business + out.inventory + out.terms;
+      if (document.getElementById('setAiUrl') && _setVal('setAiUrl').trim() !== s.contractAiUrl) out.assistant++;
+      out.count = out.notify + out.business + out.inventory + out.terms + out.assistant;
       return out;
     }
 
@@ -475,7 +477,7 @@
       const u = BSPortal.getCurrentUser() || {};
       const admin = ['master', 'admin'].includes(u.role);
       const chev = _p7Icon('chevron-right', 20);
-      const items = [['business', 'Business'], ['notifications', 'Notifications'], ['contract', 'Contract terms']]
+      const items = [['business', 'Business'], ['notifications', 'Notifications'], ['contract', 'Contract terms'], ['assistant', 'Contract assistant']]
         .concat(admin ? [['team', 'Team']] : []).concat([['inventory', 'Inventory']]);
       sec.innerHTML = `
         <div class="set-layout" id="setLayout" data-view="list" data-active="business">
@@ -496,6 +498,8 @@
                 ${_setSwitchRow('notifyVendorsTrack', 'notifyVendorsLabel', 'Vendor and enhancement additions', 'When a client adds a preferred vendor or service.', "toggleNotify('vendors')")}
               </div>`)}
             ${_setSection('contract', 'Contract terms', '', `<div id="contractTermsCard"></div>`)}
+            ${_setSection('assistant', 'Contract assistant', 'Optional. Suggests wording changes inside the contract editor. Leave it empty to turn it off.', `
+              <div class="field"><label class="field-label" for="setAiUrl">Assistant link</label><input type="url" class="form-input" id="setAiUrl" autocomplete="off" inputmode="url" placeholder="https://contract-ai.your-name.workers.dev"><span class="field-hint">Paste the link of your Cloudflare Worker. It uses the free plan, so it stops for the day when the free limit is used and never bills. Nothing is sent until you press Suggest changes in a contract.</span></div>`)}
             ${admin ? _setSection('team', 'Team', 'Logins and your crew roster live on the Team screen.', `<button type="button" class="btn btn-secondary" onclick="switchSection('accounts')">Open Team</button>`) : ''}
             ${_setSection('inventory', 'Inventory', 'Gear catalog, pull lists and check-out.', `
               ${_setSwitchRow('setInvEnabled', 'setInvEnabledLabel', 'Use inventory', 'Shows Inventory in the menu and on events.', '_setInvToggle(this)')}
@@ -539,7 +543,7 @@
       Object.keys(_NOTIFY_SWITCHES).forEach(k => _applyToggle(_NOTIFY_SWITCHES[k], s.notify[k]));
       _updateSubToggleVisibility(s.notify.enabled);
       const set = (id, v) => { const el = document.getElementById(id); if (el) el.value = v; };
-      set('setBizName', s.business.name || ''); set('setBizAddress', s.business.address || '');
+      set('setBizName', s.business.name || ''); set('setBizAddress', s.business.address || ''); set('setAiUrl', s.contractAiUrl || '');
       _applyInvSwitch('setInvEnabled', s.inventory.enabled); _applyInvSwitch('setInvScan', s.inventory.scan);
       set('setInvNextTag', s.inventory.nextTag);
       const nt = document.getElementById('setInvNextTag'); if (nt) nt.min = s.inventory.nextTag;
@@ -694,6 +698,14 @@
         if (!v.ok) { showToast(v.errors[0], 'error'); return; }
       }
       const stored = _setStored();
+      let aiUrl = '';
+      if (d.assistant) {
+        aiUrl = _setVal('setAiUrl').trim();
+        if (aiUrl && !(/^https:\/\/[^\s]+$/i.test(aiUrl) || /^http:\/\/localhost(:\d+)?(\/\S*)?$/i.test(aiUrl))) {
+          showToast('The assistant link must start with https://.', 'error');
+          return;
+        }
+      }
       let nextTag = null;
       if (d.inventory) {
         nextTag = parseInt(_setVal('setInvNextTag'), 10);
@@ -705,8 +717,9 @@
       const btn = document.getElementById('saveSettingsBtn');
       if (btn) { btn.setAttribute('aria-busy', 'true'); btn.setAttribute('aria-disabled', 'true'); btn.disabled = true; }
       try {
-        if (d.business || d.inventory) {
+        if (d.business || d.inventory || d.assistant) {
           const st = getDB('settings') || {};
+          if (d.assistant) st.contractAiUrl = aiUrl;
           if (d.business) st.business = { name: _setVal('setBizName').trim(), address: _setVal('setBizAddress').trim() };
           if (d.inventory) st.inventory = Object.assign({}, st.inventory || {}, { enabled: _setSwitchOn('setInvEnabled'), scan: _setSwitchOn('setInvScan'), nextTag });
           setDB('settings', st);

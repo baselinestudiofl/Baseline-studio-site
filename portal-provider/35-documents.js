@@ -91,9 +91,304 @@
       const signed = !!(doc.signedAt || _docClientSigned(doc));
       const items = [];
       items.push({ label: doc.sharedWithClient ? 'Stop sharing with client' : 'Share with client', icon: doc.sharedWithClient ? 'ban' : 'send', onSelect: () => toggleEventDocShare(eventId, docId, !doc.sharedWithClient) });
+      if (!signed) items.push({ label: 'Edit', icon: 'pencil', onSelect: () => editEventDoc(eventId, docId) });
       if (!signed) items.push({ label: doc.requiresSignature ? 'Signature not required' : 'Require client signature', icon: 'file-signature', onSelect: () => toggleDocRequiresSignature(eventId, docId, !doc.requiresSignature) });
       items.push({ label: 'Remove document', icon: 'trash-2', danger: true, onSelect: () => deleteEventDoc(eventId, docId) });
       CRMUI.menu(anchor, items, { label: 'Document actions', align: 'right' });
+    }
+
+    // ── Contract text editor (review before sending, and Edit on an unsigned event document) ──
+    // A contenteditable area with three tools: bold, bullet list, undo. Saved text always goes through _sanitizeDocHtml.
+    function _ceEditorHtml(html) {
+      const ic = n => (typeof CRMUI !== 'undefined' && CRMUI.icon) ? CRMUI.icon(n, 18) : '';
+      let raw = String(html == null ? '' : html);
+      if (raw && !/<[a-zA-Z][^>]*>/.test(raw)) raw = '<p>' + esc(raw).replace(/\n/g, '<br>') + '</p>';
+      const safe = (typeof _sanitizeDocHtml === 'function') ? _sanitizeDocHtml(raw) : raw;
+      return `<div class="ce-wrap">
+        ${_aiBoxHtml()}
+        <div class="ce-toolbar" role="toolbar" aria-label="Text tools">
+          <button type="button" class="btn btn-secondary btn-icon" data-ce="bold" aria-label="Bold" title="Bold">${ic('bold')}</button>
+          <button type="button" class="btn btn-secondary btn-icon" data-ce="insertUnorderedList" aria-label="Bullet list" title="Bullet list">${ic('list')}</button>
+          <button type="button" class="btn btn-secondary btn-icon" data-ce="undo" aria-label="Undo" title="Undo">${ic('undo-2')}</button>
+        </div>
+        <div class="ce-area" id="ceArea" contenteditable="true" role="textbox" aria-multiline="true" aria-label="Contract text" spellcheck="true">${safe}</div>
+      </div>`;
+    }
+    function _ceWire(root, ev) {
+      if (!root) return;
+      try { _aiWire(root, ev); } catch (e) { console.warn('[contract assistant]', e); }
+      root.querySelectorAll('[data-ce]').forEach(b => {
+        b.addEventListener('mousedown', e => e.preventDefault());
+        b.addEventListener('click', () => {
+          const area = root.querySelector('#ceArea');
+          if (area) area.focus();
+          try { document.execCommand(b.getAttribute('data-ce'), false, null); } catch (e) {}
+        });
+      });
+    }
+    function _ceRead(root) {
+      const area = root && root.querySelector('#ceArea');
+      if (!area) return '';
+      const raw = area.innerHTML;
+      return (typeof _sanitizeDocHtml === 'function') ? _sanitizeDocHtml(raw) : raw;
+    }
+    function _ceHasText(html) { return String(html || '').replace(/<[^>]*>/g, '').replace(/&nbsp;/g, ' ').trim().length > 0; }
+
+    // ── Contract assistant: optional AI suggestions in the contract editor ──
+    // Hidden unless Settings has a Contract assistant link (settings.contractAiUrl). Nothing is sent until the user presses Suggest changes.
+    // Every proposal is shown as a card. Accepted HTML goes through _sanitizeDocHtml before it is written into the editor.
+    function _aiUrl() {
+      const s = (typeof getDB === 'function' && getDB('settings')) || {};
+      const u = String(s.contractAiUrl || '').trim();
+      return (/^https:\/\/[^\s]+$/i.test(u) || /^http:\/\/localhost(:\d+)?(\/\S*)?$/i.test(u)) ? u : '';
+    }
+    function _aiMsg(kind) {
+      switch (kind) {
+        case 'limit': return 'The free AI limit for today is used up. Edit by hand or try again tomorrow.';
+        case 'auth': return 'Sign in again to use suggestions.';
+        case 'forbidden': return 'This login is not set up to use suggestions.';
+        case 'network': return 'Could not reach the assistant. Check the link in Settings and your connection.';
+        case 'empty': return 'Describe the change first.';
+        case 'long': return 'Keep the description under 600 characters.';
+        case 'big': return 'This contract is too long for the assistant. Edit it by hand.';
+        case 'stale': return 'The text changed after the suggestions were made. Press Suggest changes again.';
+        case 'none': return 'No change needed.';
+        default: return 'The assistant could not answer. Try again, or edit by hand.';
+      }
+    }
+    // Top-level blocks of the editor content as [{ i, html }]. Loose text and inline tags are wrapped in a paragraph.
+    function _aiSplitBlocks(html) {
+      const s = String(html == null ? '' : html);
+      const INLINE = /^(a|abbr|b|bdi|bdo|br|cite|code|em|font|i|mark|q|s|small|span|strike|strong|sub|sup|u|wbr)$/i;
+      const VOID = /^(br|hr|img|input|meta|link|wbr|col|area|base|embed|source|track)$/i;
+      const blocks = [];
+      const re = /<(\/?)([a-zA-Z][a-zA-Z0-9]*)\b(?:"[^"]*"|'[^']*'|[^>"'])*>/g;
+      let depth = 0, start = 0, loose = 0, m;
+      const flush = (to) => {
+        const t = s.slice(loose, to);
+        if (t.replace(/&nbsp;|<br\s*\/?>|\s/gi, '')) blocks.push('<p>' + t.trim() + '</p>');
+      };
+      while ((m = re.exec(s))) {
+        const closing = m[1] === '/', tag = m[2], selfClose = /\/>$/.test(m[0]);
+        if (depth === 0) {
+          if (closing || INLINE.test(tag)) continue;
+          flush(m.index);
+          if (VOID.test(tag) || selfClose) { blocks.push(m[0]); loose = re.lastIndex; continue; }
+          start = m.index; depth = 1;
+        } else if (!VOID.test(tag) && !selfClose) {
+          depth += closing ? -1 : 1;
+          if (depth === 0) { blocks.push(s.slice(start, re.lastIndex)); loose = re.lastIndex; }
+        }
+      }
+      if (depth > 0) blocks.push(s.slice(start)); else flush(s.length);
+      return blocks.map((h, i) => ({ i: i, html: h }));
+    }
+    // Compare editor text without caring about whitespace between tags.
+    function _aiNorm(html) { return String(html == null ? '' : html).replace(/>\s+</g, '><').trim(); }
+    // Proposed HTML: sanitized, and wrapped in a paragraph when it is plain text.
+    function _aiCleanHtml(html) {
+      let h = (typeof _sanitizeDocHtml === 'function') ? _sanitizeDocHtml(String(html == null ? '' : html)) : String(html || '');
+      h = h.trim();
+      if (h && !/^<(p|h[1-6]|ul|ol|div|table|blockquote|pre|hr)\b/i.test(h)) h = '<p>' + h + '</p>';
+      return h;
+    }
+    // New blocks joined as editor HTML. blocks: [{ i, html }] from the split. accepted: [{ i, html }]. i is a number or "after:<n>".
+    function _aiApply(blocks, accepted) {
+      const rep = new Map(), after = new Map();
+      (accepted || []).forEach(c => {
+        const h = _aiCleanHtml(c.html);
+        if (typeof c.i === 'number') rep.set(c.i, h);
+        else {
+          const n = Number(String(c.i).slice(6));
+          if (!after.has(n)) after.set(n, []);
+          if (h) after.get(n).push(h);
+        }
+      });
+      const out = [];
+      blocks.forEach(b => {
+        if (rep.has(b.i)) { if (rep.get(b.i)) out.push(rep.get(b.i)); } else out.push(b.html);
+        (after.get(b.i) || []).forEach(h => out.push(h));
+      });
+      return out.join('\n');
+    }
+    // Check the assistant reply again on this side. Returns { changes: [{ key, i, html, why, status }], notes }.
+    function _aiParseReply(data, blocks) {
+      const ids = new Set((blocks || []).map(b => b.i));
+      const byId = new Map((blocks || []).map(b => [b.i, b.html]));
+      const out = [];
+      const seen = new Set();
+      const list = data && Array.isArray(data.changes) ? data.changes : [];
+      list.slice(0, 20).forEach(c => {
+        if (!c || typeof c.html !== 'string') return;
+        let id = c.i;
+        if (typeof id === 'string' && /^\d+$/.test(id.trim())) id = Number(id);
+        const m = typeof id === 'string' ? id.trim().match(/^after:(\d+)$/i) : null;
+        if (m) id = 'after:' + Number(m[1]);
+        if (typeof id === 'number') { if (!ids.has(id)) return; }
+        else if (!(m && ids.has(Number(m[1])))) return;
+        const html = _aiCleanHtml(c.html);
+        if (typeof id === 'number' && _aiNorm(html) === _aiNorm(_aiCleanHtml(byId.get(id)))) return;
+        if (typeof id !== 'number' && !html) return;
+        const key = typeof id === 'number' ? 'r' + id : 'a' + id + ':' + html;
+        if (seen.has(key)) return;
+        seen.add(key);
+        out.push({ key: String(out.length), i: id, html: html, why: String(c.why == null ? '' : c.why).slice(0, 200), status: 'open' });
+      });
+      return { changes: out, notes: String(data && data.notes != null ? data.notes : '').slice(0, 300) };
+    }
+    function _aiEventInfo(ev) {
+      const e = ev || {};
+      const s = v => String(v == null ? '' : v).slice(0, 200);
+      return { name: s(e.name), date: s(e.date), venue: s(e.venueName || e.venue), company: s(e.clientCompany || e.company),
+        contact: s([e.clientName, e.clientEmail || e.portalEmail, e.clientPhone].filter(Boolean).join(', ')) };
+    }
+    // Returns a message when the request should not be sent, or ''.
+    function _aiPrecheck(instruction, blocks) {
+      const t = String(instruction || '').trim();
+      if (!t) return _aiMsg('empty');
+      if (t.length > 600) return _aiMsg('long');
+      const chars = (blocks || []).reduce((n, b) => n + b.html.length, 0);
+      if (!blocks || !blocks.length || blocks.length > 40 || chars > 30000) return _aiMsg('big');
+      return '';
+    }
+    // Posts to the assistant link with the session token. Resolves to { ok: true, data } or { error, message }.
+    async function _aiRequest(url, token, payload, fetchFn, signal) {
+      if (!token) return { error: 'auth', message: _aiMsg('auth') };
+      let r;
+      try {
+        r = await fetchFn(url, { method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token }, body: JSON.stringify(payload), signal: signal });
+      } catch (e) { return { error: 'network', message: _aiMsg('network') }; }
+      let data = null;
+      try { data = await r.json(); } catch (e) { data = null; }
+      const code = data && typeof data.error === 'string' ? data.error : '';
+      if (r.status === 429 || code === 'limit') return { error: 'limit', message: _aiMsg('limit') };
+      if (r.status === 401 || code === 'auth') return { error: 'auth', message: _aiMsg('auth') };
+      if (r.status === 403 && code === 'forbidden') return { error: 'forbidden', message: _aiMsg('forbidden') };
+      if (!r.ok) return { error: 'other', message: (r.status === 400 && /\s/.test(code)) ? code : _aiMsg('other') };
+      if (!data || !Array.isArray(data.changes)) return { error: 'other', message: _aiMsg('other') };
+      return { ok: true, data: data };
+    }
+    function _aiBoxHtml() {
+      if (!_aiUrl()) return '';
+      return `<section class="ce-ai" data-ce-ai aria-labelledby="ceAiL">
+        <label class="field-label" id="ceAiL" for="ceAiText">Describe a change</label>
+        <textarea class="input" id="ceAiText" data-ai-input rows="2" maxlength="600" placeholder="Example: the client provides a loading dock pass for load in"></textarea>
+        <div class="ce-ai-row"><button type="button" class="btn btn-secondary" data-ai-go>Suggest changes</button><span class="field-hint">Nothing changes until you accept it.</span></div>
+        <p class="ce-ai-status" data-ai-status role="status" aria-live="polite"></p>
+        <div class="ce-ai-list" data-ai-list></div>
+      </section>`;
+    }
+    function _aiCardsHtml(st) {
+      if (!st || !st.changes.length) return '';
+      const byId = new Map(st.blocks.map(b => [b.i, b.html]));
+      const open = st.changes.filter(c => c.status === 'open').length;
+      const head = open > 1 ? `<div class="ce-ai-all"><button type="button" class="btn btn-primary" data-ai-act="all">Accept all (${open})</button></div>` : '';
+      const cards = st.changes.map(c => {
+        const isNew = typeof c.i !== 'number';
+        const n = (isNew ? Number(String(c.i).slice(6)) : c.i) + 1;
+        const label = isNew ? 'New paragraph after paragraph ' + n : 'Paragraph ' + n;
+        const before = isNew ? '' : `<div class="ce-ai-before" data-user-content>${_aiCleanHtml(byId.get(c.i)) || '<p>(empty)</p>'}</div>`;
+        const after = `<div class="ce-ai-after" data-user-content>${c.html || '<p>(removed)</p>'}</div>`;
+        const why = c.why ? `<p class="ce-ai-why" data-user-content>${esc(c.why)}</p>` : '';
+        const acts = c.status === 'open'
+          ? `<div class="ce-ai-acts"><button type="button" class="btn btn-primary" data-ai-act="accept" data-ai-key="${c.key}">Accept</button><button type="button" class="btn btn-secondary" data-ai-act="skip" data-ai-key="${c.key}">Skip</button></div>`
+          : `<p class="ce-ai-state">${c.status === 'accepted' ? 'Accepted' : 'Skipped'}</p>`;
+        return `<article class="ce-ai-card" data-status="${c.status}" aria-label="${label}"><h4 class="ce-ai-h">${label}</h4>${before}${after}${why}${acts}</article>`;
+      }).join('');
+      return head + cards;
+    }
+    function _aiWire(root, ev) {
+      const box = root && root.querySelector('[data-ce-ai]');
+      const area = root && root.querySelector('#ceArea');
+      if (!box || !area) return;
+      const input = box.querySelector('[data-ai-input]'), go = box.querySelector('[data-ai-go]');
+      const status = box.querySelector('[data-ai-status]'), list = box.querySelector('[data-ai-list]');
+      let st = null, busy = false;
+      const say = (msg, kind) => { status.textContent = msg || ''; status.setAttribute('data-kind', kind || ''); };
+      const now = () => _aiNorm(_sanitizeDocHtml(area.innerHTML));
+      const render = () => { list.innerHTML = _aiCardsHtml(st); };
+      const setBusy = on => {
+        busy = on; go.disabled = on; go.textContent = on ? 'Working...' : 'Suggest changes';
+        if (on) { go.setAttribute('aria-busy', 'true'); go.setAttribute('aria-disabled', 'true'); } else { go.removeAttribute('aria-busy'); go.removeAttribute('aria-disabled'); }
+      };
+      const accept = keys => {
+        if (!st) return;
+        if (now() !== st.lastHtml) { st = null; render(); say(_aiMsg('stale'), 'warn'); return; }
+        st.changes.forEach(c => { if (c.status === 'open' && keys.includes(c.key)) c.status = 'accepted'; });
+        area.innerHTML = _aiApply(st.blocks, st.changes.filter(c => c.status === 'accepted'));
+        st.lastHtml = now();
+        try { area.dispatchEvent(new Event('input', { bubbles: true })); } catch (e) {}
+        render();
+        say(st.changes.some(c => c.status === 'open') ? '' : 'Done. Read the text once more before you send it.', 'ok');
+      };
+      list.addEventListener('click', e => {
+        const b = e.target && e.target.closest ? e.target.closest('[data-ai-act]') : null;
+        if (!b || !st) return;
+        const act = b.getAttribute('data-ai-act'), key = b.getAttribute('data-ai-key');
+        if (act === 'skip') { const c = st.changes.find(x => x.key === key); if (c) c.status = 'skipped'; render(); }
+        else if (act === 'accept') accept([key]);
+        else if (act === 'all') accept(st.changes.filter(c => c.status === 'open').map(c => c.key));
+      });
+      go.addEventListener('click', async () => {
+        if (busy) return;
+        const blocks = _aiSplitBlocks(_sanitizeDocHtml(area.innerHTML));
+        const bad = _aiPrecheck(input.value, blocks);
+        if (bad) { say(bad, 'warn'); return; }
+        const url = _aiUrl();
+        if (!url) { say(_aiMsg('other'), 'warn'); return; }
+        const lastHtml = now();
+        setBusy(true); say('Reading the contract...', '');
+        st = null; render();
+        const ctl = (typeof AbortController === 'function') ? new AbortController() : null;
+        const timer = setTimeout(() => { if (ctl) ctl.abort(); }, 60000);
+        let res;
+        try { res = await _aiRequest(url, window._sbToken, { instruction: input.value.trim(), paragraphs: blocks, event: _aiEventInfo(ev) }, window.fetch.bind(window), ctl ? ctl.signal : undefined); }
+        catch (e) { res = { error: 'other', message: _aiMsg('other') }; }
+        clearTimeout(timer);
+        setBusy(false);
+        if (!res.ok) { say(res.message, 'error'); return; }
+        const parsed = _aiParseReply(res.data, blocks);
+        if (!parsed.changes.length) { say(parsed.notes || _aiMsg('none'), ''); return; }
+        st = { blocks: blocks, changes: parsed.changes, lastHtml: lastHtml };
+        say((parsed.changes.length === 1 ? '1 suggestion. ' : parsed.changes.length + ' suggestions. ') + (parsed.notes || ''), '');
+        render();
+      });
+    }
+
+    // Edit an unsigned event document. Signed documents are never editable.
+    function editEventDoc(eventId, docId) {
+      const ev = (getDB('events') || []).find(e => e.id === eventId);
+      const doc = ev && ev.docs && ev.docs.find(d => d.id === docId);
+      if (!doc) return;
+      if (doc.signedAt || _docClientSigned(doc)) { showToast('A signed document cannot be edited.', 'warning'); return; }
+      if (!(window.CRMUI && CRMUI.sheet)) { showToast('Reload the page to edit documents.', 'warning'); return; }
+      const old = document.getElementById('docEditSheet');
+      if (old) { try { CRMUI.close(old, { force: true }); } catch (e) {} if (old.parentNode) old.parentNode.removeChild(old); }
+      const note = doc.sharedWithClient ? '<p class="ev-sheet-note" data-user-content>The client sees the updated version.</p>' : '';
+      const dlg = CRMUI.sheet({
+        id: 'docEditSheet', title: 'Edit ' + (doc.name || 'document'), className: 'ce-sheet',
+        html: note + _ceEditorHtml(doc.contentHTML || doc.content || ''),
+        secondary: { label: 'Cancel' },
+        primary: { label: 'Save changes', onClick: function (d) {
+          const events = getDB('events');
+          const e2 = events.find(e => e.id === eventId);
+          const d2 = e2 && e2.docs && e2.docs.find(x => x.id === docId);
+          if (!d2) return false;
+          if (d2.signedAt || _docClientSigned(d2)) { showToast('This document was signed, so it cannot be edited.', 'warning'); return false; }
+          const clean = _ceRead(d);
+          if (!_ceHasText(clean)) { showToast('The document cannot be empty.', 'warning'); return false; }
+          d2.contentHTML = clean;
+          if (typeof _evSyncClientDocs === 'function' && d2.sharedWithClient) _evSyncClientDocs(e2);
+          setDB('events', events);
+          window.currentEvent = e2;
+          const tabDocs = document.getElementById('tabDocuments');
+          if (tabDocs) tabDocs.innerHTML = renderEventDocuments(e2);
+          showToast(d2.sharedWithClient ? 'Saved. The client sees the updated version.' : 'Saved.', 'success');
+          return true;
+        } }
+      });
+      _ceWire(dlg, ev);
+      return dlg;
     }
 
     function renderEventDocuments(event) {

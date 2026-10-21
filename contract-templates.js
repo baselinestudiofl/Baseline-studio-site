@@ -339,7 +339,13 @@
     var terms = getTerms(env.settings);
     var ctx = { ev: ev || null, hasEvent: !!ev, terms: terms, today: todayMs(env.now) };
 
-    ctx.clientName = e.clientName || '';
+    // Per-event options (ev.clientCompany, signerName, signerTitle, powerSource). Unset means the standard wording.
+    ctx.contactName = e.clientName || '';
+    ctx.company = String(e.clientCompany || '').trim();
+    ctx.clientName = ctx.company || e.clientName || '';
+    ctx.signerName = String(e.signerName || '').trim();
+    ctx.signerTitle = String(e.signerTitle || '').trim();
+    ctx.powerSource = (e.powerSource === 'generator' || e.powerSource === 'client_generator') ? e.powerSource : 'venue';
     ctx.clientEmail = e.clientEmail || e.portalEmail || '';
     ctx.clientPhone = e.clientPhone || '';
     ctx.eventName = e.name || '';
@@ -566,6 +572,16 @@
     return what + ' needs the venue\'s written approval before the event. Some venues and local fire departments also require a permit, advance notice or a fire marshal inspection. Client either obtains the approval or authorizes us in writing to obtain it for Client, at Client\'s cost. Send us a copy at least ' + details + ' days before the event. If the approval is not in place, we may leave the effect out, and the price of that line item is not refunded.';
   }
 
+  // Power wording. 'venue' is the standard text in each module. The two generator modes replace every outlet line.
+  // Generator wording needs the owner and an attorney to check it (contracts-README.md).
+  function gen(ctx) { return ctx.powerSource !== 'venue'; }
+  function powerText(ctx) {
+    if (ctx.powerSource === 'client_generator') {
+      return 'Client provides a generator that can run our equipment and has it in place at load-in. Client confirms with the venue that a generator is allowed and puts it within 100 feet of our setup, in a safe, ventilated, level spot, with a clear path for cables.';
+    }
+    return 'We bring and run a generator for our equipment. Client confirms with the venue that a generator is allowed and gives us a safe, ventilated, level spot for it within 100 feet of our setup, with a clear path for cables.';
+  }
+
   var MODULES = {
     dj_mc: function (ctx) {
       var t = ctx.terms, h = ctx.has;
@@ -574,7 +590,7 @@
         P('What is included', 'Your booking includes ' + itemsText(ctx, ['dj', 'mc']) + '.' +
           (h.dj ? ' Our DJ plays music for the contracted hours on a professional sound system sized for the room, with microphones for announcements and toasts. The sound system is part of the DJ service and is not a separate charge.' : '') +
           (h.mc ? ' Our MC announces the program and keeps it moving on your timeline.' : '')) +
-        P('Setup, space and power', 'We set up about ' + fmtMinutes(MODULE_SETUP.dj_mc) + ' before the start time. We need a spot of about 8 by 6 feet near the dance floor, a grounded power outlet within 25 feet, and a clear path to bring equipment in.') +
+        P('Setup, space and power', 'We set up about ' + fmtMinutes(MODULE_SETUP.dj_mc) + ' before the start time. We need a spot of about 8 by 6 feet near the dance floor' + (gen(ctx) ? ' and a clear path to bring equipment in. ' + powerText(ctx) : ', a grounded power outlet within 25 feet, and a clear path to bring equipment in.')) +
         P('Venue approval', 'Ask the venue about sound limits, curfews and any rules for outside DJs. Client confirms these with the venue before the event.') +
         P('Operation', 'Our DJ and crew run all equipment. The DJ plays music in the style agreed with Client, takes short breaks with music still playing, and may decline a request that does not fit the program or the venue rules.') +
         P('Safety', 'We keep volume within the venue\'s limits and lower it if venue staff or an authority asks. We cover or route cables so they stay out of walkways.') +
@@ -584,7 +600,7 @@
       var t = ctx.terms;
       return '<h3>Audio and public address</h3>' +
         P('What is included', 'Your booking includes ' + itemsText(ctx, ['audio']) + '. That covers speakers, a mixer, microphones, stands and cabling for the contracted use.') +
-        P('Setup, space and power', 'We set up about ' + fmtMinutes(MODULE_SETUP.audio) + ' before the start time and run a sound check before guests arrive. Speakers need floor space or stands at the positions we agree on, and a grounded power outlet nearby.') +
+        P('Setup, space and power', 'We set up about ' + fmtMinutes(MODULE_SETUP.audio) + ' before the start time and run a sound check before guests arrive. Speakers need floor space or stands at the positions we agree on' + (gen(ctx) ? '. ' + powerText(ctx) : ', and a grounded power outlet nearby.')) +
         P('Venue approval', 'Client confirms the venue\'s sound limits and curfew in advance. Where the venue has its own sound system or house technician, Client tells us before the event.') +
         P('Operation', 'Our audio technician sets up and runs the system. Speakers, presenters and other vendors who bring their own equipment coordinate with us first. We are not responsible for equipment we did not supply.') +
         P('Safety', 'We keep volume within the venue\'s limits, secure stands and speakers, and cover or route cables so they stay out of walkways. We can turn the system down or off if venue staff or an authority asks.') +
@@ -594,7 +610,7 @@
       var t = ctx.terms;
       return '<h3>Lighting</h3>' +
         P('What is included', 'Your booking includes ' + itemsText(ctx, ['lighting']) + '. Fixtures, stands, cabling and control are included.') +
-        P('Setup, space and power', 'We set up about ' + fmtMinutes(MODULE_SETUP.lighting) + ' before guests arrive. Uplights go along the walls and need an outlet within reach or a clear path for our cabling. Dance floor and stage fixtures need floor space and power near the dance floor or stage. Tell us your color choices at least ' + t.detailsDueDays + ' days before the event.') +
+        P('Setup, space and power', 'We set up about ' + fmtMinutes(MODULE_SETUP.lighting) + ' before guests arrive. Uplights go along the walls and need ' + (gen(ctx) ? 'a clear path for our cabling. Dance floor and stage fixtures need floor space near the dance floor or stage. ' + powerText(ctx) : 'an outlet within reach or a clear path for our cabling. Dance floor and stage fixtures need floor space and power near the dance floor or stage.') + ' Tell us your color choices at least ' + t.detailsDueDays + ' days before the event.') +
         P('Venue approval', 'Some venues limit how lights can be placed, taped, hung or rigged. Client confirms the venue\'s rules in advance. Anything hung or rigged from a ceiling or truss needs the venue\'s written approval.') +
         P('Operation', 'Our lighting technician sets up and runs the lights. Guests and other vendors do not adjust fixtures.') +
         P('Safety', 'Flashing and strobe effects can affect guests who are sensitive to flashing light. We use strobe effects only if Client approves them, and we can turn any lighting effect off at any time. We keep fixtures and cables out of walkways.') +
@@ -605,7 +621,7 @@
       return '<h3>Gobo and logo projection</h3>' +
         P('What is included', 'Your booking includes ' + itemsText(ctx, ['gobo']) + '. A projector or light shows a monogram, logo or pattern on a wall, floor or other surface.') +
         P('Artwork', 'Send artwork (a vector file or a high-resolution image) at least ' + t.detailsDueDays + ' days before the event. We show you a proof and use the version you approve.') +
-        P('Setup, space and power', 'We set up about ' + fmtMinutes(MODULE_SETUP.gobo) + ' before guests arrive. The projection needs a clear path to a flat, light-colored surface and a grounded power outlet nearby. Image quality depends on the surface and on how bright the room is.') +
+        P('Setup, space and power', 'We set up about ' + fmtMinutes(MODULE_SETUP.gobo) + ' before guests arrive. The projection needs a clear path to a flat, light-colored surface' + (gen(ctx) ? '. ' + powerText(ctx) : ' and a grounded power outlet nearby.') + ' Image quality depends on the surface and on how bright the room is.') +
         P('Venue approval', 'Some venues do not allow projection on walls, ceilings or floors. Client confirms this with the venue in advance.') +
         P('Operation', 'Our lighting technician sets up and runs the projection. We place the unit where guests cannot bump it or look into the beam.') +
         P('Safety', 'We may move, dim or turn off the projection if it creates a hazard or if venue staff ask.') +
@@ -616,7 +632,7 @@
       return '<h3>LED video wall, TV displays and projection</h3>' +
         P('What is included', 'Your booking includes ' + itemsText(ctx, ['display']) + '. Standard motion background content is included. For a video wall that means panels, processor, stands or ground support, cabling and playback. A live camera feed (IMAG), a camera operator, recording and livestreaming are included only if they are listed in the booked items table.') +
         P('Content', 'Custom graphics, logos, slides or video must reach us at least 72 hours before the event. We cannot promise changes made after that.') +
-        P('Setup, space and power', 'Installation takes about ' + fmtMinutes(MODULE_SETUP.display) + ' of clear venue access before guests arrive. A video wall needs dedicated 20-amp circuits and a flat, level floor. Client confirms power with the venue before the event. If venue scheduling cuts the setup window, we may have to reduce what we install.') +
+        P('Setup, space and power', 'Installation takes about ' + fmtMinutes(MODULE_SETUP.display) + ' of clear venue access before guests arrive. A video wall needs ' + (gen(ctx) ? 'a flat, level floor. ' + powerText(ctx) : 'dedicated 20-amp circuits and a flat, level floor. Client confirms power with the venue before the event.') + ' If venue scheduling cuts the setup window, we may have to reduce what we install.') +
         P('Venue approval', 'Anything flown or rigged needs the venue\'s written approval and its approved rigging plan. Ground-stacked walls need a flat, level floor and a clear area around them.') +
         P('Operation', 'Our AV technician installs and runs the display. No one else changes the panel layout or the settings.') +
         P('Safety', 'No one may lean on, climb or move the wall, screens or stands. We may shut down or move a display if the footing is unsafe, if wind or weather puts an outdoor display at risk, or if venue staff ask.') +
@@ -642,7 +658,7 @@
       var t = ctx.terms;
       return '<h3>Cold spark</h3>' +
         P('What is included', 'Your booking includes ' + itemsText(ctx, ['coldspark']) + '. Cold spark machines make a fountain of sparks that is much cooler than traditional pyrotechnics. They still need the clearances below.') +
-        P('Setup, space and power', 'We set up about ' + fmtMinutes(MODULE_SETUP.coldspark) + ' before guests arrive. Each machine needs 6 feet of clear space on all sides and 12 feet of clear height above it, away from drapes, fabric, decorations and ceilings. A fire extinguisher must be within 15 feet of each machine while it runs. Each machine needs a grounded power outlet nearby.') +
+        P('Setup, space and power', 'We set up about ' + fmtMinutes(MODULE_SETUP.coldspark) + ' before guests arrive. Each machine needs 6 feet of clear space on all sides and 12 feet of clear height above it, away from drapes, fabric, decorations and ceilings. A fire extinguisher must be within 15 feet of each machine while it runs.' + (gen(ctx) ? ' ' + powerText(ctx) : ' Each machine needs a grounded power outlet nearby.')) +
         P('Venue approval', approvalLine('Cold spark', t.detailsDueDays)) +
         P('Operation', 'Only our trained crew operate the machines, and they fire them at the moments in your timeline. Guests and venue staff do not touch them.') +
         P('Safety', 'Client keeps guests, including children, out of the clearance area. ' + STOP_LINE) +
@@ -652,7 +668,7 @@
       var t = ctx.terms;
       return '<h3>Dancing on clouds (low fog)</h3>' +
         P('What is included', 'Your booking includes ' + itemsText(ctx, ['clouds']) + '. A low-lying fog machine makes a ground-level cloud layer, usually for a first dance or another set moment. Each activation lasts about 3 to 5 minutes. Longer or continuous use is not included unless it is listed in the booked items table.') +
-        P('Setup, space and power', 'We set up about ' + fmtMinutes(MODULE_SETUP.clouds) + ' before guests arrive. The effect needs a smooth, level dance floor, space for the machine at the edge of the floor, a grounded power outlet nearby, and good ventilation.') +
+        P('Setup, space and power', 'We set up about ' + fmtMinutes(MODULE_SETUP.clouds) + ' before guests arrive. The effect needs a smooth, level dance floor, space for the machine at the edge of the floor, ' + (gen(ctx) ? 'and good ventilation. ' + powerText(ctx) : 'a grounded power outlet nearby, and good ventilation.')) +
         P('Venue approval', approvalLine('Fog', t.detailsDueDays) + ' Fog can set off smoke detectors, so Client coordinates with venue management to cover or disable detectors before the event. Client is responsible for any false alarm fees if a detector is not handled as agreed.') +
         P('Operation', 'Only our trained crew operate the machine.') +
         P('Safety', 'Low fog hides the floor surface, so Client and the venue keep the dance floor dry and free of trip hazards. ' + STOP_LINE) +
@@ -662,7 +678,7 @@
       var t = ctx.terms;
       return '<h3>Other effects (fog, haze, confetti)</h3>' +
         P('What is included', 'Your booking includes ' + itemsText(ctx, ['fx']) + ' for the contracted moments only.') +
-        P('Setup, space and power', 'We set up about ' + fmtMinutes(MODULE_SETUP.fx) + ' before guests arrive. Machines need a grounded power outlet nearby. Indoors, the room needs good ventilation.') +
+        P('Setup, space and power', 'We set up about ' + fmtMinutes(MODULE_SETUP.fx) + ' before guests arrive. ' + (gen(ctx) ? 'Indoors, the room needs good ventilation. ' + powerText(ctx) : 'Machines need a grounded power outlet nearby. Indoors, the room needs good ventilation.')) +
         P('Venue approval', approvalLine('Fog, haze, confetti and similar effects', t.detailsDueDays) + ' Fog and haze can set off smoke detectors, so Client coordinates with venue management to cover or disable detectors before the event. Many venues ban confetti or charge a cleanup fee. Client pays any cleanup fee the venue charges.') +
         P('Operation', 'Only our trained crew operate these effects.') +
         P('Safety', STOP_LINE) +
@@ -672,7 +688,7 @@
       var t = ctx.terms;
       return '<h3>Live musicians</h3>' +
         P('What is included', 'Your booking includes ' + itemsText(ctx, ['musicians']) + '. Musicians perform for the set lengths listed in the booked items table.') +
-        P('Setup, space and power', 'Musicians arrive about ' + fmtMinutes(MODULE_SETUP.musicians) + ' before their first set for setup and a sound check. They need a performance area of about 10 by 8 feet, grounded power, cover from sun and rain if the event is outdoors, and a private place to store cases and change.') +
+        P('Setup, space and power', 'Musicians arrive about ' + fmtMinutes(MODULE_SETUP.musicians) + ' before their first set for setup and a sound check. They need a performance area of about 10 by 8 feet, ' + (gen(ctx) ? '' : 'grounded power, ') + 'cover from sun and rain if the event is outdoors, and a private place to store cases and change.' + (gen(ctx) ? ' ' + powerText(ctx) : '')) +
         P('Venue approval', 'Client confirms the venue allows amplified live music and tells us about any sound limits or curfew.') +
         P('Operation', 'Musicians play the style and set list agreed with Client. They take short breaks between sets. If a DJ is booked, recorded music covers those breaks.') +
         P('Replacement', 'If a musician cannot perform because of illness or an emergency, we tell Client right away and offer a replacement of similar quality. If we cannot, we refund the price of that line item.') +
@@ -709,6 +725,7 @@
     keys.forEach(function (k) { if (MODULE_SETUP[k] > setup) setup = MODULE_SETUP[k]; });
     var power = 'Working, grounded power near each setup location. Each service section lists what that service needs.';
     if (ctx.has.display) power = 'Working, grounded power near each setup location, plus dedicated 20-amp circuits for any LED video wall. Each service section lists what that service needs.';
+    if (gen(ctx)) power = powerText(ctx);
     var li = [];
     li.push('<strong>Venue access and load-in.</strong> Confirm the load-in time and route with the venue, and tell us in writing at least ' + t.detailsDueDays + ' days before the event where we load in (dock, elevator or parking) and who meets us. We need clear access for at least ' + fmtMinutes(setup) + ' before guests arrive. If the venue shortens that window, we may have to reduce what we set up.');
     li.push('<strong>Power.</strong> ' + power);
@@ -735,7 +752,8 @@
       : 'Services to be confirmed';
 
     text('client_name', ctx.clientName || '[Client Name]');
-    text('client_email', ctx.clientEmail || '[Client Email]');
+    if (ctx.company) html('client_email', (ctx.contactName ? 'Contact: ' + esc(ctx.contactName) + '<br>' : '') + esc(ctx.clientEmail || '[Client Email]'));
+    else text('client_email', ctx.clientEmail || '[Client Email]');
     text('client_phone', ctx.clientPhone || '[Client Phone]');
     text('event_name', ctx.eventName || '[Event Name]');
     text('event_date', ctx.dateMs !== null ? fmtDate(ctx.dateMs, true) : '[Event Date]');
@@ -783,6 +801,31 @@
     return parts.map(function (p) { return '<p>' + p.replace(/\n/g, '<br>') + '</p>'; }).join('');
   }
 
+  // Signature block for the Client side. Company set: "Signed for <company> by". Name and title filled when known, blank lines when not.
+  var SIG_CLIENT_OLD = '<p><strong>Client</strong><br>{{client_name}}</p>';
+  function applyEventOptions(src, ctx) {
+    if (ctx.company || ctx.signerName || ctx.signerTitle) {
+      var blank = '____________________';
+      var head = ctx.company ? '<strong>Signed for ' + esc(ctx.company) + ' by</strong>' : '<strong>Client</strong><br>{{client_name}}';
+      var neu = '<p>' + head + '<br>Name: ' + (ctx.signerName ? esc(ctx.signerName) : blank) +
+        '<br>Title: ' + (ctx.signerTitle ? esc(ctx.signerTitle) : blank) + '</p>';
+      src = src.split(SIG_CLIENT_OLD).join(neu);
+    }
+    if (gen(ctx)) src = src.split('that power and space are available').join('that space is available');
+    return src;
+  }
+
+  // The per-event options as the edit sheet shows them.
+  function contractOptions(ev) {
+    var e = ev || {};
+    return {
+      company: String(e.clientCompany || '').trim(),
+      signerName: String(e.signerName || '').trim(),
+      signerTitle: String(e.signerTitle || '').trim(),
+      powerSource: (e.powerSource === 'generator' || e.powerSource === 'client_generator') ? e.powerSource : 'venue'
+    };
+  }
+
   // The one merge. ev may be null (template preview). opts.wrap(valueHtml, key, isHtml) can decorate each filled value.
   function merge(html, ev, env, opts) {
     opts = opts || {};
@@ -791,6 +834,7 @@
     var vals = fieldValues(ctx);
     var src = String(html === null || html === undefined ? '' : html);
     if (!/<[a-zA-Z][^>]*>/.test(src)) src = plainToHtml(src);
+    src = applyEventOptions(src, ctx);
     // legacy templates wrote "${{total_price}}"; the value already carries its own $
     src = src.replace(/\$(\{\{\s*(?:total_price|deposit_amount|balance_amount)\s*\}\})/gi, '$1');
     return src.replace(/\{\{\s*([A-Za-z_][A-Za-z0-9_]*)\s*\}\}/g, function (m, name) {
@@ -1075,6 +1119,7 @@
     ensureTemplates: ensureTemplates,
     isUntouchedLegacy: isUntouchedLegacy,
     pickTemplate: pickTemplate,
+    contractOptions: contractOptions,
     money: money,
     esc: esc
   };

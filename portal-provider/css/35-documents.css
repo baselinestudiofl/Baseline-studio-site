@@ -110,3 +110,42 @@
   .evdoc-actions .btn:not(.btn-icon) { flex: 1 1 auto; min-width: 70px; padding-left: 6px; padding-right: 6px; }
   .evdoc-actions .evdoc-kebab { margin-left: auto; }
 }
+
+/* Contract text editor (review before sending, Edit on an unsigned document) */
+dialog.ce-sheet { width: min(860px, calc(100vw - 32px)); }
+@media (max-width: 767.98px) { dialog.ce-sheet { width: 100%; } }
+.ce-toolbar { display: flex; gap: var(--sp-2); margin-bottom: var(--sp-3); }
+.ce-toolbar .btn { min-width: 44px; min-height: 44px; }
+.ce-area { box-sizing: border-box; min-height: 320px; max-height: 56vh; overflow: auto; padding: 16px; background: #fff; color: #1a1a1a; border: 1px solid var(--border-ui); border-radius: var(--r-md); font: 400 16px/1.5 var(--font-body); -webkit-overflow-scrolling: touch; }
+.ce-area:focus { outline: 2px solid var(--focus); outline-offset: 0; }
+.ce-area h3 { font-size: 17px; margin: 18px 0 6px; }
+.ce-area p { margin: 0 0 10px; }
+.ce-area table { width: 100%; border-collapse: collapse; }
+.ce-area ul, .ce-area ol { padding-left: 22px; }
+.ce-area td, .ce-area th { word-break: break-word; }
+@media (max-width: 767.98px) { .ce-area { max-height: 46vh; padding: 12px; } }
+
+/* ── Contract assistant (describe a change, review suggestions) ─────────── */
+.ce-ai { box-sizing: border-box; margin: 0 0 var(--sp-4); padding: var(--sp-3) var(--sp-4); background: var(--surface-1); border: 1px solid var(--border); border-radius: var(--r-lg); }
+.ce-ai textarea.input { display: block; width: 100%; box-sizing: border-box; min-height: 64px; font-size: 16px; }
+.ce-ai-row { display: flex; flex-wrap: wrap; align-items: center; gap: var(--sp-2) var(--sp-3); margin-top: var(--sp-2); }
+.ce-ai .btn { min-height: 44px; min-width: 44px; }
+.ce-ai-status { margin: var(--sp-2) 0 0; font-size: 14px; line-height: 1.4; color: var(--text-2); }
+.ce-ai-status:empty { display: none; }
+.ce-ai-status[data-kind="error"] { color: var(--danger); }
+.ce-ai-status[data-kind="warn"] { color: var(--warn); }
+.ce-ai-list { display: flex; flex-direction: column; gap: var(--sp-3); margin-top: var(--sp-3); }
+.ce-ai-list:empty { display: none; }
+.ce-ai-all { display: flex; }
+.ce-ai-card { box-sizing: border-box; padding: var(--sp-3); background: var(--surface-2); border: 1px solid var(--border); border-radius: var(--r-md); min-width: 0; }
+.ce-ai-card[data-status="skipped"] { opacity: 0.6; }
+.ce-ai-h { margin: 0 0 var(--sp-2); font: 600 var(--fs-11)/1.2 var(--font-body); letter-spacing: 0.04em; text-transform: uppercase; color: var(--text-3); }
+.ce-ai-before, .ce-ai-after { box-sizing: border-box; padding: 10px 12px; border-radius: var(--r-md); font: 400 15px/1.45 var(--font-body); overflow-wrap: anywhere; max-height: 220px; overflow: auto; }
+.ce-ai-before { color: var(--text-3); text-decoration: line-through; border: 1px dashed var(--border-strong); margin-bottom: var(--sp-2); }
+.ce-ai-after { color: var(--text-1); border: 1px solid var(--border-ui); }
+.ce-ai-before > *:first-child, .ce-ai-after > *:first-child { margin-top: 0; }
+.ce-ai-before > *:last-child, .ce-ai-after > *:last-child { margin-bottom: 0; }
+.ce-ai-why { margin: var(--sp-2) 0 0; font-size: 14px; color: var(--text-2); }
+.ce-ai-acts { display: flex; flex-wrap: wrap; gap: var(--sp-2); margin-top: var(--sp-3); }
+.ce-ai-state { margin: var(--sp-2) 0 0; font-size: 14px; color: var(--text-3); }
+.ce-ai-card[data-status="accepted"] .ce-ai-state { color: var(--success); }
