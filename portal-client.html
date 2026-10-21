@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Baseline Studio - Your Event</title>
-  <script src="portal-supabase.js?v=12"></script>
+  <script src="portal-supabase.js?v=13"></script>
   <script src="lighting-preview.js?v=2"></script>
   <link rel="stylesheet" href="fonts/fonts.css">
   <style>
@@ -2358,6 +2358,30 @@
     let currentEvent = null;
     let activeTab = 'event';
 
+    // ============ CLIENT-ENTERED DETAILS ============
+    // The server only accepts the client's own fields on save, so anything the client types
+    // that the provider normally owns (venue, event type, phone, name) is stored in
+    // currentEvent.clientOnboarding. Provider values win when they exist; the client's
+    // answers fill the gaps. Placeholder defaults ('TBD', 'event') count as empty.
+    function onbVal(k) {
+      const o = currentEvent && currentEvent.clientOnboarding;
+      return (o && typeof o === 'object' && o[k]) ? String(o[k]) : '';
+    }
+    function realVal(v) { return (v && v !== 'TBD' && v !== 'event') ? v : ''; }
+    function evVenueName()    { return realVal(currentEvent.venueName || currentEvent.venue) || onbVal('venueName') || 'TBD'; }
+    function evVenueAddress() { return currentEvent.venueAddress || onbVal('venueAddress'); }
+    function evType()         { return realVal(currentEvent.type || currentEvent.eventType) || onbVal('eventType') || 'event'; }
+    function evDate()         { return currentEvent.date || currentEvent.eventDate || onbVal('eventDate'); }
+    function evClientName()   { return onbVal('clientName') || currentEvent.clientName || ''; }
+    function evPhone()        { return onbVal('phone') || currentEvent.clientPhone || ''; }
+    // Writes the client's answers into the single whitelisted clientOnboarding object.
+    function obSet(patch) {
+      if (!currentEvent.clientOnboarding || typeof currentEvent.clientOnboarding !== 'object' || Array.isArray(currentEvent.clientOnboarding)) currentEvent.clientOnboarding = {};
+      const o = currentEvent.clientOnboarding;
+      Object.keys(patch).forEach(k => { if (patch[k] !== undefined && patch[k] !== null && patch[k] !== '') o[k] = patch[k]; });
+      o.submittedAt = new Date().toISOString();
+    }
+
     // ============ INITIALIZATION ============
     function init() {
       // Check session (stored in sessionStorage by login.html via BSPortal.signInClient)
@@ -2551,9 +2575,9 @@
 
     // ============ TAB: MY EVENT ============
     function renderMyEvent() {
-      const eventDate = currentEvent.date || currentEvent.eventDate;
-      const eventType = currentEvent.type || currentEvent.eventType || 'Event';
-      const venue = currentEvent.venueName || 'TBD';
+      const eventDate = evDate();
+      const eventType = evType() === 'event' ? 'Event' : evType();
+      const venue = evVenueName();
       const startTime = currentEvent.startTime || '6:00 PM';
       const depositPaid = currentEvent.depositPaid;
       const balancePaid = currentEvent.balancePaid;
@@ -2561,7 +2585,7 @@
       const dayCount = getDayCount(eventDate);
 
       // Compute completeness for nudge banner
-      const sections = [currentEvent.venueName, currentEvent.clientVendors && currentEvent.clientVendors.length, currentEvent.clientMusic && currentEvent.clientMusic.length, currentEvent.timeline && currentEvent.timeline.length, currentEvent.clientPrefs && currentEvent.clientPrefs.vibe];
+      const sections = [evVenueName(), currentEvent.clientVendors && currentEvent.clientVendors.length, currentEvent.clientMusic && currentEvent.clientMusic.length, currentEvent.timeline && currentEvent.timeline.length, currentEvent.clientPrefs && currentEvent.clientPrefs.vibe];
       const filled = sections.filter(Boolean).length;
       const pct = Math.round((filled / sections.length) * 100);
       const showNudge = typeof dayCount === 'number' && dayCount <= 21 && dayCount >= 0 && pct < 100;
@@ -2642,8 +2666,8 @@
 
     // ============ TAB: VENDORS & VENUE ============
     function renderVendors() {
-      const venueName = currentEvent.venueName || 'TBD';
-      const venueAddress = currentEvent.venueAddress || '';
+      const venueName = evVenueName();
+      const venueAddress = evVenueAddress();
       const venueContact = currentEvent.venueContact || '';
       const venuePhone = currentEvent.venuePhone || '';
       const clientNotes = currentEvent.clientNotes || {};
@@ -2858,7 +2882,7 @@
     };
 
     function getTimelineSuggestions() {
-      const type = (currentEvent.type || 'default').toLowerCase();
+      const type = (evType() === 'event' ? 'default' : evType()).toLowerCase();
       const suggestions = TIMELINE_SUGGESTIONS[type] || TIMELINE_SUGGESTIONS.default;
       const existing = new Set((currentEvent.timeline || []).map(t => t.label.toLowerCase()));
       return suggestions.filter(([label]) => !existing.has(label.toLowerCase()));
@@ -3408,31 +3432,38 @@
 
     // ============ TAB: INVOICES (CLIENT VIEW) ============
     function renderClientInvoices() {
-      // J1: invoices are embedded on the event object by the provider — never in client's localStorage
-      const myInvoices = currentEvent.invoices || [];
+      // P0.3: the server builds this list from the provider's invoices for this event (get_client_event
+      // and get_all_client_events). The page only reads it. Nothing is stored or edited here.
+      const myInvoices = Array.isArray(currentEvent.invoices) ? currentEvent.invoices : [];
       const content = document.getElementById('contentArea');
+      const money = n => { const v = Number(n) || 0; return '$' + v.toLocaleString('en-US', { minimumFractionDigits: v % 1 ? 2 : 0, maximumFractionDigits: 2 }); };
       if (!myInvoices.length) {
-        content.innerHTML = `<div class="card"><h3>Invoices</h3><p style="color:var(--gray);">No invoices yet. Your team will send one once your event details are confirmed.</p></div>`;
+        content.innerHTML = `<div class="card"><h3>Invoices</h3><p style="color:rgba(255,255,255,0.55);font-size:14px;margin-bottom:4px;">Nothing to pay yet. When your invoice is ready, it'll show up right here.</p><p style="color:rgba(255,255,255,0.55);font-size:13px;">Any questions in the meantime, call us at (786) 302-6056.</p></div>`;
         return;
       }
       let cards = '';
       myInvoices.forEach(inv => {
-        const isPaid = inv.status === 'paid';
-        const isOverdue = !isPaid && inv.dueDate && new Date(inv.dueDate) < new Date();
+        const isPaid = String(inv.status || '').toLowerCase() === 'paid';
+        const due = inv.dueDate ? new Date(String(inv.dueDate).slice(0, 10) + 'T23:59:59') : null;
+        const dueValid = due && !isNaN(due.getTime());
+        const isOverdue = !isPaid && dueValid && due < new Date();
         const statusColor = isPaid ? '#2ecc71' : isOverdue ? '#e74c3c' : '#f39c12';
-        const statusLabel = isPaid ? ' Paid' : isOverdue ? 'Overdue' : 'Due';
+        const statusLabel = isPaid ? 'Paid' : isOverdue ? 'Overdue' : 'Due';
+        const dueText = dueValid ? 'Due ' + due.toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' }) : 'Due upon receipt';
+        const taxPct = Number(inv.taxPct) || 0;
         cards += `
           <div class="card" style="margin-bottom:12px;">
             <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:12px;">
               <div>
-                <div style="font-family:'Anton',sans-serif;font-size:18px;">${inv.invoiceNum}</div>
-                <div style="font-size:13px;color:var(--gray,#888);">${inv.dueDate ? 'Due ' + new Date(inv.dueDate).toLocaleDateString('en-US',{month:'long',day:'numeric',year:'numeric'}) : 'Due upon receipt'}</div>
+                <div style="font-family:'Anton',sans-serif;font-size:18px;">${esc(inv.invoiceNum || 'Invoice')}</div>
+                <div style="font-size:13px;color:var(--gray,#888);">${esc(dueText)}</div>
               </div>
               <span style="color:${statusColor};font-weight:700;font-size:15px;">${statusLabel}</span>
             </div>
-            ${(inv.lines||[]).map(l => `<div style="display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid rgba(255,255,255,0.06);font-size:14px;"><span>${l.desc}</span><span>$${l.amount.toLocaleString()}</span></div>`).join('')}
+            ${(Array.isArray(inv.lines) ? inv.lines : []).map(l => `<div style="display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid rgba(255,255,255,0.06);font-size:14px;"><span>${esc(l && l.desc)}</span><span>${money(l && (l.amount !== undefined ? l.amount : l.price))}</span></div>`).join('')}
+            ${taxPct > 0 && inv.subtotal != null ? `<div style="display:flex;justify-content:space-between;padding:6px 0;font-size:13px;color:rgba(255,255,255,0.55);"><span>Tax (${esc(taxPct)}%)</span><span>${money((Number(inv.total) || 0) - (Number(inv.subtotal) || 0))}</span></div>` : ''}
             <div style="display:flex;justify-content:space-between;margin-top:12px;font-family:'Anton',sans-serif;font-size:22px;color:#1FA3E0;">
-              <span>Total</span><span>$${(inv.total||0).toLocaleString()}</span>
+              <span>Total</span><span>${money(inv.total)}</span>
             </div>
             ${!isPaid ? `
             <div style="margin-top:18px;">
@@ -3481,9 +3512,10 @@
               <a href="${doc.url}" target="_blank" rel="noopener" style="display:inline-block;padding:6px 16px;background:#1FA3E0;color:#000;border-radius:6px;font-size:12px;font-weight:700;text-decoration:none;">Open</a>
             </div>`;
         } else if (hasContent) {
-          const needsSig   = doc.requiresSignature && !doc.clientSignature;
-          const alreadySig = doc.requiresSignature &&  doc.clientSignature;
-          const signedAt   = alreadySig ? new Date(doc.clientSignedAt || Date.now()).toLocaleDateString('en-US',{month:'long',day:'numeric',year:'numeric'}) : '';
+          const isSigned   = isClientDocSigned(doc);
+          const needsSig   = doc.requiresSignature && !isSigned;
+          const alreadySig = doc.requiresSignature &&  isSigned;
+          const signedAt   = alreadySig ? new Date(doc.clientSignedAt || _signedDocIds.get(doc.id) || Date.now()).toLocaleDateString('en-US',{month:'long',day:'numeric',year:'numeric'}) : '';
           cards += `
             <div class="card" style="margin-bottom:12px;">
               <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;margin-bottom:12px;">
@@ -3579,8 +3611,8 @@
 
     // ============ TAB: SETTINGS ============
     function renderClientSettings() {
-      const name  = currentEvent.clientName  || (currentUser && (currentUser.firstName || currentUser.name)) || '';
-      const phone = currentEvent.clientPhone || (currentUser && currentUser.phone) || '';
+      const name  = evClientName() || (currentUser && (currentUser.firstName || currentUser.name)) || '';
+      const phone = evPhone() || (currentUser && currentUser.phone) || '';
       const email = (currentUser && currentUser.email) || '';
 
       const inputStyle = 'width:100%;box-sizing:border-box;background:rgba(255,255,255,0.06);border:1px solid var(--border-ui);border-radius:8px;padding:12px 14px;color:#fff;font-size:15px;font-family:inherit;';
@@ -3655,8 +3687,9 @@
       const name  = (document.getElementById('settingsName')?.value  || '').trim();
       const phone = (document.getElementById('settingsPhone')?.value || '').trim();
       const fb    = document.getElementById('profileSaveFb');
-      if (name)  currentEvent.clientName  = name;
-      if (phone) currentEvent.clientPhone = phone;
+      // clientName and clientPhone are provider-owned fields the server blocks; the client's
+      // own entries go in clientOnboarding and show to them from there.
+      if (name || phone) obSet({ clientName: name, phone: phone });
       saveEvent();
       if (fb) {
         fb.textContent = 'Saved.';
@@ -3792,9 +3825,9 @@
     function _obGetPendingSteps() {
       const steps = [];
       // Only ask if the field is genuinely blank / missing
-      const hasType = currentEvent.type && currentEvent.type !== 'event' && currentEvent.type !== '';
+      const hasType = evType() !== 'event';
       const hasVibe = !!(currentEvent.clientPrefs && currentEvent.clientPrefs.vibe);
-      const hasVenue = !!(currentEvent.venueName || currentEvent.venue);
+      const hasVenue = evVenueName() !== 'TBD';
       const hasMoments = !!(currentEvent.clientPrefs && currentEvent.clientPrefs.moments && currentEvent.clientPrefs.moments.length);
       const hasSpecial = !!(currentEvent.clientPrefs && currentEvent.clientPrefs.specialRequests);
 
@@ -3864,7 +3897,7 @@
     function _obType() {
       const idx = _obStepList.indexOf('type');
       const types = ['Wedding','Quinceañera','Bar / Bat Mitzvah','Corporate Event','Birthday Party','Gala','Other'];
-      const cur = (currentEvent.type || '').toLowerCase();
+      const cur = (evType() === 'event' ? '' : evType()).toLowerCase();
       document.getElementById('contentArea').innerHTML = `
         <div class="ob-wrap">
           ${_obDots(idx)}
@@ -3887,7 +3920,7 @@
 
     function _obSaveType() {
       const sel = document.querySelector('#obTypeChips .ob-chip.selected');
-      if (sel) { currentEvent.type = sel.dataset.val; saveEvent(); }
+      if (sel) { obSet({ eventType: sel.dataset.val }); saveEvent(); }
       _obNext();
     }
 
@@ -3922,8 +3955,8 @@
 
     function _obVenue() {
       const idx = _obStepList.indexOf('venue');
-      const venueName = currentEvent.venueName || currentEvent.venue || '';
-      const venueAddr = currentEvent.venueAddress || '';
+      const venueName = evVenueName() === 'TBD' ? '' : evVenueName();
+      const venueAddr = evVenueAddress();
       document.getElementById('contentArea').innerHTML = `
         <div class="ob-wrap">
           ${_obDots(idx)}
@@ -3942,9 +3975,7 @@
     function _obSaveVenue() {
       const name = document.getElementById('obVenueName').value.trim();
       const addr = document.getElementById('obVenueAddr').value.trim();
-      if (name) { currentEvent.venueName = name; currentEvent.venue = name; }
-      if (addr) currentEvent.venueAddress = addr;
-      if (name || addr) saveEvent();
+      if (name || addr) { obSet({ venueName: name, venueAddress: addr }); saveEvent(); }
       _obNext();
     }
 
@@ -4058,32 +4089,43 @@
       if (document.visibilityState === 'hidden') _captureAndSave();
     });
 
-    // Beforeunload: best-effort sync on close (may be blocked by browser)
+    // Beforeunload: best-effort sync on close (the save goes through BSPortal, which holds the
+    // session credentials and sends only the fields the client may change).
     window.addEventListener('beforeunload', function() {
-      if (!currentEvent || typeof BSPortal === 'undefined' || !BSPortal.saveClientEvent) return;
-      // Use sendBeacon for reliable delivery on page unload
-      const email = BSPortal.getCurrentUser && BSPortal.getCurrentUser()?.email;
-      const pw    = (window._bsSession && window._bsSession.portalPw);
-      if (email && pw) {
-        const body = JSON.stringify({ p_email: email.toLowerCase(), p_password: pw, p_event_data: currentEvent });
-        navigator.sendBeacon(
-          'https://jkdhkwcxnwpiufeyrnso.supabase.co/rest/v1/rpc/update_client_event',
-          new Blob([body], { type: 'application/json' })
-        );
-      }
+      if (!currentEvent || typeof BSPortal === 'undefined' || !BSPortal.saveClientEventOnUnload) return;
+      BSPortal.saveClientEventOnUnload(currentEvent);
     });
 
     // ============ CLIENT-SIDE DOCUMENT SIGNING ============
+    // The signature is saved by the server (RPC client_sign_document) and only shown as signed
+    // once the server says so. Nothing is written to the event locally before that.
+    const CLIENT_ESIGN_CONSENT_VERSION = 'esign-v1-2026-10';
+    const _signedDocIds = new Map(); // doc id -> ISO time the server confirmed (covers a shared copy that lost its signature fields)
+    let _clientSigBusy = false;
     let _clientSigCanvas = null;
     let _clientSigCtx    = null;
     let _clientSigDocIdx = null;
     let _clientSigDrawing = false;
+
+    function isClientDocSigned(doc) {
+      return !!(doc && (doc.clientSignature || (doc.id && _signedDocIds.has(doc.id))));
+    }
+
+    function setClientSignError(msg) {
+      const el = document.getElementById('clientSignError');
+      if (!el) return;
+      el.textContent = msg || '';
+      el.style.display = msg ? 'block' : 'none';
+    }
 
     function openClientSignModal(docIdx) {
       _clientSigDocIdx = docIdx;
       const doc = (currentEvent.documents || [])[docIdx];
       if (!doc) return;
       document.getElementById('clientSignDocTitle').textContent = doc.label || doc.name || 'Document';
+      document.getElementById('clientSignName').value = '';
+      document.getElementById('clientSignConsent').checked = false;
+      setClientSignError('');
       document.getElementById('clientSignModal').style.display = 'flex';
       // Init canvas
       _clientSigCanvas = document.getElementById('clientSignCanvas');
@@ -4113,22 +4155,42 @@
       _clientSigDocIdx = null;
     }
 
-    function saveClientSignature() {
+    async function saveClientSignature() {
+      if (_clientSigBusy) return;
       if (!_clientSigCanvas || _clientSigDocIdx === null) return;
+      const doc = (currentEvent.documents || [])[_clientSigDocIdx];
+      if (!doc) return;
+      if (!doc.id) { setClientSignError("This one can't be signed online yet. Give us a call at (786) 302-6056 and we'll sort it out."); return; }
       const px = _clientSigCtx.getImageData(0, 0, _clientSigCanvas.width, _clientSigCanvas.height).data;
       const hasContent = Array.from(px).some(v => v !== 0);
-      if (!hasContent) { showClientToast('Please draw your signature first.'); return; }
+      if (!hasContent) { setClientSignError('Draw your signature in the box first.'); return; }
+      const signedName = (document.getElementById('clientSignName').value || '').trim();
+      if (signedName.length < 2) { setClientSignError('Type your full name so we can match it to your signature.'); return; }
+      if (!document.getElementById('clientSignConsent').checked) { setClientSignError('Check the box to agree to sign electronically.'); return; }
+      setClientSignError('');
       const sig = _clientSigCanvas.toDataURL('image/png');
-      if (!currentEvent.documents) currentEvent.documents = [];
-      const doc = currentEvent.documents[_clientSigDocIdx];
-      if (!doc) return;
-      doc.clientSignature  = sig;
-      doc.clientSignedAt   = new Date().toISOString();
-      doc.clientSignedName = currentUser?.name || currentUser?.firstName || 'Client';
-      saveEvent();
-      closeClientSignModal();
-      showClientToast('Document signed successfully!');
-      renderClientDocuments();
+      const btn = document.getElementById('clientSignConfirmBtn');
+      _clientSigBusy = true;
+      if (btn) { btn.disabled = true; btn.textContent = 'Signing...'; }
+      let res;
+      try {
+        res = await BSPortal.signDocument(currentEvent.id, doc.id, sig, signedName, CLIENT_ESIGN_CONSENT_VERSION);
+      } catch (e) {
+        res = { ok: false, error: 'network', message: 'We could not reach the server. Check your connection and try again.' };
+      }
+      _clientSigBusy = false;
+      if (btn) { btn.disabled = false; btn.textContent = 'Confirm Signature'; }
+      const alreadySigned = !!(res && res.ok === false && res.error === 'already_signed');
+      if (res && (res.ok === true || alreadySigned)) {
+        _signedDocIds.set(doc.id, (res.signedAt) || new Date().toISOString());
+        // Show what the server has, not what we think it has.
+        try { await BSPortal.refreshClientEvent(currentEvent); } catch (e) {}
+        closeClientSignModal();
+        showClientToast(alreadySigned ? 'This one was already signed. We have it on file.' : 'Signed. We saved your signature with the document.');
+        renderClientDocuments();
+        return;
+      }
+      setClientSignError((res && res.message) || 'That did not go through. Try again, or call us at (786) 302-6056.');
     }
   
     // Keyboard: Enter or Space activates any clickable card that is not a real button.
@@ -4149,14 +4211,21 @@
       <div id="clientSignDocTitle" style="font-size:13px;color:rgba(255,255,255,0.55);margin-bottom:18px;"></div>
       <div style="font-size:12px;color:rgba(255,255,255,0.55);margin-bottom:10px;">Draw your signature below</div>
       <canvas id="clientSignCanvas" width="432" height="140" style="width:100%;height:140px;background:rgba(255,255,255,0.04);border:1px solid var(--border-ui);border-radius:8px;cursor:crosshair;touch-action:none;"></canvas>
+      <label for="clientSignName" style="display:block;font-size:12px;color:rgba(255,255,255,0.55);margin:16px 0 6px;">Type your full name</label>
+      <input type="text" id="clientSignName" autocomplete="name" maxlength="120" placeholder="Full name" style="width:100%;box-sizing:border-box;background:rgba(255,255,255,0.06);border:1px solid var(--border-ui);border-radius:8px;padding:11px 12px;color:#fff;font-size:15px;font-family:inherit;">
+      <label style="display:flex;align-items:flex-start;gap:10px;margin-top:14px;font-size:13px;line-height:1.5;color:rgba(255,255,255,0.8);cursor:pointer;">
+        <input type="checkbox" id="clientSignConsent" style="margin-top:3px;width:16px;height:16px;flex:none;accent-color:#1FA3E0;">
+        <span>I agree to sign this document electronically and to receive records electronically.</span>
+      </label>
+      <div id="clientSignError" role="alert" style="display:none;margin-top:12px;font-size:13px;line-height:1.5;color:#f26a5c;"></div>
       <div style="display:flex;justify-content:space-between;align-items:center;margin-top:16px;flex-wrap:wrap;gap:10px;">
         <button onclick="clearClientSignature()" style="padding:8px 16px;background:rgba(255,255,255,0.06);border:1px solid var(--border-ui);border-radius:7px;color:rgba(255,255,255,0.6);font-size:13px;cursor:pointer;font-family:'Barlow',sans-serif;">Clear</button>
         <div style="display:flex;gap:8px;">
           <button onclick="closeClientSignModal()" style="padding:8px 16px;background:none;border:1px solid var(--border-ui);border-radius:7px;color:rgba(255,255,255,0.55);font-size:13px;cursor:pointer;font-family:'Barlow',sans-serif;">Cancel</button>
-          <button onclick="saveClientSignature()" style="padding:8px 20px;background:#1FA3E0;border:none;border-radius:7px;color:#000;font-weight:700;font-size:13px;cursor:pointer;font-family:'Barlow',sans-serif;">Confirm Signature</button>
+          <button id="clientSignConfirmBtn" onclick="saveClientSignature()" style="padding:8px 20px;background:#1FA3E0;border:none;border-radius:7px;color:#000;font-weight:700;font-size:13px;cursor:pointer;font-family:'Barlow',sans-serif;">Confirm Signature</button>
         </div>
       </div>
-      <p style="font-size:12px;color:var(--text-3);margin-top:14px;line-height:1.5;">By clicking "Confirm Signature" you confirm this is your authorized signature for this document.</p>
+      <p style="font-size:12px;color:var(--text-3);margin-top:14px;line-height:1.5;">When you confirm, we save your signature, your typed name, and the time you signed along with the document, so you and we both have a record.</p>
     </div>
   </div>
 </body>

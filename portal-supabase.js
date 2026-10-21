@@ -1,5 +1,7 @@
 /**
  * portal-supabase.js — Baseline Studio Portal Data Layer
+ * v13 (+0D staff access) — provider data is read and written under ownerId (org_members lookup at initProvider; own uid when master / no membership / lookup fails).
+ * v13 — client signDocument (RPC client_sign_document), refreshClientEvent, client save payload whitelisted (no money/identity fields), provider alert via send-email internal_client_update (old form-service call removed), client RPCs no longer return portalPassword.
  * v12 — sendEmail returns {ok,id}|{ok:false,error,detail} on every status; createProviderUser uses the signed-in JWT and no longer sends email.
  * v2 — bulletproof saving: token refresh, retry queue, localStorage backup,
  *       pre-load write queue, save-status pill, beforeunload guard.
@@ -145,8 +147,42 @@ const SB = {
     _token = null;
   },
 
+  // Whose provider_data rows this login works on: the org owner's for a staff member, own uid otherwise.
+  dataOwnerId() {
+    return (_session && (_session.owner_id || _session.user_id)) || null;
+  },
+
+  // Resolves the owner at provider login. RLS on org_members lets a member read their own row.
+  // Any failure (table not created yet, network, no row) falls back to own uid, which is the
+  // behaviour before org_members existed, so shipping this JS before the SQL is safe.
+  async resolveOwnerId() {
+    const uid = _session && _session.user_id;
+    if (!uid) return null;
+    const url = `${SUPABASE_URL}/rest/v1/org_members?select=org_owner_id&member_id=eq.${encodeURIComponent(uid)}&active=eq.true&limit=1`;
+    try {
+      let r = await fetch(url, { headers: this.headers() });
+      if (r && r.status === 401 && await _refreshToken()) r = await fetch(url, { headers: this.headers() });
+      if (!r || !r.ok) {
+        console.warn('[ownerId] org_members lookup failed (' + (r && r.status) + '); using own user id');
+        delete _session.owner_id; _saveSession(_session);
+        return uid;
+      }
+      const rows = await r.json();
+      const owner = Array.isArray(rows) && rows[0] && rows[0].org_owner_id;
+      if (owner && owner !== uid) { _session.owner_id = owner; } else { delete _session.owner_id; }
+      _saveSession(_session);
+      return owner && owner !== uid ? owner : uid;
+    } catch (e) {
+      console.warn('[ownerId] org_members lookup error; using own user id', e);
+      delete _session.owner_id; _saveSession(_session);
+      return uid;
+    }
+  },
+
   async loadAll() {
-    const r = await fetch(`${SUPABASE_URL}/rest/v1/provider_data?select=data_key,data_value`, { headers: this.headers() });
+    const owner = this.dataOwnerId();
+    const ownerFilter = owner ? `&user_id=eq.${encodeURIComponent(owner)}` : '';
+    const r = await fetch(`${SUPABASE_URL}/rest/v1/provider_data?select=data_key,data_value${ownerFilter}`, { headers: this.headers() });
     if (!r.ok) return {};
     const rows = await r.json();
     const out = {};
@@ -156,7 +192,7 @@ const SB = {
 
   // skipRetry=true prevents infinite loops when called from _flushRetryQueue
   async upsert(key, value, skipRetry) {
-    const uid = _session && _session.user_id;
+    const uid = this.dataOwnerId();
     const payload = { data_key: key, data_value: value };
     if (uid) payload.user_id = uid;
     const opts = {
@@ -220,12 +256,33 @@ const SB = {
     const r = await fetch(`${SUPABASE_URL}/rest/v1/rpc/update_client_event`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'apikey': SUPABASE_ANON },
-      body: JSON.stringify({ p_email: email.toLowerCase(), p_password: password, p_event_data: eventData })
+      body: JSON.stringify({ p_email: email.toLowerCase(), p_password: password, p_event_data: _clientSavePayload(eventData) })
     });
     if (!r.ok) { console.warn('[updateClientEvent] failed', r.status); return false; }
     return true;
   }
 };
+
+// ── Client save payload ────────────────────────────────────────────────────────
+// update_client_event only accepts these fields. Everything else (money, names, dates, venue,
+// documents, signatures, password, invoices) belongs to the provider and is never sent.
+const CLIENT_WRITABLE_FIELDS = [
+  'clientEnhancements', 'clientPrefs', 'clientVendors', 'timeline', 'messages',
+  'music', 'clientMusic', 'clientPlaylists', 'doNotPlay', 'clientNotes',
+  'clientOnboarding', 'onboardingComplete'
+];
+const CLIENT_NEVER_SEND = [
+  'depositPaid', 'balancePaid', 'basePrice', 'depositAmount', 'portalPassword', 'invoices',
+  'documents', 'docs', 'name', 'date', 'type', 'venue', 'venueName', 'venueAddress',
+  'clientName', 'clientPhone'
+];
+function _clientSavePayload(ev) {
+  const src = ev || {};
+  const out = { id: src.id };
+  CLIENT_WRITABLE_FIELDS.forEach(k => { if (src[k] !== undefined) out[k] = src[k]; });
+  CLIENT_NEVER_SEND.forEach(k => { delete out[k]; });
+  return out;
+}
 
 // ── Session helpers ────────────────────────────────────────────────────────────
 function _saveSession(s) { sessionStorage.setItem('bs_sb_session', JSON.stringify(s)); }
@@ -339,6 +396,63 @@ window.setDB = function setDB(key, data) {
   });
 };
 
+// ── Provider alert on client changes ───────────────────────────────────────────
+// Baseline of the five watched fields as of load or the last successful save.
+let _notifyBaseline = null;
+let _alertLastAt = 0, _alertPending = null, _alertTimer = null;
+const ALERT_MIN_GAP_MS = 5 * 60 * 1000;   // at most one alert email per 5 minutes per tab
+
+function _setNotifyBaseline(ev) {
+  if (!ev) { _notifyBaseline = null; return; }
+  try {
+    _notifyBaseline = JSON.parse(JSON.stringify({
+      clientVendors: ev.clientVendors, timeline: ev.timeline, clientPrefs: ev.clientPrefs,
+      clientEnhancements: ev.clientEnhancements, messages: ev.messages
+    }));
+  } catch (e) { _notifyBaseline = null; }
+}
+
+function _alertSummary(ev, fields) {
+  const parts = [];
+  if (fields.includes('vendors') && Array.isArray(ev.clientVendors)) parts.push('Vendors on file: ' + ev.clientVendors.length + '.');
+  if (fields.includes('timeline') && Array.isArray(ev.timeline)) parts.push('Timeline items: ' + ev.timeline.length + '.');
+  if (fields.includes('preferences') && ev.clientPrefs && ev.clientPrefs.vibe) parts.push('Vibe: ' + ev.clientPrefs.vibe + '.');
+  if (fields.includes('message') && Array.isArray(ev.messages)) {
+    const last = ev.messages.filter(m => m && m.from === 'client').pop();
+    if (last && last.text) parts.push('Latest message: "' + String(last.text).slice(0, 300) + '"');
+  }
+  return parts.join(' ');
+}
+
+function _sendProviderAlert(p) {
+  // sendEmail never throws; a failed alert must never affect the client's save.
+  return window.BSPortal.sendEmail('internal_client_update', {
+    eventId: p.eventId, eventName: p.eventName, clientName: p.clientName,
+    changed: p.changed, summary: p.summary
+  });
+}
+
+function _queueProviderAlert(ev, fields) {
+  const merged = _alertPending ? Array.from(new Set(_alertPending.changed.concat(fields))) : fields;
+  _alertPending = {
+    eventId: ev.id || '', eventName: ev.name || ev.title || '',
+    clientName: ev.clientName || (_session && _session.name) || (_session && _session.email) || 'Client',
+    changed: merged, summary: _alertSummary(ev, merged)
+  };
+  const wait = _alertLastAt + ALERT_MIN_GAP_MS - Date.now();
+  if (wait <= 0 && !_alertTimer) {
+    const p = _alertPending; _alertPending = null; _alertLastAt = Date.now();
+    _sendProviderAlert(p);
+  } else if (!_alertTimer) {
+    _alertTimer = setTimeout(() => {
+      _alertTimer = null;
+      if (!_alertPending) return;
+      const p = _alertPending; _alertPending = null; _alertLastAt = Date.now();
+      _sendProviderAlert(p);
+    }, Math.max(wait, 1000));
+  }
+}
+
 // ── BSPortal public API ────────────────────────────────────────────────────────
 window.BSPortal = {
 
@@ -346,6 +460,7 @@ window.BSPortal = {
     return _session ? {
       id:         _session.user_id || _session.eventId || '',
       userId:     _session.user_id || _session.eventId || '',
+      ownerId:    _session.owner_id || _session.user_id || null,
       role:       _session.role || 'master',
       name:       _session.name || '',
       email:      _session.email || '',
@@ -362,8 +477,6 @@ window.BSPortal = {
   _updateSessionPw(newPassword) {
     if (_session && _session.type === 'client') {
       _session.portalPw = newPassword;
-      if (_session.event) _session.event.portalPassword = newPassword;
-      if (_session.allEvents) _session.allEvents.forEach(ev => { ev.portalPassword = newPassword; });
       _saveSession(_session);
     }
   },
@@ -415,6 +528,7 @@ window.BSPortal = {
   async initProvider() {
     if (!_token || !_session || _session.type !== 'provider') { window.location.href = 'login.html'; return false; }
     if (_session.role && _session.role.startsWith('client-')) { window.location.href = 'portal-client.html'; return false; }
+    await SB.resolveOwnerId();
     const data = await SB.loadAll();
     window.DB = data;
     _ready = true;
@@ -449,6 +563,7 @@ window.BSPortal = {
   initClient() {
     if (!_session || _session.type !== 'client' || !_session.event) { window.location.href = 'login.html?role=client'; return null; }
     if (!_session.allEvents || !_session.allEvents.length) { _session.allEvents = [_session.event]; _saveSession(_session); }
+    _setNotifyBaseline(_session.event);
     return _session.event;
   },
 
@@ -465,6 +580,7 @@ window.BSPortal = {
     _session.eventId = ev.id;
     _session.role    = ev.type === 'corporate' ? 'client-corporate' : 'client-private';
     _saveSession(_session);
+    _setNotifyBaseline(ev);
     return ev;
   },
 
@@ -475,7 +591,9 @@ window.BSPortal = {
     if (!_session || _session.type !== 'client' || !_session.email || !_session.portalPw) {
       console.warn('[saveClientEvent] no client session'); return false;
     }
-    const prev = _session.event || {};
+    // The page edits _session.event in place, so the previous state comes from the baseline
+    // captured at load and after each successful save, not from _session.event.
+    const prev = _notifyBaseline || {};
     const vendorsDiff       = JSON.stringify(eventData.clientVendors)      !== JSON.stringify(prev.clientVendors);
     const timelineDiff      = JSON.stringify(eventData.timeline)           !== JSON.stringify(prev.timeline);
     const prefsDiff         = JSON.stringify(eventData.clientPrefs)        !== JSON.stringify(prev.clientPrefs);
@@ -485,32 +603,98 @@ window.BSPortal = {
     _session.event = Object.assign({}, _session.event, eventData);
     _saveSession(_session);
     const ok = await SB.updateClientEvent(_session.email, _session.portalPw, eventData);
-    if (ok && changed) {
-      // Check provider notification preferences stored on the event.
-      // Default is OFF — provider must explicitly enable via Settings page.
-      const ns = eventData.providerNotify || {};
-      const notifyEnabled = ns.enabled === true;
-      if (notifyEnabled) {
-        const what = [
-          vendorsDiff      && (ns.vendors  !== false) && 'vendors',
-          timelineDiff     && (ns.timeline !== false) && 'timeline',
-          prefsDiff        && (ns.prefs    !== false) && 'preferences',
-          enhancementsDiff && (ns.vendors  !== false) && 'enhancements',
-          messagesDiff     && (ns.messages !== false) && 'message'
-        ].filter(Boolean).join(', ');
-        if (what) {
-          fetch('https://api.web3forms.com/submit', {
-            method: 'POST', headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              access_key: '8eb161bf-d25e-41f4-8111-e5ea9a8a200e',
-              subject: 'Portal update — ' + (eventData.name || _session.name || 'Client'),
-              message: 'A client updated their portal.\n\nEvent: ' + (eventData.name || '') + '\nClient: ' + _session.email + '\nChanged: ' + what
-            })
-          }).catch(() => {});
+    if (ok) {
+      _setNotifyBaseline(eventData);
+      if (changed) {
+        // Provider notification preferences live on the event (provider Settings page).
+        // Default is OFF: the provider must explicitly enable it.
+        const ns = eventData.providerNotify || {};
+        if (ns.enabled === true) {
+          const fields = [
+            vendorsDiff      && (ns.vendors  !== false) && 'vendors',
+            timelineDiff     && (ns.timeline !== false) && 'timeline',
+            prefsDiff        && (ns.prefs    !== false) && 'preferences',
+            enhancementsDiff && (ns.vendors  !== false) && 'enhancements',
+            messagesDiff     && (ns.messages !== false) && 'message'
+          ].filter(Boolean);
+          if (fields.length) _queueProviderAlert(eventData, fields);
         }
       }
     }
     return ok;
+  },
+
+  // Same save, built for page unload: keepalive fetch, session credentials, whitelisted payload.
+  saveClientEventOnUnload(eventData) {
+    if (!_session || _session.type !== 'client' || !_session.email || !_session.portalPw || !eventData) return false;
+    try {
+      fetch(`${SUPABASE_URL}/rest/v1/rpc/update_client_event`, {
+        method: 'POST', keepalive: true,
+        headers: { 'Content-Type': 'application/json', 'apikey': SUPABASE_ANON },
+        body: JSON.stringify({ p_email: _session.email.toLowerCase(), p_password: _session.portalPw, p_event_data: _clientSavePayload(eventData) })
+      }).catch(() => {});
+      return true;
+    } catch (e) { return false; }
+  },
+
+  // Client e-sign. Calls RPC client_sign_document with the session email and the password the
+  // client logged in with. Returns {ok:true, signedAt} or {ok:false, error, message}.
+  // The RPC answers {ok:false,...} for every refusal (already_signed, consent_required, ...).
+  async signDocument(eventId, docId, signaturePng, signedName, consentVersion) {
+    if (!_session || _session.type !== 'client' || !_session.email || !_session.portalPw) {
+      return { ok: false, error: 'not_authorized', message: 'Your session ended. Sign in again and try once more.' };
+    }
+    try {
+      const r = await fetch(`${SUPABASE_URL}/rest/v1/rpc/client_sign_document`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'apikey': SUPABASE_ANON },
+        body: JSON.stringify({
+          p_email: _session.email.toLowerCase(),
+          p_password: _session.portalPw,
+          p_event_id: eventId,
+          p_doc_id: docId,
+          p_signature_png: signaturePng,
+          p_signed_name: signedName,
+          p_consent_version: consentVersion
+        })
+      });
+      let data = null;
+      try { data = await r.json(); } catch (e) { data = null; }
+      if (data && data.ok === true) return { ok: true, signedAt: data.signedAt || null };
+      if (data && data.ok === false) {
+        return { ok: false, error: data.error || 'unknown', message: data.message || 'That signature did not go through. Try again, or call us at (786) 302-6056.' };
+      }
+      return { ok: false, error: 'http_' + r.status, message: 'We could not save your signature. Check your connection and try again.' };
+    } catch (e) {
+      return { ok: false, error: 'network', message: 'We could not reach the server. Check your connection and try again.' };
+    }
+  },
+
+  // Re-fetch the signed-in client's current event from the server and refresh it in place.
+  // Pass the page's live event object: server values win, except the fields the client edits,
+  // which keep the live copy so unsaved typing is not lost. Updates that object (and the
+  // session copy) and returns it, or null if the fetch failed.
+  async refreshClientEvent(liveEvent) {
+    if (!_session || _session.type !== 'client' || !_session.email || !_session.portalPw) return null;
+    try {
+      const target = liveEvent || _session.event || {};
+      const wantId = target.id || _session.eventId;
+      let list = await SB.getAllClientEvents(_session.email, _session.portalPw);
+      let fresh = list ? list.find(e => e.id === wantId) : null;
+      if (!fresh) {
+        const one = await SB.getClientEvent(_session.email, _session.portalPw);
+        if (one && one.id === wantId) fresh = one;
+      }
+      if (!fresh) return null;
+      const merged = Object.assign({}, fresh);
+      CLIENT_WRITABLE_FIELDS.forEach(k => { if (target[k] !== undefined) merged[k] = target[k]; });
+      Object.keys(merged).forEach(k => { target[k] = merged[k]; });
+      _session.event = target;
+      const base = list || _session.allEvents || [];
+      _session.allEvents = base.map(e => e.id === wantId ? target : e);
+      _saveSession(_session);
+      return target;
+    } catch (e) { return null; }
   },
 
   // Push provider notification settings into a specific client's event in Supabase.
