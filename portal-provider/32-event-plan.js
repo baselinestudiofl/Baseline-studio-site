@@ -208,125 +208,239 @@
       return suggestions.filter(([label]) => !existing.has(label.toLowerCase()));
     }
 
-    function addProviderSuggestedMoment(eventId, label, time) {
-      saveEventTimeline(eventId); // save current DOM first
+    // Plan tab: what the client entered (renderEventClientPlan, unchanged) plus the lighting colors card.
+    function _evLightingSummary(ev) {
+      const l = ((ev.clientEnhancements || {}).lighting) || {};
+      const colors = Array.isArray(l.colors) ? l.colors.filter(Boolean) : [];
+      if (!colors.length) return '<div class="t-meta">No colors chosen yet.</div>';
+      const picked = Array.isArray(l.clientPicked) ? l.clientPicked.map(c => String(c).toLowerCase()) : [];
+      return '<ul class="ev-lc-list">' + colors.map(hex => {
+        const byProvider = l.setBy === 'provider' && picked.indexOf(String(hex).toLowerCase()) < 0;
+        const safe = _cpSafeColor(hex);
+        return `<li class="ev-lc-row"><span class="ev-swatch" style="background:${safe || 'transparent'}"></span><span class="num">${esc(hex)}</span><span class="pill pill-${byProvider ? 'info' : 'neutral'} pill-sm" data-ui="pill">${byProvider ? 'Provider set' : 'Client picked'}</span></li>`;
+      }).join('') + '</ul>';
+    }
+    function renderEventPlanTab(ev) {
+      return `<div class="ev-plan">
+        <div class="ev-plan-body">${renderEventClientPlan(ev)}</div>
+        <section class="card ev-lighting" id="lightingCard" data-section="lighting">
+          <div class="card-head"><h3 class="card-title">Lighting colors</h3></div>
+          <div id="lightingSummary">${_evLightingSummary(ev)}</div>
+          <p class="t-meta ev-lc-note">You can change their picks here. Changes show in their portal.</p>
+          <div id="providerLpMount"></div>
+        </section>
+      </div>`;
+    }
+
+    // ── Timeline tab: rows are  time | moment | minutes | handle | up | down | delete ────────────────
+    // Later times follow from the minutes of the row above (only when that row has minutes). Editing a time,
+    // minutes or the order refreshes the rows below and offers Undo.
+    function _tlMin(t) { const m = /^(\d{1,2}):(\d{2})/.exec(String(t || '')); return m ? (+m[1]) * 60 + (+m[2]) : null; }
+    function _tlAdd(t, mins) {
+      const b = _tlMin(t); if (b === null) return '';
+      const v = (((b + mins) % 1440) + 1440) % 1440;
+      return String(Math.floor(v / 60)).padStart(2, '0') + ':' + String(v % 60).padStart(2, '0');
+    }
+    function _tlChain(entries) { return entries.length > 0 && entries.every(e => Number(e.dur) > 0); }
+    function _tlReflow(entries, from) {
+      let changed = false;
+      for (let i = Math.max(0, from) + 1; i < entries.length; i++) {
+        const prev = entries[i - 1];
+        if (Number(prev.dur) > 0 && _tlMin(prev.time) !== null) {
+          const t = _tlAdd(prev.time, Number(prev.dur));
+          if (entries[i].time !== t) { entries[i].time = t; changed = true; }
+        } else break;
+      }
+      return changed;
+    }
+    function _tlFind(eventId) {
       const events = getDB('events');
-      const event = events.find(e => e.id === eventId);
-      if (!event) return;
-      if (!event.timeline) event.timeline = [];
-      event.timeline.push({ label, time });
+      const ev = events.find(e => e.id === eventId);
+      return { events, ev };
+    }
+    function _tlPill(state) {
+      const host = document.getElementById('tlSaveHost');
+      if (host && window.CRMUI && CRMUI.savePill) CRMUI.savePill(host).set(state);
+    }
+    function _tlPersist(eventId, events, ev) {
+      _tlPill('saving');
       setDB('events', events);
-      window.currentDetailEvent = event;
+      window.currentDetailEvent = ev;
+      if (window.currentEvent && window.currentEvent.id === eventId) window.currentEvent = ev;
+      _tlPill('saved');
+    }
+    function _tlRender(eventId, focusSel) {
+      const ev = (getDB('events') || []).find(e => e.id === eventId);
       const tabEl = document.getElementById('tabTimeline');
-      if (tabEl) { tabEl.innerHTML = renderEventTimeline(event); tabEl.classList.add('active'); }
+      if (!ev || !tabEl) return;
+      tabEl.innerHTML = renderEventTimeline(ev);
+      window.currentDetailEvent = ev;
+      if (focusSel) { const f = tabEl.querySelector(focusSel); if (f) { try { f.focus(); f.scrollIntoView({ block: 'nearest' }); } catch (e) {} } }
+    }
+    function _tlRestore(eventId, snap) {
+      const { events, ev } = _tlFind(eventId);
+      if (!ev) return;
+      ev.timeline = JSON.parse(snap);
+      _tlPersist(eventId, events, ev);
+      _tlRender(eventId);
+    }
+    function _tlSuggestDur(type, label, time) {
+      const list = TIMELINE_SUGGESTIONS[(type || 'default').toLowerCase()] || TIMELINE_SUGGESTIONS.default;
+      const i = list.findIndex(s => s[0].toLowerCase() === String(label).toLowerCase());
+      if (i < 0 || i === list.length - 1) return 30;
+      const d = _tlMin(list[i + 1][1]) - _tlMin(list[i][1]);
+      return d > 0 ? d : 30;
+    }
+    function _tlSortByTime(entries) {
+      return entries.map((e, i) => [e, i]).sort((a, b) => {
+        const x = _tlMin(a[0].time), y = _tlMin(b[0].time);
+        if (x === null && y === null) return a[1] - b[1];
+        if (x === null) return 1; if (y === null) return -1;
+        return x - y || a[1] - b[1];
+      }).map(p => p[0]);
+    }
+
+    function addProviderSuggestedMoment(eventId, label, time) {
+      saveEventTimeline(eventId, true);
+      const { events, ev } = _tlFind(eventId);
+      if (!ev) return;
+      if (!ev.timeline) ev.timeline = [];
+      ev.timeline.push({ label, time, dur: _tlSuggestDur(ev.type, label, time) });
+      ev.timeline = _tlSortByTime(ev.timeline);
+      _tlPersist(eventId, events, ev);
+      _tlRender(eventId);
     }
 
     function addAllProviderSuggestions(eventId) {
-      saveEventTimeline(eventId);
-      const events = getDB('events');
-      const event = events.find(e => e.id === eventId);
-      if (!event) return;
-      if (!event.timeline) event.timeline = [];
-      const toAdd = getProviderTimelineSuggestions(event);
-      toAdd.forEach(([label, time]) => event.timeline.push({ label, time }));
-      setDB('events', events);
-      window.currentDetailEvent = event;
-      const tabEl = document.getElementById('tabTimeline');
-      if (tabEl) { tabEl.innerHTML = renderEventTimeline(event); tabEl.classList.add('active'); }
+      saveEventTimeline(eventId, true);
+      const { events, ev } = _tlFind(eventId);
+      if (!ev) return;
+      if (!ev.timeline) ev.timeline = [];
+      const toAdd = getProviderTimelineSuggestions(ev);
+      if (!toAdd.length) { showToast('All the suggested moments are already on the list.', 'info'); return; }
+      toAdd.forEach(([label, time]) => ev.timeline.push({ label, time, dur: _tlSuggestDur(ev.type, label, time) }));
+      ev.timeline = _tlSortByTime(ev.timeline);
+      _tlPersist(eventId, events, ev);
+      _tlRender(eventId);
     }
 
     function renderEventTimeline(event) {
       if (!event.timeline) event.timeline = [];
+      const id = esc(event.id);
+      const icon = (n, s) => (window.CRMUI && CRMUI.icon) ? CRMUI.icon(n, s) : '';
+      const tl = event.timeline;
       const suggestions = getProviderTimelineSuggestions(event);
-      let html = '<div class="form-group"><label class="form-label">Event Timeline</label>';
-      // Suggestion chips
-      if (suggestions.length > 0) {
-        html += `<div style="margin-bottom:14px;"><div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.07em;color:var(--gray);margin-bottom:8px;">Quick add</div><div style="display:flex;flex-wrap:wrap;gap:6px;">`;
-        suggestions.forEach(([label, time]) => {
-          html += `<button onclick="addProviderSuggestedMoment('${event.id}','${label.replace(/'/g,"\\'")}','${time}')" style="padding:5px 11px;background:rgba(31,163,224,0.08);border:1px solid rgba(31,163,224,0.65);color:rgba(255,255,255,0.7);border-radius:20px;font-size:12px;cursor:pointer;font-family:'Barlow',sans-serif;">+ ${label} <span style="color:#1FA3E0;">${time}</span></button>`;
-        });
-        html += `<button onclick="addAllProviderSuggestions('${event.id}')" style="padding:5px 11px;background:rgba(31,163,224,0.15);border:1px solid rgba(31,163,224,0.65);color:#1FA3E0;border-radius:20px;font-size:12px;cursor:pointer;font-weight:600;font-family:'Barlow',sans-serif;">Add all</button>`;
-        html += `</div></div>`;
-      }
-      event.timeline.forEach((entry, idx) => {
-        html += `<div class="timeline-row"><input type="time" value="${entry.time}" id="timelineTime${idx}"><input type="text" placeholder="Label/Description" value="${entry.label}" id="timelineLabel${idx}"><button class="btn btn-danger" onclick="removeTimelineEntry('${event.id}', ${idx})">Remove</button></div>`;
-      });
-      html += `</div><button class="btn btn-secondary" style="margin-bottom: 15px;" onclick="addTimelineEntry('${event.id}')">+ Add Entry</button>`;
-      html += `<div style="display: flex; gap: 10px; flex-wrap:wrap;">
-        <button class="btn btn-primary" onclick="saveEventTimeline('${event.id}')">Save Timeline</button>
-        <button class="btn btn-secondary" onclick="exportTimelinePDF('${event.id}')">Export PDF</button>
-        <button class="btn btn-secondary" onclick="printRunOfShow('${event.id}')" style="background:rgba(31,163,224,0.12);border-color:rgba(31,163,224,0.65);color:var(--cyan);font-weight:600;" title="Print a branded Run of Show sheet — great to hand out to vendors at the event">🎧 Print Run of Show</button>
+      const rows = tl.map((entry, idx) => `<fieldset class="tl-row" ondragover="event.preventDefault()" ondrop="tlDrop(event,'${id}',${idx})">
+          <legend class="sr-only">Moment ${idx + 1}</legend>
+          <button type="button" class="tl-handle btn btn-ghost btn-icon" draggable="true" ondragstart="tlDragStart(event,${idx})" aria-label="Drag to move moment ${idx + 1}" tabindex="-1">${icon('grip-vertical', 18)}</button>
+          <input type="time" class="input tl-time" id="timelineTime${idx}" value="${esc(entry.time || '')}" aria-label="Time" onchange="tlEdit('${id}',${idx},'time')">
+          <input type="text" class="input tl-label" id="timelineLabel${idx}" placeholder="What happens" value="${esc(entry.label || '')}" aria-label="Moment" data-user-content onchange="tlEdit('${id}',${idx},'label')">
+          <input type="text" class="input tl-dur" id="timelineDur${idx}" inputmode="numeric" placeholder="Min" value="${entry.dur ? esc(entry.dur) : ''}" aria-label="Minutes" onchange="tlEdit('${id}',${idx},'dur')">
+          <span class="tl-btns">
+            <button type="button" class="btn btn-ghost btn-icon" aria-label="Move up" onclick="tlMove('${id}',${idx},-1)" ${idx === 0 ? 'disabled' : ''}>${icon('chevron-up', 18)}</button>
+            <button type="button" class="btn btn-ghost btn-icon" aria-label="Move down" onclick="tlMove('${id}',${idx},1)" ${idx === tl.length - 1 ? 'disabled' : ''}>${icon('chevron-down', 18)}</button>
+            <button type="button" class="btn btn-ghost btn-icon" aria-label="Remove moment ${idx + 1}" onclick="removeTimelineEntry('${id}',${idx})">${icon('trash-2', 18)}</button>
+          </span>
+        </fieldset>`).join('');
+      const empty = `<div class="empty ev-empty-sm">${icon('clock', 32)}<h3 class="empty-title">No moments yet.</h3><p class="empty-text">Add the key moments of the night, or start from the usual ones for this type of event.</p></div>`;
+      return `<div class="ev-tl">
+        <section class="card" data-section="timeline">
+          <div class="card-head ev-tl-head"><h3 class="card-title">Run of show</h3><span id="tlSaveHost" class="ev-tl-save"></span></div>
+          <div class="ev-tl-tools">
+            ${suggestions.length ? `<button type="button" class="btn btn-secondary" id="tlSuggestProvider" onclick="addAllProviderSuggestions('${id}')">${icon('sparkles', 18)}<span>Add suggested moments</span></button>` : ''}
+            <button type="button" class="btn btn-secondary" onclick="printRunOfShow('${id}')">${icon('printer', 18)}<span>Print run of show</span></button>
+            <button type="button" class="btn btn-ghost" onclick="exportTimelinePDF('${id}')">${icon('download', 18)}<span>Export PDF</span></button>
+          </div>
+          ${tl.length ? `<div class="tl-colhead" aria-hidden="true"><span></span><span>Time</span><span>Moment</span><span>Minutes</span><span></span></div><div class="tl-rows">${rows}</div>` : empty}
+          <button type="button" class="btn btn-secondary ev-tl-add" onclick="addTimelineEntry('${id}')">${icon('plus', 18)}<span>Add moment</span></button>
+          <p class="t-meta ev-tl-note">Give a moment its minutes and the times below it follow. Changes save as you go.</p>
+        </section>
       </div>`;
-      return html;
+    }
+
+    function tlEdit(eventId, idx, field) {
+      const { events, ev } = _tlFind(eventId);
+      if (!ev || !ev.timeline || !ev.timeline[idx]) return;
+      const snap = JSON.stringify(ev.timeline);
+      const e = ev.timeline[idx];
+      const val = id => { const el = document.getElementById(id + idx); return el ? el.value : undefined; };
+      if (field === 'time') e.time = val('timelineTime') || '';
+      if (field === 'label') e.label = val('timelineLabel') || '';
+      if (field === 'dur') { const n = parseInt(val('timelineDur'), 10); e.dur = n > 0 ? n : ''; const el = document.getElementById('timelineDur' + idx); if (el) el.value = e.dur || ''; }
+      let moved = false;
+      if (field !== 'label') moved = _tlReflow(ev.timeline, idx);
+      _tlPersist(eventId, events, ev);
+      if (moved) {
+        ev.timeline.forEach((t, i) => { if (i > idx) { const el = document.getElementById('timelineTime' + i); if (el) el.value = t.time || ''; } });
+        showUndoToast('Following times updated.', () => _tlRestore(eventId, snap));
+      }
+    }
+    function tlMove(eventId, from, dir) { _tlMoveTo(eventId, from, from + dir); }
+    function _tlMoveTo(eventId, from, to) {
+      const { events, ev } = _tlFind(eventId);
+      if (!ev || !ev.timeline || from === to || to < 0 || to >= ev.timeline.length) return;
+      saveEventTimeline(eventId, true);
+      const fresh = _tlFind(eventId); const evs = fresh.events, e2 = fresh.ev;
+      const tl = e2.timeline, snap = JSON.stringify(tl);
+      const chain = _tlChain(tl);
+      const slots = tl.map(t => t.time);
+      const [item] = tl.splice(from, 1);
+      tl.splice(to, 0, item);
+      let moved = false;
+      if (chain) { tl.forEach((t, i) => { t.time = slots[i]; }); moved = _tlReflow(tl, 0); }
+      _tlPersist(eventId, evs, e2);
+      _tlRender(eventId, '#timelineLabel' + to);
+      if (chain && moved) showUndoToast('Following times updated.', () => _tlRestore(eventId, snap));
+    }
+    function tlDragStart(e, idx) { try { e.dataTransfer.setData('text/plain', String(idx)); e.dataTransfer.effectAllowed = 'move'; } catch (x) {} }
+    function tlDrop(e, eventId, to) {
+      e.preventDefault();
+      let from = -1;
+      try { from = parseInt(e.dataTransfer.getData('text/plain'), 10); } catch (x) {}
+      if (!isNaN(from) && from >= 0) _tlMoveTo(eventId, from, to);
     }
 
     function addTimelineEntry(eventId) {
-      // Save current DOM values before modifying
-      saveEventTimeline(eventId);
-      const events = getDB('events');
-      const event = events.find(e => e.id === eventId);
-      if (event) {
-        if (!event.timeline) event.timeline = [];
-        event.timeline.push({ time: '', label: '' });
-        setDB('events', events);
-        // Re-render only the timeline tab in-place, keep it active
-        const tabEl = document.getElementById('tabTimeline');
-        if (tabEl) {
-          tabEl.innerHTML = renderEventTimeline(event);
-          const detailEl = document.getElementById('detailContent');
-          (detailEl || document).querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
-          (detailEl || document).querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
-          (detailEl || document).querySelector('.tab-btn[onclick*="timeline"]').classList.add('active');
-          tabEl.classList.add('active');
-          // Scroll new row into view
-          const rows = tabEl.querySelectorAll('.timeline-row');
-          if (rows.length) rows[rows.length - 1].scrollIntoView({ behavior: 'smooth', block: 'nearest' });
-        }
-        window.currentDetailEvent = event;
-      }
+      saveEventTimeline(eventId, true);
+      const { events, ev } = _tlFind(eventId);
+      if (!ev) return;
+      if (!ev.timeline) ev.timeline = [];
+      const last = ev.timeline[ev.timeline.length - 1];
+      const next = last && Number(last.dur) > 0 ? _tlAdd(last.time, Number(last.dur)) : '';
+      ev.timeline.push({ time: next, label: '', dur: '' });
+      _tlPersist(eventId, events, ev);
+      _tlRender(eventId, '#timelineLabel' + (ev.timeline.length - 1));
     }
 
     function removeTimelineEntry(eventId, idx) {
-      // Save current DOM values before modifying
-      saveEventTimeline(eventId);
-      const events = getDB('events');
-      const event = events.find(e => e.id === eventId);
-      if (!event || !event.timeline) return;
-      const rerender = () => {
-        // Re-render only the timeline tab in-place, keep it active
-        const tabEl = document.getElementById('tabTimeline');
-        if (tabEl) {
-          tabEl.innerHTML = renderEventTimeline(event);
-          const detailEl3 = document.getElementById('detailContent');
-          (detailEl3 || document).querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
-          (detailEl3 || document).querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
-          (detailEl3 || document).querySelector('.tab-btn[onclick*="timeline"]').classList.add('active');
-          tabEl.classList.add('active');
-        }
-        window.currentDetailEvent = event;
-      };
-      const removed = event.timeline.splice(idx, 1)[0];
-      setDB('events', events);
-      rerender();
-      showUndoToast('Timeline entry removed', () => {
-        event.timeline.splice(idx, 0, removed);
-        setDB('events', events);
-        rerender();
-      });
+      saveEventTimeline(eventId, true);
+      const { events, ev } = _tlFind(eventId);
+      if (!ev || !ev.timeline || !ev.timeline[idx]) return;
+      const snap = JSON.stringify(ev.timeline);
+      const chain = _tlChain(ev.timeline);
+      ev.timeline.splice(idx, 1);
+      if (chain && idx > 0) _tlReflow(ev.timeline, idx - 1);
+      _tlPersist(eventId, events, ev);
+      _tlRender(eventId);
+      showUndoToast('Moment removed.', () => _tlRestore(eventId, snap));
     }
 
-    function saveEventTimeline(eventId) {
+    // Reads the rows that are on screen. Rows that are not drawn (Home day-of sheet, print from another tab) are left alone.
+    function saveEventTimeline(eventId, quiet) {
       const events = getDB('events');
       const event = events.find(e => e.id === eventId);
-      if (event) {
-        if (!event.timeline) event.timeline = [];
-        event.timeline.forEach((entry, idx) => {
-          entry.time = document.getElementById(`timelineTime${idx}`)?.value || '';
-          entry.label = document.getElementById(`timelineLabel${idx}`)?.value || '';
-        });
-        setDB('events', events);
-        showToast('Timeline saved', 'success');
-      }
+      if (!event) return;
+      if (!event.timeline) event.timeline = [];
+      const before = JSON.stringify(event.timeline);
+      event.timeline.forEach((entry, idx) => {
+        const t = document.getElementById(`timelineTime${idx}`), l = document.getElementById(`timelineLabel${idx}`), d = document.getElementById(`timelineDur${idx}`);
+        if (t) entry.time = t.value || '';
+        if (l) entry.label = l.value || '';
+        if (d) { const n = parseInt(d.value, 10); entry.dur = n > 0 ? n : ''; }
+      });
+      if (JSON.stringify(event.timeline) === before) return;
+      setDB('events', events);
+      if (!quiet) showToast('Timeline saved', 'success');
     }
 
     function exportTimelinePDF(eventId) {
@@ -337,11 +451,11 @@
       const printContent = `
         <html>
         <head>
-          <title>${event.name} Timeline</title>
+          <title>${esc(event.name)} Timeline</title>
           <style>
             body { font-family: Arial, sans-serif; margin: 40px; background: white; color: black; }
             .header { text-align: center; margin-bottom: 30px; border-bottom: 2px solid #1FA3E0; padding-bottom: 20px; }
-            .header h1 { margin: 0; color: #1FA3E0; }
+            .header h1 { margin: 0; color: #0b5f87; }
             .event-info { margin-bottom: 20px; display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
             .info-block { padding: 10px; background: #f5f5f5; border-radius: 4px; }
             .info-label { font-weight: bold; color: #333; }
@@ -358,13 +472,13 @@
         <body>
           <div class="header">
             <h1>Baseline Studio</h1>
-            <h2>${event.name}</h2>
+            <h2>${esc(event.name)}</h2>
           </div>
           <div class="event-info">
-            <div class="info-block"><div class="info-label">Date:</div>${event.date}</div>
-            <div class="info-block"><div class="info-label">Time:</div>${event.startTime} - ${event.endTime}</div>
-            <div class="info-block"><div class="info-label">Venue:</div>${event.venueName}</div>
-            <div class="info-block"><div class="info-label">Client:</div>${event.clientName}</div>
+            <div class="info-block"><div class="info-label">Date:</div>${esc(event.date)}</div>
+            <div class="info-block"><div class="info-label">Time:</div>${esc(event.startTime)} - ${esc(event.endTime)}</div>
+            <div class="info-block"><div class="info-label">Venue:</div>${esc(event.venueName)}</div>
+            <div class="info-block"><div class="info-label">Client:</div>${esc(event.clientName)}</div>
           </div>
           <h3>Timeline</h3>
           <table>
@@ -372,22 +486,23 @@
               <tr><th>Time</th><th>Event</th></tr>
             </thead>
             <tbody>
-              ${event.timeline && event.timeline.length ? event.timeline.map(t => `<tr><td>${t.time}</td><td>${t.label}</td></tr>`).join('') : '<tr><td colspan="2">No timeline entries</td></tr>'}
+              ${event.timeline && event.timeline.length ? event.timeline.map(t => `<tr><td>${esc(t.time)}</td><td>${esc(t.label)}</td></tr>`).join('') : '<tr><td colspan="2">No timeline entries</td></tr>'}
             </tbody>
           </table>
           <div class="services">
             <h3>Services</h3>
             <ul>
-              ${event.services && event.services.length ? event.services.map(s => `<li>${s.category}: ${s.service}${s.subOption ? ' - ' + s.subOption : ''}</li>`).join('') : '<li>No services listed</li>'}
+              ${event.services && event.services.length ? event.services.map(s => `<li>${esc(s.category)}: ${esc(s.service)}${s.subOption ? ' - ' + esc(s.subOption) : ''}</li>`).join('') : '<li>No services listed</li>'}
             </ul>
           </div>
-          ${event.notes ? `<div><h3>Notes</h3><p>${event.notes}</p></div>` : ''}
+          ${event.notes ? `<div><h3>Notes</h3><p>${esc(event.notes)}</p></div>` : ''}
           <div class="footer">Prepared by Baseline Studio | (786) 302-6056</div>
         </body>
         </html>
       `;
 
       const printWindow = window.open('', '', 'height=600,width=800');
+      if (!printWindow) { showToast('Allow pop-ups for this site to print.', 'warning'); return; }
       printWindow.document.write(printContent);
       printWindow.document.close();
       printWindow.print();
@@ -426,27 +541,28 @@
       const staff = getDB('staffroster') || [];
       const assigned = (ev.assignedAccounts || []).map(uid => {
         const s = staff.find(p => p.id === uid);
-        return s ? `${s.name} (${s.role || 'Staff'})` : null;
+        return s ? `${esc(s.name)} (${esc(s.role || 'Staff')})` : null;
       }).filter(Boolean);
 
       const timelineRows = sorted.length
         ? sorted.map((entry, i) => `
             <tr style="${i % 2 === 0 ? 'background:#f9f9f9;' : ''}">
-              <td style="padding:10px 14px;font-weight:700;font-size:15px;white-space:nowrap;color:#1FA3E0;border-bottom:1px solid #e8e8e8;">${fmtTime(entry.time)}</td>
-              <td style="padding:10px 14px;font-size:14px;border-bottom:1px solid #e8e8e8;">${entry.label || ''}</td>
+              <td style="padding:10px 14px;font-weight:700;font-size:15px;white-space:nowrap;color:#0b5f87;border-bottom:1px solid #e8e8e8;">${fmtTime(entry.time)}</td>
+              <td style="padding:10px 14px;font-size:14px;border-bottom:1px solid #e8e8e8;">${esc(entry.label || '')}</td>
               <td style="padding:10px 14px;font-size:13px;color:#8a8f98;border-bottom:1px solid #e8e8e8;"></td>
             </tr>`).join('')
         : `<tr><td colspan="3" style="padding:16px;text-align:center;color:#999;">No timeline entries yet — save the timeline first.</td></tr>`;
 
       const services = ev.services?.length
-        ? ev.services.map(s => `<span style="display:inline-block;background:#f0f9ff;border:1px solid #c5e5f6;color:#1565a9;border-radius:4px;padding:3px 10px;margin:3px;font-size:12px;">${s.category}: ${s.service}${s.subOption?' — '+s.subOption:''}</span>`).join('')
+        ? ev.services.map(s => `<span style="display:inline-block;background:#f0f9ff;border:1px solid #c5e5f6;color:#1565a9;border-radius:4px;padding:3px 10px;margin:3px;font-size:12px;">${esc(s.category)}: ${esc(s.service)}${s.subOption?' — '+esc(s.subOption):''}</span>`).join('')
         : '<span style="color:#aaa;font-size:13px;">No services listed</span>';
 
       const _cp = _cpPrintHtml(ev); // client music + vendors (P0.4)
       const w = window.open('', '_blank', 'width=900,height=900,menubar=yes');
+      if (!w) { showToast('Allow pop-ups for this site to print.', 'warning'); return; }
       w.document.write(`<!DOCTYPE html><html><head>
         <meta charset="utf-8">
-        <title>Run of Show — ${ev.name}</title>
+        <title>Run of Show — ${esc(ev.name)}</title>
         <style>
           * { box-sizing:border-box; margin:0; padding:0; }
           body { font-family: Arial, Helvetica, sans-serif; background: #f4f4f4; }
@@ -479,7 +595,7 @@
         </style>
       </head><body>
         <div class="print-bar">
-          <span>🎧 Run of Show — <strong>${ev.name}</strong></span>
+          <span>🎧 Run of Show — <strong>${esc(ev.name)}</strong></span>
           <button onclick="window.print()">🖨 Print / Save PDF</button>
         </div>
         <div class="page">
@@ -489,7 +605,7 @@
               <div class="doc-label">Run of Show</div>
             </div>
             <div>
-              <div class="event-name">${ev.name}</div>
+              <div class="event-name">${esc(ev.name)}</div>
               <div class="event-date-sub">${fmtDate}</div>
             </div>
           </div>
@@ -497,15 +613,15 @@
           <div class="info-strip">
             <div class="info-cell">
               <div class="lbl">Venue</div>
-              <div class="val">${ev.venueName || '—'}</div>
+              <div class="val">${esc(ev.venueName || '—')}</div>
             </div>
             <div class="info-cell">
               <div class="lbl">Client</div>
-              <div class="val">${ev.clientName || '—'}</div>
+              <div class="val">${esc(ev.clientName || '—')}</div>
             </div>
             <div class="info-cell">
               <div class="lbl">Start / End</div>
-              <div class="val">${ev.startTime || '—'} – ${ev.endTime || '—'}</div>
+              <div class="val">${esc(ev.startTime || '—')} – ${esc(ev.endTime || '—')}</div>
             </div>
             <div class="info-cell">
               <div class="lbl">Staff / DJ</div>
@@ -561,7 +677,7 @@
 
           <div class="footer-bar">
             <span>Baseline Studio · (786) 302-6056 · Hello@baselinestudiofl.com</span>
-            <span>Prepared for: ${ev.clientName || ev.name} · Confidential</span>
+            <span>Prepared for: ${esc(ev.clientName || ev.name)} · Confidential</span>
           </div>
         </div>
       </body></html>`);

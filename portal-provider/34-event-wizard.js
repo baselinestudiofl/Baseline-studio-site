@@ -1,73 +1,124 @@
 // ============================================================================
 // portal-provider/34-event-wizard.js  -  new-event wizard and the double-booking check
-// Classic script (no modules, no build step). Split verbatim from portal-provider.html (task 1A).
+// Classic script (no modules, no build step). Split verbatim from portal-provider.html (task 1A), redesigned in UI lane P2.
 // Shares the global scope with the other portal-provider/*.js files; load order is set by the script tags in portal-provider.html.
+// Four steps: Type and date, Client, Venue, Services. Step ids are wizStep0..3 (class wizard-step).
 // ============================================================================
 
-    function openNewEventModal() {
+    const WIZ_TYPES = [
+      { value: 'wedding', label: 'Wedding' },
+      { value: 'quince', label: 'Quince/Sweet 16' },
+      { value: 'sweet16', label: 'Sweet 16' },
+      { value: 'mitzvah', label: 'Bar/Bat Mitzvah' },
+      { value: 'corporate', label: 'Corporate' },
+      { value: 'gala', label: 'Gala/Fundraiser' },
+      { value: 'birthday', label: 'Birthday/Private Party' },
+      { value: 'concert', label: 'Concert/Festival' }
+    ];
+    const WIZ_STEP_TITLES = ['Type and date', 'Client', 'Venue', 'Services'];
+
+    function openNewEventModal(prefill) {
       const steps = [
-        { title: 'Type', content: renderEventTypeStep() },
-        { title: 'Basics', content: renderEventBasicsStep() },
-        { title: 'Client', content: renderEventClientStep() },
-        { title: 'Venue', content: renderEventVenueStep() },
-        { title: 'Services', content: renderEventServicesStep() }
+        { title: WIZ_STEP_TITLES[0], content: renderEventTypeStep() + renderEventBasicsStep() },
+        { title: WIZ_STEP_TITLES[1], content: renderEventClientStep() },
+        { title: WIZ_STEP_TITLES[2], content: renderEventVenueStep() },
+        { title: WIZ_STEP_TITLES[3], content: renderEventServicesStep() }
       ];
 
-      let html = '';
+      let html = `<div class="wiz-progress" id="wizardProgress" aria-live="polite">Step 1 of ${steps.length}: ${steps[0].title}</div><div class="wiz-body">`;
       steps.forEach((step, idx) => {
-        html += `<div id="wizardStep${idx}" class="wizard-step" style="${idx === 0 ? '' : 'display:none;'}"><div style="font-size: 13px; color: var(--gray); margin-bottom: 15px;">Step ${idx + 1} of ${steps.length}</div>${step.content}</div>`;
+        html += `<div id="wizStep${idx}" class="wizard-step" data-step="${idx}"${idx === 0 ? '' : ' hidden'}>${step.content}</div>`;
       });
-      html += `<div style="display: flex; gap: 10px; justify-content: flex-end; margin-top: 20px;"><button class="btn btn-secondary" id="wizardBack" onclick="wizardPrevStep()" style="display:none;">Back</button><button class="btn btn-primary" id="wizardNext" onclick="wizardNextStep()">Next</button></div>`;
+      html += `</div><div class="wiz-foot"><button type="button" class="btn btn-secondary" id="wizardBack" onclick="wizardPrevStep()" hidden>Back</button><button type="button" class="btn btn-primary" id="wizardNext" onclick="wizardNextStep()">Next</button></div>`;
 
       document.getElementById('eventWizardSteps').innerHTML = html;
       window.currentWizardStep = 0;
       window.wizardData = {};
-      openModal('newEventModal');
+      window.wizardServices = {};
+      // An inquiry can hand over what it knows (window.wizardPrefill). Used once.
+      let pf = prefill || null;
+      if (!pf && window.wizardPrefill && !window.wizardPrefill._used) { pf = window.wizardPrefill; window.wizardPrefill._used = true; }
+      if (pf) _wizardApplyPrefill(pf);
+      // Opening right after the inquiry window closes: wait for the route step-back to settle so it cannot close the wizard.
+      if (typeof _routeBackPending !== 'undefined' && _routeBackPending) {
+        let tries = 0;
+        const t = setInterval(function () {
+          if (!_routeBackPending || ++tries > 20) { clearInterval(t); openModal('newEventModal'); }
+        }, 50);
+      } else {
+        openModal('newEventModal');
+      }
+    }
+
+    function _wizardApplyPrefill(pf) {
+      const set = (id, v) => { const el = document.getElementById(id); if (el && v) el.value = v; };
+      if (pf.type) {
+        window.wizardData.type = pf.type;
+        window.wizardData.typeNeedsReview = !!pf.typeNeedsReview;
+        if (!pf.typeNeedsReview) {
+          const tile = document.querySelector('.event-type-tile[data-type="' + pf.type + '"]');
+          if (tile) { tile.classList.add('is-selected'); tile.setAttribute('aria-pressed', 'true'); }
+        }
+      }
+      if (pf.notes) window.wizardData.notes = pf.notes;
+      set('wizardEventName', pf.name);
+      set('wizardEventDate', pf.date);
+      if (pf.date) _wizardCheckDate(pf.date);
+      const clients = (getDB('clients') || []).filter(c => !c.archived);
+      const known = pf.clientEmail ? clients.find(c => (c.email || '').toLowerCase() === String(pf.clientEmail).toLowerCase()) : null;
+      if (known) {
+        const sel = document.getElementById('wizardClientSelect');
+        if (sel) { sel.value = known.id; selectWizardClient(known.id); }
+      } else {
+        set('wizardClientName', pf.clientName);
+        set('wizardClientEmail', pf.clientEmail);
+        set('wizardClientPhone', pf.clientPhone);
+      }
+      set('wizardVenueName', pf.venueName);
     }
 
     function renderEventTypeStep() {
-      const types = [
-        { value: 'wedding', label: 'Wedding', color: '#e91e63' },
-        { value: 'quince', label: 'Quince/Sweet 16', color: '#9c27b0' },
-        { value: 'sweet16', label: 'Sweet 16', color: '#9c27b0' },
-        { value: 'mitzvah', label: 'Bar/Bat Mitzvah', color: '#9c27b0' },
-        { value: 'corporate', label: 'Corporate', color: '#2196f3' },
-        { value: 'gala', label: 'Gala/Fundraiser', color: '#673ab7' },
-        { value: 'birthday', label: 'Birthday/Private Party', color: '#ff6f00' },
-        { value: 'concert', label: 'Concert/Festival', color: '#00bcd4' }
-      ];
-
-      let html = '<div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 15px;">';
-      types.forEach(t => {
-        html += `<div style="background: var(--black-4); border: 2px solid transparent; padding: 20px; border-radius: 8px; cursor: pointer; text-align: center; transition: all 0.2s;" onclick="selectEventType('${t.value}', this)" class="event-type-tile"><div style="width: 30px; height: 30px; border-radius: 50%; background: ${t.color}; margin: 0 auto 10px;"></div><div style="font-weight: 600;">${t.label}</div></div>`;
+      let html = '<div class="field"><span class="field-label" id="wizTypeLabel">Type of event</span><div class="wiz-types" role="group" aria-labelledby="wizTypeLabel">';
+      WIZ_TYPES.forEach(t => {
+        html += `<button type="button" class="event-type-tile wiz-type" data-type="${t.value}" aria-pressed="false" onclick="selectEventType('${t.value}', this)">${t.label}</button>`;
       });
-      html += '</div>';
+      html += '</div></div>';
       return html;
     }
 
     function selectEventType(type, el) {
-      document.querySelectorAll('.event-type-tile').forEach(t => t.style.borderColor = 'transparent');
-      el.style.borderColor = 'var(--cyan)';
+      document.querySelectorAll('.event-type-tile').forEach(t => { if (t.classList) t.classList.remove('is-selected'); if (t.setAttribute) t.setAttribute('aria-pressed', 'false'); });
+      if (el && el.classList) el.classList.add('is-selected');
+      if (el && el.setAttribute) el.setAttribute('aria-pressed', 'true');
       window.wizardData.type = type;
       window.wizardData.typeNeedsReview = false;
     }
 
     function renderEventBasicsStep() {
-      return `<div class="form-group"><label class="form-label" for="wizardEventName">Event Name</label><input type="text" class="form-input" id="wizardEventName" placeholder="e.g., Smith Wedding"></div><div class="form-group"><label class="form-label" for="wizardEventDate">Event Date</label><input type="date" class="form-input" id="wizardEventDate"></div><div class="grid-2"><div class="form-group"><label class="form-label" for="wizardStartTime">Start Time</label><input type="time" class="form-input" id="wizardStartTime"></div><div class="form-group"><label class="form-label" for="wizardEndTime">End Time</label><input type="time" class="form-input" id="wizardEndTime"></div></div>`;
+      return `<div class="field"><label class="field-label" for="wizardEventDate">Event date</label><input type="date" class="input" id="wizardEventDate" onchange="_wizardCheckDate(this.value)"><div class="field-hint wiz-avail" id="wizardAvail" aria-live="polite"></div><div class="field-msg" id="wizardDateMsg" role="alert" hidden></div></div>
+        <div class="wiz-two"><div class="field"><label class="field-label" for="wizardStartTime">Start time</label><input type="time" class="input" id="wizardStartTime"></div><div class="field"><label class="field-label" for="wizardEndTime">End time</label><input type="time" class="input" id="wizardEndTime"></div></div>
+        <div class="field"><label class="field-label" for="wizardEventName">Event name</label><input type="text" class="input" id="wizardEventName" placeholder="Smith Wedding"><div class="field-hint">Leave it blank and it is named after the client.</div></div>`;
+    }
+
+    function _wizardCheckDate(v) {
+      const msg = document.getElementById('wizardDateMsg');
+      if (msg && v) msg.hidden = true;
+      if (typeof checkAvailability === 'function') { try { checkAvailability(v, 'wizardAvail'); } catch (e) {} }
     }
 
     function renderEventClientStep() {
-      const clients = getDB('clients');
-      let html = `<div class="form-group"><label class="form-label" for="wizardClientSelect">Client</label><select class="form-select" id="wizardClientSelect" onchange="selectWizardClient(this.value)"><option value="new">+ New Client</option>`;
-      clients.forEach(c => { html += `<option value="${c.id}">${c.name}</option>`; });
-      html += `</select></div><div id="wizardClientForm"><div class="form-group"><label class="form-label" for="wizardClientName">Name</label><input type="text" class="form-input" id="wizardClientName"></div><div class="form-group"><label class="form-label" for="wizardClientEmail">Email</label><input type="email" class="form-input" id="wizardClientEmail"></div><div class="form-group"><label class="form-label" for="wizardClientPhone">Phone</label><input type="tel" class="form-input" id="wizardClientPhone"></div></div>`;
+      const clients = (getDB('clients') || []).filter(c => !c.archived);
+      let html = `<div class="field"><label class="field-label" for="wizardClientSelect">Client</label><select class="input" id="wizardClientSelect" onchange="selectWizardClient(this.value)"><option value="new">New client</option>`;
+      clients.forEach(c => { html += `<option value="${esc(c.id)}">${esc(c.name)}</option>`; });
+      html += `</select></div><div id="wizardClientForm"><div class="field"><label class="field-label" for="wizardClientName">Name</label><input type="text" class="input" id="wizardClientName" autocomplete="off"></div><div class="field"><label class="field-label" for="wizardClientEmail">Email</label><input type="email" class="input" id="wizardClientEmail" inputmode="email" autocomplete="off" autocapitalize="off"></div><div class="field"><label class="field-label" for="wizardClientPhone">Phone</label><input type="tel" class="input" id="wizardClientPhone" inputmode="tel" autocomplete="off"></div></div><div class="field-msg" id="wizardClientMsg" role="alert" hidden></div>`;
       return html;
     }
 
     function selectWizardClient(clientId) {
       const form = document.getElementById('wizardClientForm');
       if (clientId === 'new') {
-        form.style.display = 'block';
+        delete window.wizardData.clientId;
+        form.hidden = false;
       } else {
         const clients = getDB('clients');
         const client = clients.find(c => c.id === clientId);
@@ -76,100 +127,99 @@
           window.wizardData.clientName = client.name;
           window.wizardData.clientEmail = client.email;
           window.wizardData.clientPhone = client.phone;
-          form.style.display = 'none';
+          form.hidden = true;
         }
       }
     }
 
     function renderEventVenueStep() {
-      const vendors = getDB('vendors').filter(v => (v.category || '').toLowerCase() === 'venue');
-      let html = `<div class="form-group"><label class="form-label" for="wizardVenueSelect">Venue</label><select class="form-select" id="wizardVenueSelect" onchange="selectWizardVenue(this.value)"><option value="new">+ Add New Venue</option>`;
-      vendors.forEach(v => { html += `<option value="${v.id}">${v.name}</option>`; });
-      html += `</select></div><div id="wizardVenueForm"><div class="form-group"><label class="form-label" for="wizardVenueName">Venue Name</label><input type="text" class="form-input" id="wizardVenueName"></div><div class="form-group"><label class="form-label" for="wizardVenueAddress">Address</label><input type="text" class="form-input" id="wizardVenueAddress"></div></div>`;
+      const vendors = (getDB('vendors') || []).filter(v => (v.category || '').toLowerCase() === 'venue');
+      let html = `<div class="field"><label class="field-label" for="wizardVenueSelect">Venue</label><select class="input" id="wizardVenueSelect" onchange="selectWizardVenue(this.value)"><option value="new">New venue</option>`;
+      vendors.forEach(v => { html += `<option value="${esc(v.id)}">${esc(v.name)}</option>`; });
+      html += `</select></div><div id="wizardVenueForm"><div class="field"><label class="field-label" for="wizardVenueName">Venue name</label><input type="text" class="input" id="wizardVenueName" autocomplete="off"></div><div class="field"><label class="field-label" for="wizardVenueAddress">Address</label><input type="text" class="input" id="wizardVenueAddress" autocomplete="off"></div></div>`;
       return html;
     }
 
     function selectWizardVenue(venueId) {
       const form = document.getElementById('wizardVenueForm');
       if (venueId === 'new') {
-        form.style.display = 'block';
+        form.hidden = false;
       } else {
         const vendors = getDB('vendors');
         const venue = vendors.find(v => v.id === venueId);
         if (venue) {
           window.wizardData.venueName = venue.name;
           window.wizardData.venueAddress = venue.contact;
-          form.style.display = 'none';
+          form.hidden = true;
         }
       }
     }
 
-    function renderEventServicesStep() {
-      const categories = [
-        { name: 'Entertainment', services: [
-          { name: 'DJ Services', options: ['Standard DJ', 'Premium DJ Package', 'DJ + MC'] },
-          { name: 'Live Musician', textInput: true },
-          { name: 'Band', options: ['Cover Band', 'Latin Band', 'Jazz Band'] },
-          { name: 'Fusion/Hybrid', options: ['DJ + Live Musician'] }
-        ]},
-        { name: 'Sound & Audio', services: [
-          { name: 'Live Sound System' },
-          { name: 'Speech/Podium Audio' },
-          { name: 'Distributed Audio (multi-zone)' }
-        ]},
-        { name: 'Lighting', services: [
-          { name: 'Uplighting (ambient color wash)' },
-          { name: 'Bistro String Lights' },
-          { name: 'Dance Floor Lighting (moving heads/wash)' },
-          { name: 'Stage Lighting' },
-          { name: 'Gobo / Logo Projection' }
-        ]},
-        { name: 'Special Effects', services: [
-          { name: 'Cold Spark Fountains' },
-          { name: 'CO2 Cannon' },
-          { name: 'CO2 Jets' },
-          { name: 'Dancing on Cloud (low-lying fog)' },
-          { name: 'Confetti Cannon' }
-        ]},
-        { name: 'Visual & Display', services: [
-          { name: 'LED Video Wall' },
-          { name: 'Event Projection / Backdrop' },
-          { name: 'TV Display Screens' },
-          { name: 'IMAG (live camera feed to screen)' }
-        ]},
-        { name: 'Other', services: [
-          { name: 'Custom Services', textInput: true }
-        ]}
-      ];
+    const WIZ_SERVICE_CATEGORIES = [
+      { name: 'Entertainment', services: [
+        { name: 'DJ Services', options: ['Standard DJ', 'Premium DJ Package', 'DJ + MC'] },
+        { name: 'Live Musician', textInput: true },
+        { name: 'Band', options: ['Cover Band', 'Latin Band', 'Jazz Band'] },
+        { name: 'Fusion/Hybrid', options: ['DJ + Live Musician'] }
+      ]},
+      { name: 'Sound & Audio', services: [
+        { name: 'Live Sound System' },
+        { name: 'Speech/Podium Audio' },
+        { name: 'Distributed Audio (multi-zone)' }
+      ]},
+      { name: 'Lighting', services: [
+        { name: 'Uplighting (ambient color wash)' },
+        { name: 'Bistro String Lights' },
+        { name: 'Dance Floor Lighting (moving heads/wash)' },
+        { name: 'Stage Lighting' },
+        { name: 'Gobo / Logo Projection' }
+      ]},
+      { name: 'Special Effects', services: [
+        { name: 'Cold Spark Fountains' },
+        { name: 'CO2 Cannon' },
+        { name: 'CO2 Jets' },
+        { name: 'Dancing on Cloud (low-lying fog)' },
+        { name: 'Confetti Cannon' }
+      ]},
+      { name: 'Visual & Display', services: [
+        { name: 'LED Video Wall' },
+        { name: 'Event Projection / Backdrop' },
+        { name: 'TV Display Screens' },
+        { name: 'IMAG (live camera feed to screen)' }
+      ]},
+      { name: 'Other', services: [
+        { name: 'Custom Services', textInput: true }
+      ]}
+    ];
 
-      let html = '<div class="form-group"><label class="form-label">Services</label>';
-      categories.forEach((cat, catIdx) => {
-        html += `<div class="accordion-section">
-          <div class="accordion-header" role="button" tabindex="0" onclick="toggleAccordion(this)"><span>${cat.name}</span><span class="accordion-toggle"></span></div>
-          <div class="accordion-content">`;
+    function renderEventServicesStep() {
+      let html = '<div class="field-label wiz-svc-head">Services</div>';
+      WIZ_SERVICE_CATEGORIES.forEach((cat, catIdx) => {
+        html += `<div class="wiz-cat"><div class="section-label">${cat.name}</div><div class="wiz-svcs">`;
         cat.services.forEach((svc, svcIdx) => {
           const uniqueId = `service_${catIdx}_${svcIdx}`;
-          html += `<div class="service-checkbox">
+          html += `<div class="wiz-svc-item"><div class="service-checkbox">
             <input type="checkbox" id="${uniqueId}" onchange="toggleServiceOptions(this, '${catIdx}', '${svcIdx}')">
             <label for="${uniqueId}">${svc.name}</label>
           </div>`;
           if (svc.options) {
             html += `<div class="sub-options" id="opts_${catIdx}_${svcIdx}" style="display:none;">
-              <select onchange="updateServiceOption('${catIdx}', '${svcIdx}', this.value)">
-                <option value="">Select option...</option>`;
+              <select class="input" aria-label="${svc.name} option" onchange="updateServiceOption('${catIdx}', '${svcIdx}', this.value)">
+                <option value="">Select option</option>`;
             svc.options.forEach(opt => html += `<option value="${opt}">${opt}</option>`);
             html += `</select></div>`;
           }
           if (svc.textInput) {
             html += `<div class="sub-options" id="opts_${catIdx}_${svcIdx}" style="display:none;">
-              <input type="text" placeholder="Enter details" onchange="updateServiceOption('${catIdx}', '${svcIdx}', this.value)">
+              <input type="text" class="input" aria-label="${svc.name} details" placeholder="Details" onchange="updateServiceOption('${catIdx}', '${svcIdx}', this.value)">
             </div>`;
           }
+          html += '</div>';
         });
         html += `</div></div>`;
       });
 
-      html += `</div><div class="grid-2"><div class="form-group"><label class="form-label" for="wizardBasePrice">Base Price</label><input type="number" class="form-input" id="wizardBasePrice" placeholder="2500"></div><div class="form-group"><label class="form-label" for="wizardDepositAmount">Deposit (50%)</label><input type="number" class="form-input" id="wizardDepositAmount" placeholder="1250"></div></div>`;
+      html += `<div class="wiz-two wiz-price"><div class="field"><label class="field-label" for="wizardBasePrice">Base price</label><div class="input-wrap input-money"><span class="input-prefix">$</span><input type="text" inputmode="numeric" class="input" id="wizardBasePrice" placeholder="2500"></div></div><div class="field"><label class="field-label" for="wizardDepositAmount">Deposit</label><div class="input-wrap input-money"><span class="input-prefix">$</span><input type="text" inputmode="numeric" class="input" id="wizardDepositAmount" placeholder="1250"></div></div></div><p class="field-hint">Leave these blank to start at $2,500 with a $1,250 deposit. You can change both later.</p>`;
       return html;
     }
 
@@ -185,22 +235,44 @@
     }
 
     function updateServiceOption(catIdx, svcIdx, value) {
-      if (!window.wizardServices) window.wizardServices = [];
+      if (!window.wizardServices) window.wizardServices = {};
       window.wizardServices[`${catIdx}_${svcIdx}`] = value;
     }
 
+    // Checks one step on screen and points at the problem. Returns true when the step can move on.
+    function _wizardValidateStep(step) {
+      const msg = (id, text) => { const el = document.getElementById(id); if (el) { el.textContent = text; el.hidden = !text; } };
+      if (step === 0) {
+        if (!window.wizardData.date) { msg('wizardDateMsg', 'Pick the event date to continue.'); const d = document.getElementById('wizardEventDate'); if (d) d.focus(); return false; }
+        msg('wizardDateMsg', '');
+      }
+      if (step === 1) {
+        const sel = document.getElementById('wizardClientSelect');
+        if (sel && sel.value === 'new') {
+          const nm = (document.getElementById('wizardClientName').value || '').trim();
+          if (!nm) { msg('wizardClientMsg', 'Add the client name to continue.'); document.getElementById('wizardClientName').focus(); return false; }
+          const N = window.CRMUI && CRMUI.norm;
+          const em = document.getElementById('wizardClientEmail'), ph = document.getElementById('wizardClientPhone');
+          if (N && em && em.value.trim()) { const r = N.email(em.value); if (!r.ok) { msg('wizardClientMsg', r.message); em.focus(); return false; } }
+          if (N && ph && ph.value.trim()) { const r = N.phone(ph.value); if (!r.ok) { msg('wizardClientMsg', r.message); ph.focus(); return false; } }
+        }
+        msg('wizardClientMsg', '');
+      }
+      return true;
+    }
+
     function wizardNextStep() {
+      const val = id => { const el = document.getElementById(id); return el ? el.value : ''; };
       if (window.currentWizardStep === 0) {
         if (!window.wizardData.type || window.wizardData.typeNeedsReview) { showToast('Select event type', 'error'); return; }
+        window.wizardData.name = val('wizardEventName');
+        window.wizardData.date = val('wizardEventDate');
+        window.wizardData.startTime = val('wizardStartTime');
+        window.wizardData.endTime = val('wizardEndTime');
+        if (typeof _wizardValidateStep === 'function' && !_wizardValidateStep(0)) return;
       }
-      if (window.currentWizardStep === 1) {
-        window.wizardData.name = document.getElementById('wizardEventName').value;
-        window.wizardData.date = document.getElementById('wizardEventDate').value;
-        window.wizardData.startTime = document.getElementById('wizardStartTime').value;
-        window.wizardData.endTime = document.getElementById('wizardEndTime').value;
-        if (!window.wizardData.name || !window.wizardData.date) { showToast('Fill all fields', 'error'); return; }
-      }
-      if (window.currentWizardStep === 4) {
+      if (window.currentWizardStep === 1 && typeof _wizardValidateStep === 'function' && !_wizardValidateStep(1)) return;
+      if (window.currentWizardStep === 3) {
         const selectedServices = [];
         document.querySelectorAll('.service-checkbox input:checked').forEach((checkbox, idx) => {
           const parent = checkbox.closest('.service-checkbox');
@@ -211,9 +283,8 @@
             const catIdx = matches[1];
             const svcIdx = matches[2];
             const optValue = window.wizardServices ? window.wizardServices[`${catIdx}_${svcIdx}`] : '';
-            const categories = ['Entertainment', 'Sound & Audio', 'Lighting', 'Special Effects', 'Visual & Display', 'Other'];
             selectedServices.push({
-              category: categories[catIdx],
+              category: WIZ_SERVICE_CATEGORIES[catIdx].name,
               service: label,
               subOption: optValue || '',
               customNote: ''
@@ -221,8 +292,21 @@
           }
         });
         window.wizardData.services = selectedServices;
-        window.wizardData.basePrice = parseInt(document.getElementById('wizardBasePrice').value) || 2500;
-        window.wizardData.depositAmount = parseInt(document.getElementById('wizardDepositAmount').value) || 1250;
+        // Prices may carry cents ("2100.50"): parse as money, never strip the dot.
+        const dollars = id => {
+          const t = val(id).trim();
+          if (!t) return 0;
+          const N = window.CRMUI && CRMUI.norm;
+          if (N) { const r = N.money(t); return r.ok && r.value ? r.value / 100 : 0; }
+          const n = parseFloat(t.replace(/[^\d.]/g, ''));
+          return isNaN(n) ? 0 : Math.round(n * 100) / 100;
+        };
+        const baseTyped = dollars('wizardBasePrice');
+        const depTyped = dollars('wizardDepositAmount');
+        let pct = 50;
+        try { if (typeof BSContracts !== 'undefined') pct = BSContracts.getTerms(getDB('settings')).depositPercent || 50; } catch (e) {}
+        window.wizardData.basePrice = baseTyped || 2500;
+        window.wizardData.depositAmount = depTyped || (baseTyped ? Math.round(baseTyped * pct) / 100 : 1250);
         createEventFromWizard();
         return;
       }
@@ -239,25 +323,37 @@
     }
 
     function updateWizardDisplay() {
-      for (let i = 0; i < 5; i++) {
-        const el = document.getElementById('wizardStep' + i);
-        if (el) el.style.display = i === window.currentWizardStep ? 'block' : 'none';
+      const total = WIZ_STEP_TITLES.length;
+      for (let i = 0; i < total; i++) {
+        const el = document.getElementById('wizStep' + i);
+        if (el) el.hidden = i !== window.currentWizardStep;
       }
-      document.getElementById('wizardBack').style.display = window.currentWizardStep > 0 ? 'block' : 'none';
-      document.getElementById('wizardNext').textContent = window.currentWizardStep === 4 ? 'Create Event' : 'Next';
+      const back = document.getElementById('wizardBack');
+      if (back) back.hidden = window.currentWizardStep === 0;
+      const next = document.getElementById('wizardNext');
+      if (next) next.textContent = window.currentWizardStep === total - 1 ? 'Create event' : 'Next';
+      const prog = document.getElementById('wizardProgress');
+      if (prog) prog.textContent = 'Step ' + (window.currentWizardStep + 1) + ' of ' + total + ': ' + WIZ_STEP_TITLES[window.currentWizardStep];
+      const body = document.querySelector('#newEventModal .wiz-body');
+      if (body) body.scrollTop = 0;
     }
 
     function createEventFromWizard() {
       const events = getDB('events');
       const clients = getDB('clients');
+      const N = window.CRMUI && CRMUI.norm;
+      const dom = id => { const el = document.getElementById(id); return el ? el.value : ''; };
 
       let clientId = window.wizardData.clientId;
       if (!clientId) {
+        let email = dom('wizardClientEmail').trim(), phone = dom('wizardClientPhone').trim();
+        if (N && email) { const r = N.email(email); if (r.ok && r.value) email = r.value; }
+        if (N && phone) { const r = N.phone(phone); if (r.ok && r.echo) phone = r.echo; }
         const newClient = {
           id: genId(),
-          name: document.getElementById('wizardClientName').value,
-          email: document.getElementById('wizardClientEmail').value,
-          phone: document.getElementById('wizardClientPhone').value,
+          name: dom('wizardClientName').trim(),
+          email: email,
+          phone: phone,
           type: 'private',
           notes: ''
         };
@@ -269,21 +365,35 @@
         setDB('clients', clients);
       }
 
+      const vSel = document.getElementById('wizardVenueSelect');
       let venueName = window.wizardData.venueName;
-      if (!venueName) {
-        venueName = document.getElementById('wizardVenueName').value;
+      if (!vSel || vSel.value === 'new' || !venueName) {
+        venueName = dom('wizardVenueName');
         window.wizardData.venueName = venueName;
-        window.wizardData.venueAddress = document.getElementById('wizardVenueAddress').value;
+        window.wizardData.venueAddress = dom('wizardVenueAddress');
       }
 
-      // Reuse existing password if this client already has events — repeat clients use the same login
+      if (!window.wizardData.date) {
+        // The date is checked on step one; if it is missing here, go back to it.
+        window.currentWizardStep = 0; updateWizardDisplay();
+        _wizardValidateStep(0);
+        return;
+      }
+      let evName = (window.wizardData.name || '').trim();
+      if (!evName) {
+        const last = String(window.wizardData.clientName || '').trim().split(/\s+/).pop();
+        const t = (WIZ_TYPES.find(x => x.value === window.wizardData.type) || { label: 'Event' }).label;
+        evName = last ? last + ' ' + t : t;
+      }
+
+      // Reuse existing password if this client already has events: repeat clients use the same login
       const existingPw = (getDB('events') || [])
         .filter(e => e.clientId === clientId && e.portalPassword)
         .map(e => e.portalPassword)[0] || null;
       const password = existingPw || genPortalPassword(); // K: readable format e.g. ocean-beats42
       const newEvent = {
         id: genId(),
-        name: window.wizardData.name,
+        name: evName,
         type: window.wizardData.type,
         date: window.wizardData.date,
         startTime: window.wizardData.startTime,
@@ -310,7 +420,7 @@
         vendors: [],
         music: [],
         documents: [],
-        notes: '',
+        notes: window.wizardData.notes || '',
         checklist: { soundCheck: false, timelineSent: false, depositReceived: false, equipmentLoaded: false }
       };
 
@@ -319,7 +429,10 @@
       // Sync credentials to clients record via single write path
       setClientCredentials(window.wizardData.clientEmail, newEvent.portalEmail, password);
       closeModal('newEventModal');
+      // The new event has to show up everywhere it is listed, not only on Home
+      renderEvents();
       renderDashboard();
+      if (typeof renderPipeline === 'function') { try { renderPipeline(); } catch (e) {} }
       showPortalReadyNotification(newEvent); // K: instant portal-ready confirmation
     }
 

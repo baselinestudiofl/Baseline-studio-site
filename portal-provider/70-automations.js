@@ -4,36 +4,263 @@
 // Shares the global scope with the other portal-provider/*.js files; load order is set by the script tags in portal-provider.html.
 // ============================================================================
 
-    // Automation Builder Functions
-    function renderAutomations() {
-      const automationRules = (getDB('automations') || []);
+    // ── P7 shared helpers (used by 70, 75 and 80). Call-time only. Files that tests extract call them behind typeof. ──
+    function _p7Icon(name, size) { return (window.CRMUI && CRMUI.icon) ? CRMUI.icon(name, size || 16) : ''; }
+    // The screen's page-head buttons. switchSection empties #pageActions, so a screen writes them from its render function.
+    function _p7Actions(sectionId, html) {
+      const sec = document.getElementById(sectionId), pa = document.getElementById('pageActions');
+      if (sec && pa && sec.classList && sec.classList.contains('active')) pa.innerHTML = html || '';
+    }
+    function _p7CloseSheet(id) {
+      const d = document.getElementById(id);
+      if (!d) return;
+      if (window.CRMUI && CRMUI.close) CRMUI.close(d, { force: true });
+      else if (d.parentNode) d.parentNode.removeChild(d);
+    }
+    // Primary button of a built sheet: submit the sheet's form (so native validation runs) and keep the sheet open.
+    // The form's own submit handler closes the sheet once it has saved.
+    function _p7Submit(d) {
+      const f = d && d.querySelector('form');
+      if (!f) return false;
+      if (f.requestSubmit) f.requestSubmit(); else f.dispatchEvent(new Event('submit', { cancelable: true, bubbles: true }));
+      return false;
+    }
+    // Display only: stored labels keep their dashes, the screen shows a colon.
+    function _p7Dash(s) { return String(s == null ? '' : s).replace(/\s*[—–]\s*/g, ': '); }
 
-      let html = '';
-      automationRules.forEach(rule => {
-        const triggerDesc = getTriggerDescription(rule.trigger);
-        const actionDesc = getActionDescription(rule.action);
-        html += `
-          <div class="automation-card">
-            <div class="automation-card-content">
-              <div class="automation-card-name">${rule.name}</div>
-              <div class="automation-card-trigger">Trigger: ${triggerDesc}</div>
-              <div class="automation-card-action">Action: ${actionDesc}</div>
-            </div>
-            <div class="automation-card-actions">
-              <label class="toggle-switch" style="margin: 0;">
-                <input type="checkbox" ${rule.enabled ? 'checked' : ''} onchange="toggleAutomationRule('${rule.id}', this.checked)">
-                <span class="toggle-slider"></span>
-              </label>
-              <button class="btn btn-secondary" onclick="deleteAutomationRule('${rule.id}')" style="padding: 6px 10px; font-size: 12px;">Delete</button>
-            </div>
-          </div>
-        `;
-      });
+    // ── Automations screen ────────────────────────────────────────────────────
+    function _autoStageName(s) {
+      const m = { new: 'New', contacted: 'Contacted', quoted: 'Quoted', booked: 'Booked', archived: 'Archived' };
+      if (m[s]) return m[s];
+      const t = String(s || 'any stage');
+      return t.charAt(0).toUpperCase() + t.slice(1);
+    }
+    function _autoPlural(n, word) { n = Number(n) || 0; return n + ' ' + word + (n === 1 ? '' : 's'); }
 
-      document.getElementById('automationsContainer').innerHTML = html;
-      document.getElementById('noAutomationsMessage').style.display = automationRules.length > 0 ? 'none' : 'block';
+    // One sentence per rule, built from the rule's own fields (never from stored label text alone).
+    function _autoSentence(rule) {
+      const q = t => '"' + _p7Dash(t) + '"';
+      if (rule && rule.trigger && typeof rule.trigger === 'object') {
+        const tg = rule.trigger, ac = rule.action || {};
+        const when = tg.type === 'status_change' ? 'When an event moves to ' + _autoStageName(tg.value)
+          : tg.type === 'deposit_received' ? 'When a deposit is marked received'
+          : tg.type === 'balance_received' ? 'When a balance is marked received'
+          : tg.type === 'new_lead' ? 'When a new lead comes in'
+          : tg.type === 'new_event' ? 'When an event is created'
+          : tg.type === 'days_before' ? 'When an event is ' + _autoPlural(tg.value, 'day') + ' away'
+          : tg.type === 'days_after' ? 'When an event was ' + _autoPlural(tg.value, 'day') + ' ago'
+          : 'When ' + String(getTriggerDescription(tg)).toLowerCase();
+        const then = ac.type === 'notification' ? 'show ' + q(ac.message)
+          : ac.type === 'create_task' ? 'add the task ' + q(ac.task)
+          : ac.type === 'add_note' ? 'add the note ' + q(ac.note)
+          : ac.type === 'change_status' ? 'change the event status to ' + _autoStageName(ac.status)
+          : ac.type === 'flag_review' ? 'flag the event for review'
+          : String(getActionDescription(ac)).toLowerCase();
+        return when + ', ' + then + '.';
+      }
+      const stage = _autoStageName(rule && rule.stage);
+      let when;
+      if (rule.trigger === 'enter') when = rule.stage === 'new' ? 'When a lead is new' : 'When a lead moves to ' + stage;
+      else if (rule.trigger === 'after_days') when = 'When a lead has been in ' + stage + ' for ' + _autoPlural(rule.days, 'day');
+      else if (rule.trigger === 'days_before_event') when = 'When an event is ' + _autoPlural(rule.days || 21, 'day') + ' away';
+      else when = 'When ' + String(rule.trigger || 'this happens');
+      let then;
+      if (rule.action === 'email') then = 'send ' + q(rule.label || 'an email');
+      else if (rule.action === 'task') then = 'add the task ' + q(rule.taskTemplate || rule.label || 'Task');
+      else if (rule.action === 'advance') then = 'move the lead to ' + _autoStageName(rule.toStage);
+      else then = String(rule.action || 'do something');
+      return when + ', ' + then + (rule.trigger === 'enter' ? ' right away.' : '.');
     }
 
+    function _autoKind(rule) {
+      if (rule && typeof rule.trigger === 'object') {
+        const t = (rule.action || {}).type;
+        return t === 'notification' ? 'Notification' : t === 'create_task' ? 'Task' : t === 'add_note' ? 'Note' : t === 'change_status' ? 'Status' : 'Action';
+      }
+      return rule.action === 'email' ? 'Email' : rule.action === 'task' ? 'Task' : rule.action === 'advance' ? 'Move stage' : 'Action';
+    }
+
+    function _autoResultPill(result) {
+      const m = { sent: ['pill-ok', 'Sent'], task_created: ['pill-ok', 'Task added'], advanced: ['pill-info', 'Moved'], skipped: ['pill-neutral', 'Skipped'],
+        fallback: ['pill-danger', 'Failed, send by hand'], error: ['pill-danger', 'Failed'], pending: ['pill-warn', 'Pending'], noop: ['pill-neutral', 'No action'] };
+      const x = m[result] || ['pill-neutral', String(result || 'Done')];
+      return '<span class="pill ' + x[0] + ' pill-sm" data-ui="pill">' + esc(x[1]) + '</span>';
+    }
+
+    // The section shell is written once; render functions fill the mounts.
+    function _autoShell() {
+      const sec = document.getElementById('automations');
+      if (!sec || sec.getAttribute('data-p7') === '1') return;
+      sec.setAttribute('data-p7', '1');
+      sec.innerHTML = `
+        <div class="auto-wrap">
+          <div class="banner banner-info" id="autoHonesty">${_p7Icon('info', 20)}<div class="banner-body">Timed automations fire when the portal is open. Keep a tab open on event days or check in daily.</div></div>
+          <section class="auto-card" aria-labelledby="autoRulesH">
+            <h3 class="auto-h" id="autoRulesH">Rules</h3>
+            <div id="automationsContainer" class="auto-list"></div>
+            <div id="noAutomationsMessage" class="empty" hidden>
+              <h4 class="empty-title">No rules yet</h4>
+              <p class="empty-text">A rule sends an email, adds a task or moves a lead when something happens.</p>
+              <button type="button" class="btn btn-secondary" onclick="openAutomationEditor()">Create your first rule</button>
+            </div>
+          </section>
+          <section class="auto-card" aria-labelledby="autoLogH">
+            <h3 class="auto-h" id="autoLogH">Recent activity</h3>
+            <div id="autoLogList"></div>
+          </section>
+        </div>`;
+    }
+
+    function renderAutomations() {
+      const rules = getDB('automations') || [];
+      _autoShell();
+      const rows = rules.map(rule => {
+        const on = !!rule.enabled;
+        const custom = typeof rule.trigger === 'object';
+        const nm = _p7Dash(rule.label || rule.name || rule.id);
+        const id = esc(rule.id);
+        return `<div class="auto-row${on ? '' : ' is-off'}" data-rule="${id}">
+          <div class="auto-main">
+            <div class="auto-sentence"${custom ? ' data-user-content' : ''}>${esc(_autoSentence(rule))}</div>
+            <div class="auto-meta"><span class="pill pill-neutral pill-sm" data-ui="pill">${esc(_autoKind(rule))}</span>${on ? '' : '<span class="auto-paused">Paused</span>'}</div>
+          </div>
+          <div class="auto-trail">
+            <button type="button" class="switch" role="switch" aria-checked="${on ? 'true' : 'false'}" aria-label="${esc(nm)}" onclick="_autoSwitch(this,'${id}')"></button>
+            <button type="button" class="btn btn-ghost btn-icon" aria-label="More actions for ${esc(nm)}" aria-haspopup="menu" onclick="_autoMenu(this,'${id}')">${_p7Icon('ellipsis-vertical', 20)}</button>
+          </div>
+        </div>`;
+      }).join('');
+      const list = document.getElementById('automationsContainer');
+      if (list) list.innerHTML = rows;
+      const none = document.getElementById('noAutomationsMessage');
+      if (none) none.hidden = rules.length > 0;
+      _autoRenderLog();
+      _p7Actions('automations', `<button type="button" class="btn btn-primary" onclick="openAutomationEditor()">${_p7Icon('plus', 18)} New rule</button>`);
+    }
+
+    function _autoSwitch(btn, ruleId) {
+      const on = btn.getAttribute('aria-checked') !== 'true';
+      toggleAutomationRule(ruleId, on);
+      renderAutomations();
+      const again = document.querySelector('.auto-row[data-rule="' + ruleId + '"] .switch');
+      if (again) again.focus();
+    }
+
+    function _autoMenu(btn, ruleId) {
+      if (!window.CRMUI || !CRMUI.menu) return;
+      const rule = (getDB('automations') || []).find(r => r.id === ruleId);
+      const items = [{ label: 'Edit', icon: 'pencil', onSelect: () => openAutomationEditor(ruleId) }];
+      // Built-in pipeline rules (string trigger) can be switched off or edited, not deleted, same as before the redesign.
+      if (rule && typeof rule.trigger === 'object') items.push({ label: 'Delete', icon: 'trash-2', danger: true, onSelect: () => deleteAutomationRule(ruleId) });
+      CRMUI.menu(btn, items, { align: 'right' });
+    }
+
+    // Recent activity across all leads (the per-lead view is renderAutomationLog below).
+    function _autoRenderLog() {
+      const mount = document.getElementById('autoLogList');
+      if (!mount) return;
+      const logs = _getAutoLogs(), rules = getDB('automations') || [], leads = window._inquiries || [];
+      const all = [];
+      Object.keys(logs).forEach(id => (logs[id] || []).forEach(l => all.push(Object.assign({ leadId: id }, l))));
+      all.sort((a, b) => new Date(b.at || 0) - new Date(a.at || 0));
+      if (!all.length) { mount.innerHTML = '<p class="t-meta">No automation activity yet.</p>'; return; }
+      mount.innerHTML = all.slice(0, 12).map(l => {
+        const rule = rules.find(r => r.id === l.ruleId);
+        const lead = leads.find(x => String(x.id) === String(l.leadId));
+        const failed = l.result === 'error' || l.result === 'fallback';
+        return `<div class="auto-log-row${failed ? ' is-failed' : ''}">
+          ${_autoResultPill(l.result)}
+          <span class="auto-log-what">${esc(_p7Dash((rule && rule.label) || l.ruleId))}${lead ? ' <span class="auto-log-who" data-user-content>for ' + esc(lead.name || 'a lead') + '</span>' : ''}</span>
+          <span class="auto-log-when">${esc(l.at ? timeAgo(l.at) : '')}</span>
+        </div>`;
+      }).join('');
+    }
+
+    // Create (no id) or edit (id). Rules written by the builder get the trigger/action form; the built-in pipeline rules
+    // get a small form for their wording and timing. Rule ids and keys are never changed here.
+    function openAutomationEditor(ruleId) {
+      window._autoEditingId = ruleId || null;
+      _p7CloseSheet('autoSheet');
+      const rule = ruleId ? (getDB('automations') || []).find(r => r.id === ruleId) : null;
+      if (ruleId && !rule) return;
+      if (rule && typeof rule.trigger !== 'object') { _autoEditPipelineRule(rule); return; }
+      const trigOpts = [['status_change', 'An event moves to a new status'], ['deposit_received', 'A deposit is marked received']];
+      const actOpts = [['notification', 'Show a notification on Home'], ['create_task', 'Create a task'], ['add_note', 'Add a note to the event']];
+      if (rule && !trigOpts.some(o => o[0] === rule.trigger.type)) trigOpts.push([rule.trigger.type, String(getTriggerDescription(rule.trigger))]);
+      if (rule && rule.action && !actOpts.some(o => o[0] === rule.action.type)) actOpts.push([rule.action.type, String(getActionDescription(rule.action))]);
+      const opt = o => `<option value="${esc(o[0])}">${esc(o[1])}</option>`;
+      const html = `<form id="automationBuilderForm" onsubmit="saveNewAutomation(event)">
+        <div class="field"><label class="field-label" for="automationRuleName">Rule name</label>
+          <input type="text" id="automationRuleName" class="form-input automation-builder-input" placeholder="e.g. New booking alert" required></div>
+        <fieldset class="auto-fs"><legend>When</legend>
+          <div class="field"><label class="field-label" for="automationTriggerType">Trigger</label>
+            <select id="automationTriggerType" class="form-select automation-builder-select" onchange="updateTriggerOptions()" required><option value="">Choose a trigger</option>${trigOpts.map(opt).join('')}</select></div>
+        </fieldset>
+        <fieldset class="auto-fs" id="autoOnlyIf" hidden><legend>Only if</legend><div id="triggerOptionsContainer"></div></fieldset>
+        <fieldset class="auto-fs"><legend>Then</legend>
+          <div class="field"><label class="field-label" for="automationActionType">Action</label>
+            <select id="automationActionType" class="form-select automation-builder-select" onchange="updateActionOptions()" required><option value="">Choose an action</option>${actOpts.map(opt).join('')}</select></div>
+          <div id="actionOptionsContainer"></div>
+        </fieldset>
+      </form>`;
+      CRMUI.sheet({ id: 'autoSheet', drawer: true, title: rule ? 'Edit rule' : 'New rule', html,
+        primary: { label: 'Save rule', onClick: _p7Submit }, secondary: { label: 'Cancel' } });
+      if (rule) {
+        const g = id => document.getElementById(id);
+        g('automationRuleName').value = rule.name || rule.label || '';
+        g('automationTriggerType').value = rule.trigger.type || '';
+        updateTriggerOptions();
+        if (g('triggerValue')) g('triggerValue').value = rule.trigger.value || '';
+        const at = (rule.action || {}).type || '';
+        g('automationActionType').value = at;
+        updateActionOptions();
+        if (g('actionValue')) g('actionValue').value = (rule.action || {}).message || (rule.action || {}).task || (rule.action || {}).note || (rule.action || {}).status || '';
+      }
+    }
+
+    function _autoEditPipelineRule(rule) {
+      const hasDays = rule.trigger === 'after_days' || rule.trigger === 'days_before_event';
+      const isEmail = rule.action === 'email', isTask = rule.action === 'task';
+      const html = `<form id="autoEditForm" onsubmit="saveAutomationEdit(event)">
+        <p class="field-hint" style="margin-bottom:var(--sp-4);">${esc(_autoSentence(rule))}</p>
+        <div class="field"><label class="field-label" for="autoEditName">Rule name</label>
+          <input type="text" id="autoEditName" class="form-input" value="${esc(_p7Dash(rule.label || ''))}" required></div>
+        ${hasDays ? `<div class="field"><label class="field-label" for="autoEditDays">${rule.trigger === 'after_days' ? 'Days in the stage before it runs' : 'Days before the event'}</label>
+          <input type="number" id="autoEditDays" class="form-input" value="${esc(rule.days || 0)}" min="0" max="365" inputmode="numeric"></div>` : ''}
+        ${isEmail ? `<div class="field"><label class="field-label" for="autoEditSubject">Email subject</label>
+          <input type="text" id="autoEditSubject" class="form-input" value="${esc(rule.subject || '')}" placeholder="From Baseline Studio"></div>
+        <div class="field"><label class="field-label" for="autoEditBody">Email message</label>
+          <textarea id="autoEditBody" class="form-textarea" rows="6">${esc(rule.emailBody || '')}</textarea>
+          <span class="field-hint">{name} becomes the lead's name.</span></div>` : ''}
+        ${isTask ? `<div class="field"><label class="field-label" for="autoEditTask">Task text</label>
+          <input type="text" id="autoEditTask" class="form-input" value="${esc(rule.taskTemplate || '')}">
+          <span class="field-hint">{name} becomes the lead's name.</span></div>` : ''}
+      </form>`;
+      CRMUI.sheet({ id: 'autoSheet', drawer: true, title: 'Edit rule', html,
+        primary: { label: 'Save rule', onClick: _p7Submit }, secondary: { label: 'Cancel' } });
+    }
+
+    function saveAutomationEdit(e) {
+      e.preventDefault();
+      const rules = getDB('automations') || [];
+      const rule = rules.find(r => r.id === window._autoEditingId);
+      if (!rule) { _p7CloseSheet('autoSheet'); return; }
+      const v = id => { const el = document.getElementById(id); return el ? el.value : null; };
+      const name = (v('autoEditName') || '').trim();
+      if (!name) { showToast('Give the rule a name.', 'warning'); return; }
+      rule.label = name;
+      if (v('autoEditDays') !== null) rule.days = Math.max(0, Math.min(365, parseInt(v('autoEditDays'), 10) || 0));
+      if (v('autoEditSubject') !== null) rule.subject = v('autoEditSubject').trim();
+      if (v('autoEditBody') !== null) rule.emailBody = v('autoEditBody');
+      if (v('autoEditTask') !== null) rule.taskTemplate = v('autoEditTask').trim() || rule.taskTemplate;
+      setDB('automations', rules);
+      window._autoEditingId = null;
+      _p7CloseSheet('autoSheet');
+      renderAutomations();
+      showToast('Rule updated', 'success');
+    }
+
+    // Automation builder functions (the builder writes rules with an object trigger; the pipeline engine reads string triggers)
     function getTriggerDescription(trigger) {
       const descriptions = {
         new_lead: 'New lead received from contact form',
@@ -64,49 +291,49 @@
 
       if (triggerType === 'status_change') {
         html = `
-          <select id="triggerValue" class="automation-builder-select" required>
-            <option value="">Select status...</option>
+          <div class="field"><label class="field-label" for="triggerValue">Status</label>
+          <select id="triggerValue" class="form-select automation-builder-select" required>
+            <option value="">Choose a status</option>
             <option value="proposal">Proposal</option>
             <option value="booked">Booked</option>
             <option value="confirmed">Confirmed</option>
             <option value="completed">Completed</option>
-          </select>
+          </select></div>
         `;
       } else if (triggerType === 'days_before' || triggerType === 'days_after') {
         html = `
-          <input type="number" id="triggerValue" class="automation-builder-number" placeholder="Number of days" min="1" max="365" required>
+          <div class="field"><label class="field-label" for="triggerValue">Number of days</label>
+          <input type="number" id="triggerValue" class="form-input automation-builder-number" placeholder="Number of days" min="1" max="365" inputmode="numeric" required></div>
         `;
       }
 
       document.getElementById('triggerOptionsContainer').innerHTML = html;
+      const fs = document.getElementById('autoOnlyIf');
+      if (fs) fs.hidden = !html;
     }
 
     function updateActionOptions() {
       const actionType = document.getElementById('automationActionType').value;
       let html = '';
+      const text = (label, ph) => `<div class="field"><label class="field-label" for="actionValue">${label}</label><input type="text" id="actionValue" class="form-input automation-builder-input" placeholder="${ph}" required></div>`;
 
       if (actionType === 'notification') {
-        html = `
-          <input type="text" id="actionValue" class="automation-builder-input" placeholder="Enter notification message" required>
-        `;
+        html = text('Message', 'Enter notification message');
       } else if (actionType === 'create_task') {
-        html = `
-          <input type="text" id="actionValue" class="automation-builder-input" placeholder="Enter task description" required>
-        `;
+        html = text('Task', 'Enter task description');
       } else if (actionType === 'change_status') {
         html = `
-          <select id="actionValue" class="automation-builder-select" required>
-            <option value="">Select status...</option>
+          <div class="field"><label class="field-label" for="actionValue">Status</label>
+          <select id="actionValue" class="form-select automation-builder-select" required>
+            <option value="">Choose a status</option>
             <option value="proposal">Proposal</option>
             <option value="booked">Booked</option>
             <option value="confirmed">Confirmed</option>
             <option value="completed">Completed</option>
-          </select>
+          </select></div>
         `;
       } else if (actionType === 'add_note') {
-        html = `
-          <input type="text" id="actionValue" class="automation-builder-input" placeholder="Enter note text" required>
-        `;
+        html = text('Note', 'Enter note text');
       }
 
       document.getElementById('actionOptionsContainer').innerHTML = html;
@@ -114,37 +341,39 @@
 
     function saveNewAutomation(e) {
       e.preventDefault();
-      const ruleName = document.getElementById('automationRuleName').value;
+      const ruleName = document.getElementById('automationRuleName').value.trim();
       const triggerType = document.getElementById('automationTriggerType').value;
       const triggerValue = document.getElementById('triggerValue')?.value || '';
       const actionType = document.getElementById('automationActionType').value;
       const actionValue = document.getElementById('actionValue')?.value || '';
 
       if (!ruleName || !triggerType || !actionType) {
-        showToast('Please fill in all required fields', 'error');
+        showToast('Fill in the rule name, the trigger and the action.', 'warning');
         return;
       }
 
       const automationRules = (getDB('automations') || []);
-      const newRule = {
-        id: genId(),
-        name: ruleName,
-        enabled: true,
-        trigger: { type: triggerType, value: triggerValue },
-        action: createActionObject(actionType, actionValue),
-        createdAt: new Date().toISOString()
-      };
-
-      automationRules.push(newRule);
+      const editing = window._autoEditingId ? automationRules.find(r => r.id === window._autoEditingId) : null;
+      if (editing) {
+        editing.name = ruleName;
+        editing.trigger = { type: triggerType, value: triggerValue };
+        editing.action = createActionObject(actionType, actionValue);
+      } else {
+        automationRules.push({
+          id: genId(),
+          name: ruleName,
+          enabled: true,
+          trigger: { type: triggerType, value: triggerValue },
+          action: createActionObject(actionType, actionValue),
+          createdAt: new Date().toISOString()
+        });
+      }
       setDB('automations', automationRules);
+      window._autoEditingId = null;
 
-      // Reset form
-      document.getElementById('automationBuilderForm').reset();
-      document.getElementById('triggerOptionsContainer').innerHTML = '';
-      document.getElementById('actionOptionsContainer').innerHTML = '';
-
+      _p7CloseSheet('autoSheet');
       renderAutomations();
-      showToast('Automation rule created', 'success');
+      showToast(editing ? 'Rule updated' : 'Rule created', 'success');
     }
 
     function createActionObject(actionType, actionValue) {
@@ -365,7 +594,7 @@
           showEmailFallback(email, subj, body, 'Automation email failed (' + (r?.error || 'unknown error') + '). Send manually:');
           return 'fallback';
         } catch(e) {
-          showEmailFallback(email, subj, body, 'Automation email — send manually:');
+          showEmailFallback(email, subj, body, 'Automation email failed. Send it manually:');
           return 'fallback';
         }
       } else if (rule.action === 'task') {
@@ -473,19 +702,30 @@
     function renderAutomationLog(leadId) {
       const logs  = (_getAutoLogs()[leadId] || []).slice().reverse();
       const rules = getDB('automations') || [];
-      if (!logs.length) return `<div style="font-size:12px;color:var(--gray);padding:8px 0;">No automation activity yet.</div>`;
-      return logs.map(l => {
+      if (!logs.length) return `<p class="t-meta" style="padding:var(--sp-2) 0;">No automation activity yet.</p>`;
+      return `<div class="auto-log">` + logs.map(l => {
         const rule = rules.find(r => r.id === l.ruleId);
-        const label = rule?.label || l.ruleId;
+        const label = _p7Dash((rule && rule.label) || l.ruleId);
         const when  = l.at ? timeAgo(l.at) : '';
-        const badge = { sent:'✅',task_created:'📋',skipped:'⏭',fallback:'✉',advanced:'→',noop:'—' }[l.result] || '·';
-        const isPending = false; // already fired
-        return `<div style="display:flex;align-items:center;gap:8px;padding:7px 0;border-bottom:1px solid rgba(255,255,255,0.05);font-size:12px;">
-          <span>${badge}</span>
-          <span style="flex:1;color:rgba(255,255,255,0.7);">${label}</span>
-          <span style="color:var(--gray);">${l.result} · ${when}</span>
+        const failed = l.result === 'error' || l.result === 'fallback';
+        return `<div class="auto-log-row${failed ? ' is-failed' : ''}">
+          ${_autoResultPill(l.result)}
+          <span class="auto-log-what">${esc(label)}</span>
+          <span class="auto-log-when">${esc(when)}</span>
         </div>`;
-      }).join('');
+      }).join('') + `</div>`;
+    }
+
+    // Run now from the lead sheet. An email rule sends a real email, so it names the recipient and asks first.
+    async function _autoRunNow(leadId, ruleId) {
+      const lead = (window._inquiries || []).find(l => l.id === leadId);
+      const rule = (getDB('automations') || []).find(r => r.id === ruleId);
+      if (rule && rule.action === 'email' && lead) {
+        const to = lead.email ? (lead.name ? lead.name + ' (' + lead.email + ')' : lead.email) : (lead.name || 'this lead');
+        const ok = await CRMUI.confirm({ title: 'Send this email now?', body: '"' + _p7Dash(rule.label || 'Email') + '" goes to ' + to + ' right away. It cannot be undone.', confirmLabel: 'Send now' });
+        if (!ok) return;
+      }
+      runSingleAutomation(leadId, ruleId, false);
     }
 
     function renderPendingAutomations(lead) {
@@ -505,12 +745,12 @@
         }
       });
       if (!pending.length) return '';
-      return `<div style="margin-top:6px;">` + pending.map(p => {
-        const when = p.daysLeft < 0.5 ? 'fires now' : `fires in ~${Math.ceil(p.daysLeft)} day${Math.ceil(p.daysLeft)===1?'':'s'}`;
-        return `<div style="display:flex;align-items:center;gap:8px;padding:7px 0;border-bottom:1px solid rgba(255,255,255,0.05);font-size:12px;">
-          <span style="flex:1;color:rgba(255,255,255,0.65);">⏳ ${p.rule.label} <span style="color:var(--gray);">(${when})</span></span>
-          <button onclick="runSingleAutomation('${lead.id}','${p.rule.id}',false)" style="padding:3px 9px;background:rgba(31,163,224,0.15);border:1px solid rgba(31,163,224,0.65);color:#1FA3E0;border-radius:5px;font-size:12px;cursor:pointer;">Run now</button>
-          <button onclick="runSingleAutomation('${lead.id}','${p.rule.id}',true)"  style="padding:3px 9px;background:rgba(255,255,255,0.05);border:1px solid var(--border-ui);color:rgba(255,255,255,0.5);border-radius:5px;font-size:12px;cursor:pointer;">Skip</button>
+      return `<div class="auto-log">` + pending.map(p => {
+        const when = p.daysLeft < 0.5 ? 'runs now' : `runs in about ${Math.ceil(p.daysLeft)} day${Math.ceil(p.daysLeft)===1?'':'s'}`;
+        return `<div class="auto-log-row">
+          <span class="auto-log-what">${_p7Icon('clock', 14)} ${esc(_p7Dash(p.rule.label))} <span class="auto-log-when">(${when})</span></span>
+          <button type="button" class="btn btn-secondary btn-sm" onclick="_autoRunNow('${esc(lead.id)}','${esc(p.rule.id)}')">Run now</button>
+          <button type="button" class="btn btn-ghost btn-sm" onclick="runSingleAutomation('${esc(lead.id)}','${esc(p.rule.id)}',true)">Skip</button>
         </div>`;
       }).join('') + `</div>`;
     }
@@ -545,32 +785,40 @@
     function _showStageJumpModal(lead, curIdx, newIdx, toStage, applicable) {
       const fromLabel = STAGE_ORDER[curIdx];
       const toLabel   = toStage;
-      const existing  = document.getElementById('stageJumpModal');
-      if (existing) existing.remove();
+      _closeStageJump();
       const modal = document.createElement('div');
       modal.id = 'stageJumpModal';
-      modal.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.75);backdrop-filter:blur(4px);z-index:2000;display:flex;align-items:center;justify-content:center;';
+      modal.className = 'modal-backdrop';
       modal.innerHTML = `
-        <div style="background:#111118;border:1px solid rgba(31,163,224,0.25);border-radius:14px;padding:28px 24px;width:400px;max-width:92vw;box-shadow:0 20px 60px rgba(0,0,0,0.7);animation:scaleIn 0.18s ease forwards;">
-          <div style="font-family:var(--font-head);font-size:20px;margin-bottom:8px;">Stage Jump</div>
-          <div style="font-size:13px;color:rgba(255,255,255,0.55);margin-bottom:18px;">
-            Moving <strong style="color:#fff">${lead.name}</strong> from <span style="color:#1FA3E0">${fromLabel}</span> → <span style="color:#2ecc71">${toLabel}</span>.
-            ${applicable.length} automation${applicable.length===1?'':'s'} would normally fire in between.
-          </div>
-          <div style="margin-bottom:18px;">
+        <div class="modal" style="--mw:420px" role="document">
+          <div class="modal-title">Stage jump</div>
+          <p class="dlg-text" style="margin-bottom:var(--sp-4);">
+            Moving <strong data-user-content>${esc(lead.name)}</strong> from ${esc(_autoStageName(fromLabel))} to ${esc(_autoStageName(toLabel))}.
+            ${applicable.length} automation${applicable.length===1?'':'s'} would normally run in between.
+          </p>
+          <div style="margin-bottom:var(--sp-4);">
             ${applicable.map(r => `
-              <label style="display:flex;align-items:center;gap:8px;padding:8px 0;border-bottom:1px solid rgba(255,255,255,0.06);font-size:13px;cursor:pointer;">
-                <input type="checkbox" checked value="${r.id}" style="accent-color:#1FA3E0;">
-                ${r.label}
+              <label class="check" style="display:flex;width:100%;">
+                <input type="checkbox" checked value="${esc(r.id)}">
+                <span class="check-box" aria-hidden="true"></span>
+                <span class="check-text">${esc(_p7Dash(r.label))}</span>
               </label>`).join('')}
           </div>
-          <div style="display:flex;gap:8px;flex-wrap:wrap;">
-            <button onclick="_resolveStageJump('${lead.id}','${toStage}','run')" style="flex:1;padding:10px;background:#1FA3E0;border:none;border-radius:7px;color:#000;font-weight:700;cursor:pointer;font-size:13px;font-family:'Barlow',sans-serif;">Run checked</button>
-            <button onclick="_resolveStageJump('${lead.id}','${toStage}','skip')" style="flex:1;padding:10px;background:rgba(255,255,255,0.07);border:1px solid var(--border-ui);border-radius:7px;color:#fff;cursor:pointer;font-size:13px;font-family:'Barlow',sans-serif;">Skip all</button>
-            <button onclick="document.getElementById('stageJumpModal').remove();" style="padding:10px 14px;background:none;border:1px solid var(--border-ui);border-radius:7px;color:rgba(255,255,255,0.55);cursor:pointer;font-size:13px;font-family:'Barlow',sans-serif;">Cancel</button>
+          <div style="display:flex;gap:var(--sp-2);flex-wrap:wrap;justify-content:flex-end;">
+            <button type="button" class="btn btn-ghost" onclick="_closeStageJump()">Cancel</button>
+            <button type="button" class="btn btn-secondary" onclick="_resolveStageJump('${esc(lead.id)}','${esc(toStage)}','skip')">Skip all</button>
+            <button type="button" class="btn btn-primary" onclick="_resolveStageJump('${esc(lead.id)}','${esc(toStage)}','run')">Run checked</button>
           </div>
         </div>`;
       document.body.appendChild(modal);
+      if (window.CRMUI && CRMUI.open) CRMUI.open(modal); else modal.classList.add('active');
+    }
+
+    function _closeStageJump() {
+      const el = document.getElementById('stageJumpModal');
+      if (!el) return;
+      if (window.CRMUI && CRMUI.close) CRMUI.close(el, { force: true });
+      if (el.parentNode) el.parentNode.removeChild(el);
     }
 
     async function _resolveStageJump(leadId, toStage, mode) {
@@ -578,7 +826,7 @@
       const checked = mode === 'run'
         ? [...document.querySelectorAll('#stageJumpModal input[type=checkbox]:checked')].map(c => c.value)
         : [];
-      document.getElementById('stageJumpModal')?.remove();
+      _closeStageJump();
       const rules = _stagePendingRules;
       if (mode === 'run') {
         // Run only the rules the user checked; if somehow none were checked, run all
@@ -602,36 +850,4 @@
       showToast('Stage updated to ' + newStage, 'success');
       // Refresh view to show updated automation log
       setTimeout(() => openInquiry(leadId), 300);
-    }
-
-    function renderAutomations() {
-      const rules = (getDB('automations') || []);
-      let html = '';
-      rules.forEach(rule => {
-        html += `<div class="automation-card">
-          <div class="automation-card-content">
-            <div class="automation-card-name">${esc(rule.label || rule.name || rule.id)}</div>
-            <div class="automation-card-trigger" style="font-size:12px;color:var(--gray);">${typeof rule.trigger === 'object' ? 'Trigger: ' + esc(getTriggerDescription(rule.trigger)) + ' · Action: ' + esc(getActionDescription(rule.action || {})) : `Stage: ${rule.stage || 'any'} · Trigger: ${rule.trigger}${rule.days?' ('+rule.days+' days)':''} · Action: ${rule.action}`}</div>
-          </div>
-          <div class="automation-card-actions">${typeof rule.trigger === 'object' ? `<button class="btn btn-secondary" onclick="deleteAutomationRule('${rule.id}')" style="padding:6px 10px;font-size:12px;">Delete</button>` : ''}
-            <label class="toggle-switch" style="margin:0;">
-              <input type="checkbox" ${rule.enabled ? 'checked' : ''} onchange="toggleAutomationRule('${rule.id}', this.checked)">
-              <span class="toggle-slider"></span>
-            </label>
-          </div>
-        </div>`;
-      });
-      const container = document.getElementById('automationsContainer');
-      if (container) container.innerHTML = html || '<p style="color:var(--gray);font-size:13px;">No rules.</p>';
-      const noMsg = document.getElementById('noAutomationsMessage');
-      if (noMsg) noMsg.style.display = rules.length > 0 ? 'none' : 'block';
-      // Honesty note
-      const layout = document.getElementById('automationsLayout');
-      if (layout && !document.getElementById('autoHonesty')) {
-        const note = document.createElement('div');
-        note.id = 'autoHonesty';
-        note.style.cssText = 'margin-top:12px;padding:12px 16px;background:rgba(243,156,18,0.08);border:1px solid rgba(243,156,18,0.2);border-radius:8px;font-size:12px;color:rgba(243,156,18,0.8);';
-        note.textContent = 'Timed automations fire when the portal is open. Keep a tab open on event days or check in daily.';
-        layout.appendChild(note);
-      }
     }

@@ -15,113 +15,120 @@
 </script>
   <link rel="preload" as="font" type="font/woff2" crossorigin href="fonts/1Ptgg87LROyAm3Kz-C8CSKlv.woff2">
 <link rel="stylesheet" href="fonts/fonts.css">
+<link rel="stylesheet" href="crm-tokens.css?v=1">
+<link rel="stylesheet" href="crm-ui.css?v=1">
 <style>
+  /* Login page CSS. Colors, type, spacing and radii come from crm-tokens.css; buttons, fields, seg, banner and rows from crm-ui.css.
+     Only layout and the brand panel live here. fable.css is not linked: this page uses none of its classes and its .btn-primary
+     (shine sweep, lift, glow) would fight crm-ui.css. */
   *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-  :root {
-    --black: #000; --black-2: #0a0a0a; --black-3: #111;
-    --white: #fff; --cyan: #1FA3E0; --cyan-dark: #1585b8; --cyan-dim: rgba(31,163,224,0.1);
-    --gray: #888; --border: rgba(255,255,255,0.1);
-    --font-head: 'Anton', Impact, sans-serif;
-    --font-body: 'Barlow', system-ui, sans-serif;
-    --font-cond: 'Barlow Condensed', sans-serif;
-    /* T6 contrast tokens: text-3 is the floor for any text; border-ui is for inputs, buttons and toggles (3:1). The 0.1 rule stays decorative. */
-    --text-1: #f4f6f8; --text-2: rgba(255,255,255,0.72); --text-3: rgba(255,255,255,0.62); --border-ui: rgba(255,255,255,0.38);
-  }
-  html, body { height: 100%; }
-  body { background: var(--black); color: var(--white); font-family: var(--font-body); display: flex; min-height: 100vh; }
+  html { min-height: 100%; }
+  body { background: var(--surface-0); color: var(--text-1); font-family: var(--font-body); font-size: var(--fs-14); line-height: 1.45; display: flex; min-height: 100vh; min-height: 100dvh; }
 
-  /* LEFT PANEL */
+  /* LEFT PANEL (brand) */
   .l-panel {
-    width: 45%; background: linear-gradient(160deg, #071e28 0%, #04121a 50%, #020a10 100%);
+    --panel-a: #071e28; --panel-b: #04121a; --panel-c: #020a10;
+    width: 45%; background: linear-gradient(160deg, var(--panel-a) 0%, var(--panel-b) 50%, var(--panel-c) 100%);
     display: flex; flex-direction: column; justify-content: space-between;
-    padding: 3rem; position: relative; overflow: hidden;
+    padding: var(--sp-12); position: relative; overflow: hidden;
   }
-  .l-panel::before {
-    content: ''; position: absolute; inset: 0;
-    background: radial-gradient(ellipse at 30% 70%, rgba(31,163,224,0.12) 0%, transparent 60%);
-  }
-  .l-logo { display: flex; align-items: center; gap: 10px; position: relative; z-index: 2; }
+  .l-panel::before { content: ''; position: absolute; inset: 0; background: radial-gradient(ellipse at 30% 70%, var(--cyan-tint) 0%, transparent 60%); pointer-events: none; }
+  .l-logo { display: flex; align-items: center; gap: 10px; position: relative; z-index: 2; align-self: flex-start; min-height: 44px; }
+  .l-logo img { height: 44px; width: auto; display: block; }
   .l-hero { position: relative; z-index: 2; }
-  .l-tagline { font-family: var(--font-head); font-size: clamp(2.5rem, 5vw, 4.5rem); text-transform: uppercase; line-height: 0.95; margin-bottom: 2rem; }
-  .l-features { display: flex; flex-direction: column; gap: 1.2rem; }
-  .l-feature { display: flex; align-items: flex-start; gap: 1rem; }
-  .l-feature-icon { width: 32px; height: 32px; border: 1px solid rgba(31,163,224,0.4); border-radius: 6px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; color: var(--cyan); font-family: var(--font-cond); font-size: 12px; font-weight: 700; letter-spacing: 0.1em; }
-  .l-feature-text { font-size: 0.85rem; color: rgba(255,255,255,0.7); line-height: 1.5; }
-  .l-feature-text strong { color: var(--white); font-weight: 600; }
-  .l-back { position: relative; z-index: 2; font-size: 0.75rem; color: rgba(255,255,255,0.55); letter-spacing: 0.08em; }
-  .l-back a { color: var(--cyan); }
+  .l-tagline { font-family: var(--font-display); font-weight: 400; font-size: clamp(2.5rem, 5vw, 4.5rem); text-transform: uppercase; line-height: 0.95; margin-bottom: var(--sp-8); }
+  .l-features { display: flex; flex-direction: column; gap: var(--sp-5); }
+  .l-feature { display: flex; align-items: flex-start; gap: var(--sp-4); }
+  .l-feature-icon { width: 32px; height: 32px; border: 1px solid var(--border-ui); border-radius: var(--r-md); display: flex; align-items: center; justify-content: center; flex-shrink: 0; color: var(--cyan); }
+  .l-feature-text { font-size: var(--fs-14); color: var(--text-2); line-height: 1.5; }
+  .l-feature-text strong { color: var(--text-1); font-weight: 600; }
+  .l-back { position: relative; z-index: 2; font-size: var(--fs-13); color: var(--text-3); }
+  .l-back a { color: var(--cyan); text-decoration: none; display: inline-flex; align-items: center; gap: var(--sp-2); min-height: 44px; }
+  .l-back a:hover { color: var(--cyan-hover); text-decoration: underline; text-underline-offset: 3px; }
 
   /* RIGHT PANEL */
-  .r-panel { flex: 1; display: flex; align-items: center; justify-content: center; padding: 3rem; background: var(--black); }
+  .r-panel { flex: 1; display: flex; align-items: flex-start; justify-content: center; padding: clamp(48px, 14vh, 140px) var(--sp-12) var(--sp-12); background: var(--surface-0); min-width: 0; }
   .login-box { width: 100%; max-width: 420px; }
-  .login-title { font-family: var(--font-head); font-size: 2.2rem; text-transform: uppercase; margin-bottom: 0.5rem; }
-  .login-sub { font-size: 0.85rem; color: var(--gray); margin-bottom: 2.5rem; }
+  .login-title { font-family: var(--font-display); font-weight: 400; font-size: var(--fs-32); line-height: 1.1; text-transform: uppercase; margin-bottom: var(--sp-2); }
+  .login-sub { font-size: var(--fs-14); color: var(--text-3); margin-bottom: var(--sp-6); }
 
-  /* TABS */
-  .tabs { display: flex; border-bottom: 1px solid var(--border); margin-bottom: 2rem; }
-  .tab-btn { flex: 1; padding: 0.9rem; background: none; border: none; color: var(--gray); font-family: var(--font-body); font-size: 0.8rem; font-weight: 600; letter-spacing: 0.1em; text-transform: uppercase; cursor: pointer; border-bottom: 2px solid transparent; margin-bottom: -1px; transition: all 0.2s; }
-  .tab-btn.active { color: var(--cyan); border-bottom-color: var(--cyan); }
+  /* PROVIDER / CLIENT SWITCH: a .seg of .tab-btn buttons (script and harness find .tab-btn[data-tab]) */
+  .seg.login-seg { display: flex; width: 100%; margin-bottom: var(--sp-6); }
+  .seg.login-seg .tab-btn { flex: 1; justify-content: center; min-height: 44px; padding: 0 var(--sp-4); border-radius: 0; }
+  .seg.login-seg .tab-btn::after { display: none; }
+  .seg.login-seg .tab-btn.active { color: var(--text-1); }
   .tab-panel { display: none; }
   .tab-panel.active { display: block; }
 
   /* FORM */
-  .f-group { margin-bottom: 1.4rem; }
-  .f-label { display: block; font-size: 0.72rem; font-weight: 600; letter-spacing: 0.12em; text-transform: uppercase; color: rgba(255,255,255,0.55); margin-bottom: 0.5rem; }
-  .f-input { width: 100%; background: var(--black-2); border: 1px solid var(--border-ui); color: var(--white); font-family: var(--font-body); font-size: 0.95rem; padding: 0.8rem 1rem; outline: none; transition: border-color 0.2s; border-radius: 2px; }
-  .f-input:focus { border-color: var(--cyan); }
-  .f-input::placeholder { color: var(--text-3); }
-  .f-btn { width: 100%; padding: 1rem; background: var(--cyan); border: none; color: #07070d; font-family: var(--font-body); font-size: 0.82rem; font-weight: 700; letter-spacing: 0.14em; text-transform: uppercase; cursor: pointer; transition: background 0.2s; margin-top: 0.5rem; border-radius: 2px; }
-  .f-btn:hover { background: var(--cyan-dark); }
-  .f-btn:disabled { opacity: 0.6; cursor: not-allowed; }
-  .f-btn-ghost { width: 100%; padding: 0.8rem; background: none; border: 1px solid var(--border-ui); color: rgba(255,255,255,0.5); font-family: var(--font-body); font-size: 0.8rem; font-weight: 600; letter-spacing: 0.1em; text-transform: uppercase; cursor: pointer; transition: all 0.2s; margin-top: 0.6rem; border-radius: 2px; }
-  .f-btn-ghost:hover { border-color: var(--border-ui); color: var(--white); }
-  .f-err { color: #ff6b6b; font-size: 0.8rem; margin-top: 1rem; display: none; }
-  .f-ok  { color: #5cdb95; font-size: 0.8rem; margin-top: 1rem; display: none; }
-  .f-link { display: block; text-align: right; font-size: 0.78rem; color: rgba(255,255,255,0.55); cursor: pointer; margin-top: 0.4rem; background: none; border: none; padding: 0; transition: color 0.2s; }
+  .f-group { margin-bottom: var(--sp-4); }
+  .f-group .field { margin-bottom: 0; }
+  .login-box .input { min-height: 48px; }
+  .login-box .btn { width: 100%; min-height: 48px; }
+  .login-box .btn + .btn { margin-top: var(--sp-2); }
+  .login-box .btn-primary { margin-top: var(--sp-2); }
+  .f-err { display: none; color: var(--danger); font-size: var(--fs-14); line-height: 1.45; margin: 0 0 var(--sp-3); }
+  .f-ok  { display: none; color: var(--ok); font-size: var(--fs-14); line-height: 1.55; margin: 0 0 var(--sp-3); }
+  .f-link { display: flex; align-items: center; justify-content: flex-end; width: 100%; min-height: 44px; margin-top: var(--sp-1); background: none; border: 0; padding: 0; font: inherit; font-size: var(--fs-13); color: var(--text-2); text-decoration: underline; text-underline-offset: 3px; cursor: pointer; }
   .f-link:hover { color: var(--cyan); }
+  .c-intro { font-size: var(--fs-15); color: var(--text-2); line-height: 1.55; margin-bottom: var(--sp-5); }
 
-  .c-intro { font-size: 0.88rem; color: var(--text-2); line-height: 1.6; margin-bottom: 1.4rem; }
-  .f-link-center { display: block; width: 100%; text-align: center; font-family: var(--font-body); font-size: 0.82rem; color: var(--text-2); cursor: pointer; margin-top: 0.8rem; background: none; border: none; padding: 0.85rem 0.5rem; text-decoration: underline; transition: color 0.2s; }
-  .f-link-center:hover { color: var(--cyan); }
-  .f-ok { line-height: 1.55; }
+  /* Client link view messages. Plain errors are inline text; a link problem (expired, used, no event) gets a warning banner with one action. */
+  .c-msg { margin: 0; }
+  .c-msg-ic { display: none; flex: none; color: var(--warn); margin-top: 1px; }
+  .c-msg-body { min-width: 0; flex: 1; }
+  .c-again { display: none; margin-top: var(--sp-3); }
+  .c-msg.is-problem { margin-bottom: var(--sp-4); }
+  .c-msg.is-problem .c-msg-ic { display: inline-flex; }
+  .c-msg.is-problem .f-err { color: var(--text-1); margin: 0; }
+  .c-msg.is-problem .c-again { display: inline-flex; }
 
   /* FORGOT PASSWORD VIEW */
   #forgot-view { display: none; }
   #forgot-view.active { display: block; }
-  .back-link { display: inline-flex; align-items: center; gap: 0.4rem; font-size: 0.78rem; color: rgba(255,255,255,0.55); cursor: pointer; background: none; border: none; padding: 0; margin-bottom: 2rem; transition: color 0.2s; }
-  .back-link:hover { color: var(--white); }
-  .forgot-title { font-family: var(--font-head); font-size: 1.6rem; text-transform: uppercase; margin-bottom: 0.5rem; }
-  .forgot-sub { font-size: 0.85rem; color: var(--gray); margin-bottom: 2rem; line-height: 1.6; }
+  .back-link { display: inline-flex; align-items: center; gap: var(--sp-2); min-height: 44px; font: inherit; font-size: var(--fs-13); color: var(--text-2); cursor: pointer; background: none; border: 0; padding: 0; margin-bottom: var(--sp-4); }
+  .back-link:hover { color: var(--text-1); }
+  .forgot-title { font-family: var(--font-display); font-weight: 400; font-size: var(--fs-24); line-height: 1.2; text-transform: uppercase; margin-bottom: var(--sp-2); }
+  .forgot-sub { font-size: var(--fs-14); color: var(--text-3); margin-bottom: var(--sp-6); line-height: 1.6; }
 
-  @media (max-width: 768px) {
+  /* EVENT PICKER (built by showEventPicker) */
+  .picker-list { display: flex; flex-direction: column; gap: var(--sp-2); }
+  .picker-bg { position: fixed; inset: 0; z-index: var(--z-modal); background: var(--scrim); display: flex; align-items: center; justify-content: center; padding: var(--sp-4); }
+  .picker-card { width: min(460px, 100%); max-height: 80vh; overflow-y: auto; background: var(--surface-3); border: 1px solid var(--border); border-radius: var(--r-xl); padding: var(--sp-6); box-shadow: var(--shadow-float); }
+  .picker-card h2 { font-size: var(--fs-18); font-weight: 600; margin-bottom: var(--sp-1); }
+  .picker-card p { font-size: var(--fs-14); color: var(--text-2); margin-bottom: var(--sp-4); }
+
+  @media (max-width: 767.98px) {
     body { flex-direction: column; }
-    .l-panel { width: 100%; padding: 2rem; min-height: auto; }
+    .l-panel { width: 100%; padding: var(--sp-3) var(--gutter) var(--sp-4); display: grid; grid-template-columns: 1fr auto; align-items: center; gap: var(--sp-2) var(--sp-3); }
+    .l-logo { grid-column: 1; grid-row: 1; }
+    .l-logo img { height: 36px; }
+    .l-back { grid-column: 2; grid-row: 1; }
+    .l-hero { grid-column: 1 / -1; grid-row: 2; }
     .l-features { display: none; }
-    .l-tagline { font-size: 2.5rem; margin-bottom: 1rem; }
-    .r-panel { padding: 2rem; }
+    .l-tagline { font-size: var(--fs-32); margin-bottom: 0; }
+    .r-panel { padding: var(--sp-6) var(--gutter) calc(var(--sp-8) + env(safe-area-inset-bottom, 0px)); align-items: flex-start; }
   }
-    :focus-visible { outline: 2px solid #1FA3E0; outline-offset: 2px; }
-  </style>
+</style>
 <link rel="icon" href="favicon.ico" sizes="any">
 <link rel="icon" href="favicon-32x32.png" type="image/png" sizes="32x32">
 <link rel="icon" href="favicon-16x16.png" type="image/png" sizes="16x16">
 <link rel="apple-touch-icon" href="apple-touch-icon.png">
-<link rel="stylesheet" href="fable.css">
 </head>
 <body>
 
 <div class="l-panel">
   <a href="/" class="l-logo">
-    <img src="logo-full.webp" alt="Baseline Studio" style="height:44px;width:auto;" width="281" height="88">
+    <img src="logo-full.webp" alt="Baseline Studio" width="281" height="88">
   </a>
   <div class="l-hero">
     <h1 class="l-tagline">Everything<br>for your event<br>lives here</h1>
-    <div class="l-features"><div class="l-feature"><div class="l-feature-icon" aria-hidden="true">&bull;</div><div class="l-feature-text"><strong>Your event</strong><br>Date, venue, timeline, and who is doing what.</div></div><div class="l-feature"><div class="l-feature-icon" aria-hidden="true">&bull;</div><div class="l-feature-text"><strong>Music</strong><br>Build the playlist, add the do-not-plays, request songs.</div></div><div class="l-feature"><div class="l-feature-icon" aria-hidden="true">&bull;</div><div class="l-feature-text"><strong>Contracts and invoices</strong><br>Sign and pay without printing anything.</div></div><div class="l-feature"><div class="l-feature-icon" aria-hidden="true">&bull;</div><div class="l-feature-text"><strong>Messages</strong><br>Reach us directly. We see it right away.</div></div></div>
+    <div class="l-features"><div class="l-feature"><div class="l-feature-icon" data-icon="calendar-days" aria-hidden="true">&bull;</div><div class="l-feature-text"><strong>Your event</strong><br>Date, venue, timeline, and who is doing what.</div></div><div class="l-feature"><div class="l-feature-icon" data-icon="music" aria-hidden="true">&bull;</div><div class="l-feature-text"><strong>Music</strong><br>Build the playlist, add the do-not-plays, request songs.</div></div><div class="l-feature"><div class="l-feature-icon" data-icon="file-text" aria-hidden="true">&bull;</div><div class="l-feature-text"><strong>Contracts and invoices</strong><br>Sign and pay without printing anything.</div></div><div class="l-feature"><div class="l-feature-icon" data-icon="message-square" aria-hidden="true">&bull;</div><div class="l-feature-text"><strong>Messages</strong><br>Reach us directly. We see it right away.</div></div></div>
   </div>
-  <p class="l-back"><a href="/">&#8592; Back to site</a></p>
+  <p class="l-back"><a href="/"><span data-icon="arrow-left" aria-hidden="true">&#8592;</span> Back to site</a></p>
 </div>
 
-<div class="r-panel">
+<main class="r-panel">
   <div class="login-box">
 
     <!-- MAIN LOGIN VIEW -->
@@ -129,77 +136,85 @@
       <h2 class="login-title">Sign In</h2>
       <p class="login-sub">Access your portal below</p>
 
-      <div class="tabs">
-        <button class="tab-btn active" data-tab="provider">Provider</button>
-        <button class="tab-btn" data-tab="client">Client</button>
+      <div class="seg login-seg" role="tablist" aria-label="Sign in as">
+        <button class="tab-btn seg-btn active" type="button" role="tab" aria-selected="true" aria-controls="tab-provider" data-tab="provider">Provider</button>
+        <button class="tab-btn seg-btn" type="button" role="tab" aria-selected="false" aria-controls="tab-client" data-tab="client">Client</button>
       </div>
 
       <!-- PROVIDER TAB -->
-      <div class="tab-panel active" id="tab-provider">
-        <div class="f-group">
-          <label class="f-label" for="pEmail">Email</label>
-          <input class="f-input" type="email" id="pEmail" placeholder="you@baselinestudiofl.com" autocomplete="email">
+      <div class="tab-panel active" id="tab-provider" role="tabpanel">
+        <div class="f-group field">
+          <label class="field-label" for="pEmail">Email</label>
+          <input class="input" type="email" id="pEmail" placeholder="you@baselinestudiofl.com" autocomplete="email" inputmode="email" autocapitalize="off" spellcheck="false" enterkeyhint="next">
         </div>
-        <div class="f-group">
-          <label class="f-label" for="pPass">Password</label>
-          <input class="f-input" type="password" id="pPass" placeholder="&bull;&bull;&bull;&bull;&bull;&bull;&bull;&bull;" autocomplete="current-password">
-          <button class="f-link" onclick="showForgot()">Forgot password?</button>
+        <div class="f-group field">
+          <label class="field-label" for="pPass">Password</label>
+          <input class="input" type="password" id="pPass" placeholder="&bull;&bull;&bull;&bull;&bull;&bull;&bull;&bull;" autocomplete="current-password" enterkeyhint="go">
+          <button class="f-link" type="button" onclick="showForgot()">Forgot password?</button>
         </div>
-        <p class="f-err" id="pErr"></p>
-        <button class="f-btn" id="pBtn" onclick="doLogin('provider')">Sign In as Provider</button>
+        <p class="f-err" id="pErr" role="alert"></p>
+        <button class="btn btn-primary" type="button" id="pBtn" onclick="doLogin('provider')">Sign In as Provider</button>
       </div>
 
       <!-- CLIENT TAB -->
-      <div class="tab-panel" id="tab-client">
+      <div class="tab-panel" id="tab-client" role="tabpanel">
 
         <!-- Email link (default) -->
         <div id="cLinkView">
           <p class="c-intro">No password needed. Put in your email and we will send you a link that opens your portal.</p>
-          <div class="f-group">
-            <label class="f-label" for="cLinkEmail">Email</label>
-            <input class="f-input" type="email" id="cLinkEmail" placeholder="your@email.com" autocomplete="email">
+          <div class="f-group field">
+            <label class="field-label" for="cLinkEmail">Email</label>
+            <input class="input" type="email" id="cLinkEmail" placeholder="your@email.com" autocomplete="email" inputmode="email" autocapitalize="off" spellcheck="false" enterkeyhint="go">
           </div>
-          <p class="f-err" id="cLinkErr" role="alert"></p>
+          <div class="c-msg" id="cLinkMsg">
+            <span class="c-msg-ic" data-icon="triangle-alert" aria-hidden="true"></span>
+            <div class="c-msg-body">
+              <p class="f-err" id="cLinkErr" role="alert"></p>
+              <button class="btn btn-secondary c-again" type="button" id="cLinkAgain" onclick="retryLink()">Email me a new link</button>
+            </div>
+          </div>
           <p class="f-ok" id="cLinkOk" role="status"></p>
-          <button class="f-btn" id="cLinkBtn" onclick="sendMagicLink()">Email me a link</button>
-          <button class="f-link-center" id="cUsePwBtn" onclick="showClientPassword()">Use a password instead</button>
+          <button class="btn btn-primary" type="button" id="cLinkBtn" onclick="sendMagicLink()">Email me a link</button>
+          <button class="btn btn-ghost" type="button" id="cUsePwBtn" onclick="showClientPassword()">Use a password instead</button>
         </div>
 
         <!-- Password (stays during the switchover, see PASSWORD_FALLBACK_ENDS) -->
         <div id="cPwView" style="display:none;">
-          <div class="f-group">
-            <label class="f-label" for="cEmail">Email</label>
-            <input class="f-input" type="email" id="cEmail" placeholder="your@email.com" autocomplete="email">
+          <div class="f-group field">
+            <label class="field-label" for="cEmail">Email</label>
+            <input class="input" type="email" id="cEmail" placeholder="your@email.com" autocomplete="email" inputmode="email" autocapitalize="off" spellcheck="false" enterkeyhint="next">
           </div>
-          <div class="f-group">
-            <label class="f-label" for="cPass">Portal Password</label>
-            <input class="f-input" type="password" id="cPass" placeholder="Your event portal code" autocomplete="current-password">
+          <div class="f-group field">
+            <label class="field-label" for="cPass">Portal Password</label>
+            <input class="input" type="password" id="cPass" placeholder="Your event portal code" autocomplete="current-password" enterkeyhint="go">
           </div>
-          <p class="f-err" id="cErr"></p>
-          <button class="f-btn" id="cBtn" onclick="doLogin('client')">Access My Portal</button>
-          <button class="f-link-center" onclick="showClientLink()">Email me a link instead</button>
+          <p class="f-err" id="cErr" role="alert"></p>
+          <button class="btn btn-primary" type="button" id="cBtn" onclick="doLogin('client')">Access My Portal</button>
+          <button class="btn btn-ghost" type="button" onclick="showClientLink()">Email me a link instead</button>
         </div>
       </div>
     </div>
 
     <!-- FORGOT PASSWORD VIEW -->
     <div id="forgot-view">
-      <button class="back-link" onclick="showLogin()">&#8592; Back to sign in</button>
+      <button class="back-link" type="button" onclick="showLogin()"><span data-icon="arrow-left" aria-hidden="true">&#8592;</span> Back to sign in</button>
       <h2 class="forgot-title">Reset Password</h2>
       <p class="forgot-sub">Enter your provider email and we'll send you a link to set a new password.</p>
-      <div class="f-group">
-        <label class="f-label" for="fEmail">Email Address</label>
-        <input class="f-input" type="email" id="fEmail" placeholder="you@baselinestudiofl.com" autocomplete="email">
+      <div class="f-group field">
+        <label class="field-label" for="fEmail">Email</label>
+        <input class="input" type="email" id="fEmail" placeholder="you@baselinestudiofl.com" autocomplete="email" inputmode="email" autocapitalize="off" spellcheck="false" enterkeyhint="go">
       </div>
-      <p class="f-err" id="fErr"></p>
-      <p class="f-ok"  id="fOk">Check your inbox. A reset link has been sent.</p>
-      <button class="f-btn" id="fBtn" onclick="doForgot()">Send Reset Link</button>
-      <button class="f-btn-ghost" onclick="showLogin()">Cancel</button>
+      <p class="f-err" id="fErr" role="alert"></p>
+      <p class="f-ok"  id="fOk" role="status">Check your inbox. A reset link has been sent.</p>
+      <button class="btn btn-primary" type="button" id="fBtn" onclick="doForgot()">Send Reset Link</button>
+      <button class="btn btn-secondary" type="button" onclick="showLogin()">Cancel</button>
     </div>
 
   </div>
-</div>
+</main>
 
+<script src="crm-icons.js?v=1"></script>
+<script src="crm-ui.js?v=1"></script>
 <script>
 const SUPABASE_URL  = 'https://jkdhkwcxnwpiufeyrnso.supabase.co';
 const SUPABASE_ANON = 'sb_publishable_6xcEpHwIJi8bq4XuSyLCGg_3A30raS9';
@@ -226,6 +241,8 @@ function showLogin() {
 // ── Loading state ─────────────────────────────────────────────────────────────
 function setLoading(btn, loading, label) {
   btn.disabled = loading;
+  btn.setAttribute('aria-busy', loading ? 'true' : 'false');
+  btn.setAttribute('aria-disabled', loading ? 'true' : 'false');
   btn.textContent = loading ? 'Please wait\u2026' : label;
 }
 
@@ -260,7 +277,7 @@ async function doLogin(type) {
         let msg = 'Invalid email or password.';
         const desc = (data.error_description || data.msg || '').toLowerCase();
         if (desc.includes('not confirmed') || desc.includes('email_not_confirmed'))
-          msg = 'Please confirm your email address first \u2014 check your inbox for a verification link.';
+          msg = 'Please confirm your email address first. Check your inbox for a verification link.';
         else if (desc.includes('invalid login') || desc.includes('invalid credentials'))
           msg = 'Invalid email or password. Please try again.';
         errEl.textContent = msg;
@@ -334,6 +351,20 @@ const LINK_ERRORS = {
   invalid_link: 'That link did not work. Ask for a new one below.'
 };
 
+// Link problems (expired, used, no event) show as a warning banner with one action. Plain errors stay inline text.
+function resetLinkBox() {
+  const box = document.getElementById('cLinkMsg');
+  box.classList.remove('banner', 'banner-warn', 'is-problem');
+  const b = document.getElementById('cLinkBtn'); if (b) b.style.display = '';
+}
+function retryLink() {
+  const el = document.getElementById('cLinkEmail');
+  resetLinkBox();
+  document.getElementById('cLinkErr').style.display = 'none';
+  if (/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(el.value.trim())) sendMagicLink();
+  else el.focus();
+}
+
 function showClientPassword() {
   if (!passwordFallbackOpen()) return;
   const v = document.getElementById('cLinkEmail').value.trim();
@@ -357,6 +388,7 @@ async function sendMagicLink() {
   const headers = { 'Content-Type': 'application/json', 'apikey': SUPABASE_ANON };
   errEl.style.display = 'none';
   okEl.style.display  = 'none';
+  resetLinkBox();
 
   if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) {
     errEl.textContent = 'Enter the email address you gave us.';
@@ -433,6 +465,8 @@ async function sendMagicLink() {
     const errEl = document.getElementById('cLinkErr');
     errEl.textContent = LINK_ERRORS[code] || LINK_ERRORS.invalid_link;
     errEl.style.display = 'block';
+    document.getElementById('cLinkMsg').classList.add('banner', 'banner-warn', 'is-problem');
+    const b = document.getElementById('cLinkBtn'); if (b) b.style.display = 'none'; // the banner has its own "Email me a new link"
   });
 })();
 
@@ -471,7 +505,7 @@ async function doForgot() {
       return;
     }
     // Supabase returns 200 and doesn't reveal if the email exists (security by design)
-    okEl.textContent = 'Check your inbox \u2014 a reset link has been sent.';
+    okEl.textContent = 'Check your inbox. A reset link has been sent.';
     okEl.style.display = 'block';
     btn.textContent = 'Email Sent';
   } catch (err) {
@@ -497,28 +531,30 @@ function _storeClientSession(email, pass, selectedEvent, allEvents) {
 }
 
 // ── Event picker (multi-event clients) ────────────────────────────────────────
+function _pickEsc(v) {
+  return String(v == null ? '' : v).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+}
 function showEventPicker(email, pass, events) {
+  window._pickerState = { email, pass, events };
+  const chevron = (window.CRMUI && CRMUI.icon) ? CRMUI.icon('chevron-right', 20) : '&rsaquo;';
+  const rows = events.map((ev, i) => {
+    const dateStr = ev.date || ev.eventDate || '';
+    const label   = dateStr ? new Date(dateStr + 'T00:00:00').toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'}) : 'Date TBD';
+    return `<button type="button" class="row" onclick="pickEvent(${i})">
+      <span class="row-main"><span class="row-title">${_pickEsc(ev.name || 'Event')}</span><span class="row-sub">${_pickEsc(ev.type || '')}${ev.type ? ' &bull; ' : ''}${label}</span></span>
+      <span class="row-trail" aria-hidden="true">${chevron}</span>
+    </button>`;
+  }).join('');
+  const body = `<p class="dlg-text">You have multiple events on file. Pick one to open.</p><div class="picker-list" style="margin-top:var(--sp-4);">${rows}</div>`;
+  if (window.CRMUI && CRMUI.sheet) {
+    CRMUI.sheet({ id: 'eventPicker', title: 'Your events', html: body });
+    return;
+  }
   const picker = document.createElement('div');
   picker.id = 'eventPicker';
-  picker.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.88);display:flex;align-items:center;justify-content:center;z-index:9999;';
-  picker.innerHTML = `
-    <div style="background:#111118;border:1px solid rgba(255,255,255,0.1);border-radius:16px;padding:32px;width:min(460px,90vw);max-height:80vh;overflow-y:auto;">
-      <h2 style="font-family:'Anton',Impact,sans-serif;font-size:22px;color:#fff;margin-bottom:6px;letter-spacing:0.04em;">YOUR EVENTS</h2>
-      <p style="color:rgba(255,255,255,0.5);font-size:13px;margin-bottom:24px;">You have multiple events on file. Pick one to open.</p>
-      <div style="display:flex;flex-direction:column;gap:10px;">
-        ${events.map((ev, i) => {
-          const dateStr = ev.date || ev.eventDate || '';
-          const label   = dateStr ? new Date(dateStr + 'T00:00:00').toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'}) : 'Date TBD';
-          return `<button onclick="pickEvent(${i})" style="text-align:left;background:rgba(31,163,224,0.07);border:1px solid rgba(31,163,224,0.65);border-radius:10px;padding:14px 16px;cursor:pointer;color:#fff;font-family:inherit;width:100%;">
-            <div style="font-weight:600;font-size:15px;margin-bottom:3px;">${ev.name || 'Event'}</div>
-            <div style="font-size:12px;color:rgba(255,255,255,0.55);">${ev.type || ''} &bull; ${label}</div>
-          </button>`;
-        }).join('')}
-      </div>
-    </div>
-  `;
+  picker.className = 'picker-bg';
+  picker.innerHTML = `<div class="picker-card" role="dialog" aria-modal="true" aria-labelledby="pickerTitle"><h2 id="pickerTitle">Your events</h2>${body}</div>`;
   document.body.appendChild(picker);
-  window._pickerState = { email, pass, events };
 }
 
 function pickEvent(idx) {
@@ -531,10 +567,17 @@ function pickEvent(idx) {
 document.querySelectorAll('.tab-btn').forEach(btn => {
   btn.addEventListener('click', () => {
     document.querySelectorAll('.tab-btn, .tab-panel').forEach(el => el.classList.remove('active'));
+    document.querySelectorAll('.tab-btn').forEach(el => el.setAttribute('aria-selected', 'false'));
     btn.classList.add('active');
+    btn.setAttribute('aria-selected', 'true');
     document.getElementById('tab-' + btn.dataset.tab).classList.add('active');
   });
 });
+
+// Lucide icons from crm-icons.js into the decorative slots
+if (window.CRMUI && CRMUI.icon) {
+  document.querySelectorAll('[data-icon]').forEach(el => { el.innerHTML = CRMUI.icon(el.getAttribute('data-icon'), el.classList.contains('l-feature-icon') ? 16 : 18); });
+}
 
 if (!passwordFallbackOpen()) document.getElementById('cUsePwBtn').style.display = 'none';
 
@@ -542,9 +585,11 @@ if (!passwordFallbackOpen()) document.getElementById('cUsePwBtn').style.display 
 const urlRole = new URLSearchParams(location.search).get('role');
 if (urlRole === 'client') document.querySelector('[data-tab="client"]').click();
 
-// Enter key — G: e.preventDefault() stops implicit form submit / page reload
+// Enter key. G: e.preventDefault() stops implicit form submit / page reload
 document.addEventListener('keydown', e => {
   if (e.key !== 'Enter') return;
+  // A focused button or link does its own thing on Enter (tab switch, "Use a password instead", Back).
+  if (e.target && e.target.closest && e.target.closest('button, a')) return;
   e.preventDefault();
   const forgotVisible = document.getElementById('forgot-view').style.display === 'block';
   if (forgotVisible) { doForgot(); return; }

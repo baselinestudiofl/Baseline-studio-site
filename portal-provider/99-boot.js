@@ -14,7 +14,7 @@
       _reconcileClientCredentials();
     }).catch(err => {
       console.error('Supabase init error:', err);
-      document.getElementById('sb-loading').innerHTML = '<p style="color:#ff6b6b;text-align:center;padding:2rem">Connection error.<br>Please refresh or check your internet.</p>';
+      document.getElementById('sb-loading').innerHTML = '<p class="boot-error">Connection error.<br>Please refresh or check your internet.</p>';
     });
 
     function _reconcileClientCredentials() {
@@ -74,7 +74,7 @@
     // Modals are not routes, except the lead modal (it was already deep-linkable).
     let _detailReturnSection = 'events'; // where to go on back
     const ROUTE_SECTIONS = ['dashboard','pipeline','events','clients','vendors','documents','equipment','invoices','marketing','accounts','reports','automations','settings'];
-    const ROUTE_EVENT_TABS = ['overview','invoices','documents','messages','timeline','plan','lighting','portal'];
+    const ROUTE_EVENT_TABS = ['overview','plan','timeline','invoices','documents','gear','portal','messages','lighting'];
     let _route = null;              // the route currently shown (or last written)
     let _routeApplying = 0;         // >0 while the router itself changes the view: no history writes
     let _routeSeq = 0;              // newest apply wins when an async apply (lead) is overtaken
@@ -152,12 +152,22 @@
     }
 
     // Open an event-detail tab by clicking its real button (so Lighting still runs its picker init).
+    // 'lighting' is an alias of 'plan' once the Plan tab holds the lighting card: if there is no Lighting button, open Plan and scroll to #lightingCard.
     function _routeActivateTab(tab) {
       const btns = document.querySelectorAll('#detailContent .tab-btn');
-      for (let i = 0; i < btns.length; i++) {
-        const m = /switchEventTab\(this,\s*'(\w+)'\)/.exec(btns[i].getAttribute('onclick') || '');
-        if (m && m[1] === tab) { btns[i].click(); return true; }
+      const find = t => {
+        for (let i = 0; i < btns.length; i++) {
+          const m = /switchEventTab\(this,\s*'(\w+)'\)/.exec(btns[i].getAttribute('onclick') || '');
+          if (m && m[1] === t) return btns[i];
+        }
+        return null;
+      };
+      let btn = find(tab);
+      if (!btn && tab === 'lighting') {
+        btn = find('plan');
+        if (btn) setTimeout(function() { const c = document.getElementById('lightingCard'); if (c && c.scrollIntoView) c.scrollIntoView({ block: 'start' }); }, 60);
       }
+      if (btn) { btn.click(); return true; }
       return false;
     }
 
@@ -195,7 +205,7 @@
         try {
           const leadOpen = !!(_route && _route.type === 'lead' && String(_route.id) === String(target.id));
           const modals = document.querySelectorAll('.modal-backdrop.active');
-          for (let i = 0; i < modals.length; i++) { if (!(target.type === 'lead' && leadOpen)) modals[i].classList.remove('active'); }
+          for (let i = 0; i < modals.length; i++) { if (!(target.type === 'lead' && leadOpen)) { if (window.CRMUI && CRMUI.close) CRMUI.close(modals[i], { force: true }); modals[i].classList.remove('active'); } }
           const a = active();
           if (target.type === 'section') {
             toSection(target.id);
@@ -251,7 +261,17 @@
     function _showDetailSection() {
       document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
       document.getElementById('detail').classList.add('active');
-      document.querySelectorAll('.nav-link').forEach(l => l.classList.remove('active'));
+      if (typeof _syncNav === 'function') _syncNav('detail', { parent: _detailReturnSection, detail: true });
+      // Phone top bar: back chevron + the record name. Screens can override with setTopbarDetail(title, backFn) after this runs.
+      if (typeof setTopbarDetail === 'function') {
+        const dc = document.getElementById('detailContent');
+        const hit = dc && dc.querySelector('[data-detail-title], .detail-page-title, .detail-title');
+        let title = '';
+        if (hit) title = (hit.getAttribute('data-detail-title') || (hit.firstChild && hit.firstChild.nodeType === 3 ? hit.firstChild.textContent : hit.textContent) || '').trim().replace(/\s+/g, ' ');
+        setTopbarDetail(title);
+      }
+      const pa = document.getElementById('pageActions');
+      if (pa) pa.innerHTML = '';
       const mc = document.querySelector('.main-content');
       if (mc) mc.scrollTop = 0;
     }
@@ -265,17 +285,16 @@
 
     // ── Keyboard shortcuts ────────────────────────────────────────────────
     document.addEventListener('keydown', function(e) {
-      // Esc — close topmost modal
+      // Esc — close topmost modal. CRMUI already handles it when focus is inside the modal (and asks before dropping edits);
+      // this catches the case where focus is elsewhere on the page.
       if (e.key === 'Escape') {
         const open = document.querySelector('.modal-backdrop.active');
-        if (open) { open.classList.remove('active'); _routeModalClosed(open.id); }
-        hideSearchResults();
+        if (open) {
+          if (window.CRMUI && CRMUI.close) { open._bsClosing = false; CRMUI.close(open); }
+          else { open.classList.remove('active'); _routeModalClosed(open.id); }
+        }
       }
-      // Cmd/Ctrl+K — focus global search
-      if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
-        e.preventDefault();
-        document.getElementById('globalSearch')?.focus();
-      }
+      // Cmd/Ctrl+K and "/" open the command palette. CRMUI owns those keys once the provider is registered (see _registerPalette).
     });
     (function () { // hook the existing events save path once; first call after load seeds the snapshot
       const _origSetDB = window.setDB;
@@ -297,17 +316,13 @@
         // Bail out gracefully if portal-supabase.js failed to load
         if (typeof BSPortal === 'undefined' || typeof window._sbDataReady === 'undefined') {
           console.error('[Portal] portal-supabase.js not loaded — check file is uploaded to GitHub');
-          document.getElementById('sb-loading').innerHTML = '<p style="color:#ff6b6b;text-align:center;padding:2rem">Portal failed to load.<br>Please refresh or contact support.</p>';
+          document.getElementById('sb-loading').innerHTML = '<p class="boot-error">Portal failed to load.<br>Please refresh or contact support.</p>';
           return;
         }
 
         // Populate user info immediately from session (no async needed for this)
         const earlyUser = BSPortal.getCurrentUser();
-        if (earlyUser) {
-          document.getElementById('userName').textContent = safeName(earlyUser);
-          document.getElementById('userRole').textContent = safeRole(earlyUser);
-          try { displayUserAvatar(earlyUser); } catch(e) {}
-        }
+        if (earlyUser) renderUserChrome(earlyUser);
 
         // Wait for Supabase data to finish loading before rendering
         await window._sbDataReady;
@@ -322,9 +337,7 @@
         if (!currentUser) { window.location.href = 'login.html'; return; }
 
         // Re-apply after data loaded (in case name changed)
-        document.getElementById('userName').textContent = safeName(currentUser);
-        document.getElementById('userRole').textContent = safeRole(currentUser);
-        try { displayUserAvatar(currentUser); } catch(e) { console.warn('[avatar]', e); }
+        renderUserChrome(currentUser);
 
         // Set up event listeners BEFORE anything that could crash
         document.getElementById('eventsSearch')?.addEventListener('input', renderEvents);
@@ -335,9 +348,18 @@
         document.getElementById('vendorCategoryFilter')?.addEventListener('change', renderVendors);
 
         try { applyRoleBasedAccess(); } catch(e) { console.warn('[roleAccess]', e); }
+        try { _registerPalette(); } catch(e) { console.warn('[palette]', e); }
+        try { _syncNav('dashboard'); } catch(e) { console.warn('[nav]', e); }
         try { renderDashboard(); } catch(e) { console.warn('[dashboard]', e); }
+        try { if (typeof invBindRoutes === 'function') invBindRoutes(); } catch (e) {} // inventory routes (scan) must exist before the first route is resolved
         // Open the view named by the URL hash (refresh / shared link) instead of staying on the dashboard
-        if (location.hash) { try { await _routeApply(_routeParse(location.hash), { initial: true }); } catch(e) { console.warn('[route]', e); } }
+        if (location.hash) {
+          try {
+            const r0 = _routeParse(location.hash);
+            if (r0) await _routeApply(r0, { initial: true });
+            else _routeWrite({ type: 'section', id: 'dashboard' }, 'replace'); // unknown hash: show Home and clean the URL
+          } catch(e) { console.warn('[route]', e); }
+        }
       } catch (err) {
         console.error('[Portal init error]', err);
         const overlay = document.getElementById('sb-loading');
@@ -346,23 +368,6 @@
     });
 
     // ─── G: Global interaction polish ────────────────────────────────────────
-
-    // Mouse-tracked spotlight on stat cards
-    document.addEventListener('mousemove', function(e) {
-      const card = e.target.closest('.stat-card');
-      if (!card) return;
-      const rect = card.getBoundingClientRect();
-      card.style.setProperty('--x', (e.clientX - rect.left) + 'px');
-      card.style.setProperty('--y', (e.clientY - rect.top) + 'px');
-    });
-
-    // Esc closes any open modal
-    document.addEventListener('keydown', function(e) {
-      if (e.key !== 'Escape') return;
-      document.querySelectorAll('.modal-overlay.active').forEach(m => {
-        m.classList.remove('active');
-      });
-    });
 
     // ─── Re-sync from Supabase when tab regains focus ──────────────────────────
     // Fixes stale data when the same account is used in multiple tabs or devices.

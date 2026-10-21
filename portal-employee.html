@@ -4,8 +4,10 @@
   <meta charset="UTF-8">
   <meta name="robots" content="noindex, nofollow">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Baseline Studio — Team Portal</title>
+  <title>Team Portal | Baseline Studio</title>
   <link rel="stylesheet" href="fonts/fonts.css">
+  <link rel="stylesheet" href="crm-tokens.css?v=1">
+  <link rel="stylesheet" href="crm-ui.css?v=1">
   <style>
     /*
     ══════════════════════════════════════════════════════
@@ -104,136 +106,80 @@
     ══════════════════════════════════════════════════════
     */
 
-    :root {
-      --black: #07070d;
-      --black-2: #0e0f1a;
-      --black-3: #161828;
-      --black-4: #1e2030;
-      --white: #fff;
-      --cyan: #1FA3E0;
-      --cyan-dark: #1585b8;
-      --gray: #8a8f98;
-      --border: rgba(255,255,255,0.08);
-      --border-cyan: rgba(31,163,224,0.18);
-      --success: #2ecc71;
-      --warning: #f39c12;
-      --danger: #e74c3c;
-      /* T6 contrast tokens: text-3 is the floor for any text; border-ui is for inputs, buttons and toggles (3:1). The 0.08 rule stays decorative. */
-      --text-1: #f4f6f8;
-      --text-2: rgba(255,255,255,0.72);
-      --text-3: rgba(255,255,255,0.62);
-      --border-ui: rgba(255,255,255,0.38);
-    }
-
+    /* Team portal page CSS. Tokens, buttons, fields, tabs, pills, rows, cards, dialogs, toasts and the signature pad come from
+       crm-tokens.css and crm-ui.css. Only layout and page-specific bits live here. */
     * { margin: 0; padding: 0; box-sizing: border-box; }
-    html, body { height: 100%; }
-    body { font-family: 'Barlow', sans-serif; background: var(--black); color: var(--white); font-size: 14px; min-height: 100vh; }
+    html, body { min-height: 100%; }
+    body { font-family: var(--font-body); background: var(--surface-0); color: var(--text-1); font-size: var(--fs-14); line-height: 1.45; min-height: 100vh; min-height: 100dvh; }
 
-    /* ── Login Screen ── */
-    .login-wrap { display: flex; align-items: center; justify-content: center; min-height: 100vh; padding: 20px; background: var(--black); background-image: radial-gradient(ellipse 60% 50% at 80% 10%, rgba(31,163,224,0.06) 0%, transparent 100%), radial-gradient(ellipse 40% 40% at 10% 90%, rgba(20,60,180,0.05) 0%, transparent 100%); }
-    .login-card { background: var(--black-2); border: 1px solid var(--border-cyan); border-radius: 12px; padding: 48px 40px; width: 100%; max-width: 400px; }
-    .login-logo { text-align: center; margin-bottom: 32px; }
+    /* ── Login ── */
+    .login-wrap { display: flex; align-items: center; justify-content: center; min-height: 100vh; min-height: 100dvh; padding: var(--sp-5) var(--gutter); background: var(--surface-0); }
+    .login-card { background: var(--surface-1); border: 1px solid var(--border); border-radius: var(--r-xl); padding: var(--sp-10) var(--sp-8); width: 100%; max-width: 400px; }
+    .login-logo { text-align: center; margin-bottom: var(--sp-6); }
     .login-logo img { height: 40px; width: auto; }
-    .login-title { font-family: 'Anton', sans-serif; font-size: 20px; letter-spacing: .04em; text-align: center; margin-bottom: 6px; }
-    .login-sub { text-align: center; color: var(--gray); font-size: 13px; margin-bottom: 28px; }
-    .login-error { background: rgba(231,76,60,0.12); border: 1px solid rgba(231,76,60,0.3); color: #e74c3c; padding: 10px 14px; border-radius: 6px; font-size: 13px; margin-bottom: 16px; display: none; }
+    .login-title { font-family: var(--font-display); font-weight: 400; font-size: var(--fs-24); line-height: 1.2; letter-spacing: .04em; text-align: center; margin-bottom: var(--sp-1); }
+    .login-sub { text-align: center; color: var(--text-3); font-size: var(--fs-14); margin-bottom: var(--sp-6); }
+    .login-error { display: none; background: var(--danger-tint); border: 1px solid var(--danger); color: var(--danger); padding: var(--sp-3) var(--sp-4); border-radius: var(--r-md); font-size: var(--fs-14); line-height: 1.45; margin-bottom: var(--sp-4); }
+    .login-card .btn-primary { width: 100%; min-height: 48px; margin-top: var(--sp-2); }
+    @media (max-width: 767.98px) { .login-card { padding: var(--sp-8) var(--sp-5); } }
 
-    /* ── App Layout ── */
-    .app-wrap { display: none; flex-direction: column; min-height: 100vh; }
-    .app-topbar { position: sticky; top: 0; background: var(--black-2); border-bottom: 1px solid var(--border); padding: 0 24px; height: 60px; display: flex; align-items: center; justify-content: space-between; z-index: 100; }
-    .app-topbar-logo { font-family: 'Anton', sans-serif; font-size: 14px; letter-spacing: .06em; display: flex; align-items: center; gap: 10px; }
-    .app-topbar-user { display: flex; align-items: center; gap: 12px; font-size: 13px; color: var(--gray); }
-    .app-topbar-name { color: var(--white); font-weight: 600; }
-
-    .app-nav { display: flex; gap: 0; border-bottom: 1px solid var(--border); background: var(--black-2); padding: 0 24px; }
-    .app-nav-btn { padding: 14px 20px; background: transparent; border: none; color: var(--gray); cursor: pointer; font-size: 13px; font-weight: 500; border-bottom: 2px solid transparent; transition: all 0.2s; font-family: 'Barlow', sans-serif; white-space: nowrap; position: relative; }
-    .app-nav-btn:hover { color: var(--white); }
-    .app-nav-btn.active { color: var(--cyan); border-bottom-color: var(--cyan); }
-    .app-nav-badge { position: absolute; top: 8px; right: 8px; background: var(--danger); color: #07070d; border-radius: 10px; font-size: 12px; font-weight: 700; padding: 1px 5px; }
-
-    .app-content { flex: 1; padding: 32px 24px; max-width: 1000px; margin: 0 auto; width: 100%; }
+    /* ── App shell: top bar, tabs, content ── */
+    .app-wrap { display: none; flex-direction: column; min-height: 100vh; min-height: 100dvh; }
+    .emp-brand { display: flex; align-items: center; gap: var(--sp-3); min-width: 0; font-family: var(--font-display); font-size: var(--fs-14); letter-spacing: .06em; }
+    .emp-brand img { height: 28px; width: auto; display: block; }
+    .emp-user { display: flex; align-items: center; gap: var(--sp-3); min-width: 0; font-size: var(--fs-13); color: var(--text-3); }
+    .emp-name { color: var(--text-1); font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .emp-content { flex: 1; width: 100%; max-width: 760px; margin: 0 auto; padding: var(--sp-4) var(--gutter) calc(var(--sp-10) + var(--safe-bottom)); }
     .app-section { display: none; }
     .app-section.active { display: block; }
+    .app-nav-badge { display: none; min-width: 20px; height: 20px; margin-left: var(--sp-2); padding: 0 6px; border-radius: var(--r-pill); background: var(--danger-fill); color: var(--text-on-danger); font: 600 var(--fs-12)/20px var(--font-body); text-align: center; }
+    @media (max-width: 767.98px) {
+      .emp-brand-text, #topbarRole { display: none; }
+      .emp-brand img { height: 24px; }
+    }
 
-    /* ── Cards & Tables ── */
-    .panel { background: var(--black-3); border: 1px solid var(--border); border-radius: 8px; margin-bottom: 16px; overflow: hidden; }
-    .panel-header { padding: 16px 20px; display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid var(--border); }
-    .panel-title { font-weight: 600; font-size: 15px; }
-    .panel-body { padding: 20px; }
-    .panel-empty { padding: 48px 20px; text-align: center; color: var(--gray); font-size: 13px; }
+    /* ── Documents: one row per document ── */
+    .emp-doc { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; align-items: center; gap: var(--sp-3) var(--sp-4); cursor: default; }
+    .emp-doc .row-title { white-space: normal; }
+    .emp-doc .row-sub { white-space: normal; }
+    .emp-doc-trail { display: flex; align-items: center; gap: var(--sp-3); flex: none; }
+    .emp-doc .row-ic { align-self: flex-start; margin-top: 2px; }
+    .emp-doc .row-ic.is-ok { color: var(--ok); }
+    .emp-doc .row-ic.is-warn { color: var(--warn); }
+    @media (max-width: 767.98px) {
+      .emp-doc { grid-template-columns: auto minmax(0, 1fr); }
+      .emp-doc-trail { grid-column: 1 / -1; justify-content: space-between; }
+      .emp-doc-trail .btn { min-width: 112px; }
+    }
 
-    .doc-item { padding: 16px 20px; border-bottom: 1px solid var(--border); display: flex; align-items: center; justify-content: space-between; gap: 16px; transition: background 0.15s; }
-    .doc-item:last-child { border-bottom: none; }
-    .doc-item:hover { background: var(--black-4); }
-    .doc-item-name { font-weight: 600; margin-bottom: 4px; }
-    .doc-item-meta { font-size: 12px; color: var(--gray); }
-    .doc-status { display: inline-block; padding: 3px 10px; border-radius: 12px; font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .04em; }
-    .doc-status-pending { background: rgba(243,156,18,0.18); color: #f39c12; }
-    .doc-status-signed { background: rgba(46,204,113,0.18); color: #2ecc71; }
+    /* ── Blasts: one card per blast ── */
+    .blast { margin-bottom: var(--sp-3); padding: var(--sp-4); }
+    .blast.is-urgent { border-left: 3px solid var(--danger); }
+    .blast-head { display: flex; align-items: flex-start; justify-content: space-between; gap: var(--sp-3); margin-bottom: var(--sp-2); }
+    .blast-subject { font: 600 var(--fs-16)/1.35 var(--font-body); color: var(--text-1); min-width: 0; overflow-wrap: anywhere; }
+    .blast-body { font-size: var(--fs-14); line-height: 1.55; color: var(--text-2); margin-bottom: var(--sp-3); overflow-wrap: anywhere; }
+    .blast-foot { display: flex; align-items: center; justify-content: space-between; gap: var(--sp-3); flex-wrap: wrap; }
+    .blast-foot .t-meta { flex: 1 1 200px; min-width: 0; }
 
-    .blast-item { padding: 16px 20px; border-bottom: 1px solid var(--border); }
-    .blast-item:last-child { border-bottom: none; }
-    .blast-item-subject { font-weight: 600; margin-bottom: 6px; }
-    .blast-item-body { font-size: 13px; color: var(--gray); margin-bottom: 10px; line-height: 1.5; }
-    .blast-item-meta { font-size: 12px; color: var(--gray); }
-
-    /* ── Buttons ── */
-    .btn { padding: 10px 16px; border-radius: 4px; border: none; cursor: pointer; font-family: 'Barlow', sans-serif; font-weight: 600; font-size: 13px; transition: all 0.2s; }
-    .btn-primary { background: var(--cyan); color: var(--black); }
-    .btn-primary:hover { background: var(--cyan-dark); }
-    .btn-secondary { background: var(--black-4); color: var(--white); border: 1px solid var(--border-ui); }
-    .btn-secondary:hover { border-color: var(--cyan); }
-    .btn-success { background: var(--success); color: var(--black); }
-    .btn-sm { padding: 6px 12px; font-size: 12px; }
-
-    /* ── Form inputs ── */
-    .form-group { margin-bottom: 20px; }
-    .form-label { display: block; font-size: 11px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: var(--gray); margin-bottom: 6px; }
-    .form-input { width: 100%; padding: 10px 12px; background: var(--black-4); border: 1px solid var(--border-ui); border-radius: 4px; color: var(--white); font-family: 'Barlow', sans-serif; font-size: 14px; transition: all 0.2s; }
-    .form-input:focus { outline: none; border-color: var(--cyan); }
-
-    /* ── Modal ── */
-    .modal-bg { position: fixed; inset: 0; background: rgba(0,0,0,0.85); backdrop-filter: blur(4px); z-index: 500; display: none; align-items: center; justify-content: center; padding: 16px; }
-    .modal-bg.open { display: flex; }
-    .modal-box { background: var(--black-3); border: 1px solid var(--border); border-radius: 10px; width: 100%; max-width: 620px; max-height: 92vh; overflow-y: auto; padding: 32px; position: relative; }
-    .modal-close { position: absolute; top: 14px; right: 14px; background: var(--black-4); border: none; color: var(--white); width: 28px; height: 28px; border-radius: 4px; cursor: pointer; font-size: 18px; display: flex; align-items: center; justify-content: center; }
-    .modal-close:hover { background: var(--danger); }
-    .modal-title { font-family: 'Anton', sans-serif; font-size: 20px; margin-bottom: 20px; }
-
-    /* ── E-signature pad ── */
-    .esig-section { margin-bottom: 20px; }
-    .esig-label { font-size: 11px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: var(--gray); margin-bottom: 8px; }
-    .esig-canvas-wrap { border: 1px solid var(--border); border-radius: 6px; background: #fff; position: relative; cursor: crosshair; touch-action: none; }
-    .esig-canvas { display: block; border-radius: 6px; width: 100%; }
-    .esig-canvas-clear { position: absolute; bottom: 6px; right: 8px; background: rgba(0,0,0,0.5); color: #fff; border: none; border-radius: 4px; padding: 4px 8px; font-size: 12px; cursor: pointer; font-family: 'Barlow', sans-serif; }
-    .esig-legal { font-size: 12px; color: var(--text-3); line-height: 1.5; padding: 12px; background: var(--black-4); border-radius: 4px; border: 1px solid var(--border); }
-    .esig-tabs { display: flex; gap: 0; border-bottom: 1px solid var(--border); margin-bottom: 12px; }
-    .esig-tab { padding: 8px 14px; background: transparent; border: none; color: var(--gray); cursor: pointer; font-size: 12px; font-weight: 600; border-bottom: 2px solid transparent; font-family: 'Barlow', sans-serif; }
-    .esig-tab.active { color: var(--cyan); border-bottom-color: var(--cyan); }
-
-    /* ── Doc preview ── */
-    .doc-preview-frame { background: #fff; color: #111; font-family: Georgia, serif; font-size: 13px; line-height: 1.7; padding: 40px 48px; border-radius: 4px; margin-bottom: 20px; max-height: 400px; overflow-y: auto; border: 1px solid rgba(0,0,0,0.1); }
+    /* ── Sign / view sheet ── */
+    dialog.dlg-sign { width: min(680px, calc(100vw - 32px)); max-height: calc(100dvh - 48px); }
+    dialog.dlg-sign[open] { display: flex; flex-direction: column; }
+    dialog.dlg-sign .dlg-head, dialog.dlg-sign .dlg-foot { flex: none; }
+    dialog.dlg-sign .dlg-body { flex: 1 1 auto; min-height: 0; overflow-y: auto; }
+    .doc-preview-frame { background: var(--paper); color: var(--text-on-light); font-family: Georgia, 'Times New Roman', serif; font-size: var(--fs-14); line-height: 1.7; padding: var(--sp-6) var(--sp-8); border-radius: var(--r-md); margin-bottom: var(--sp-5); max-height: 40vh; overflow-y: auto; border: 1px solid var(--border); }
     .doc-preview-frame h1 { font-size: 20px; margin-bottom: 14px; }
     .doc-preview-frame h2 { font-size: 16px; margin-bottom: 10px; margin-top: 16px; }
     .doc-preview-frame p, .doc-preview-frame li { margin-bottom: 10px; }
     .doc-preview-frame ul, .doc-preview-frame ol { padding-left: 20px; margin-bottom: 10px; }
-
-    /* ── Toast ── */
-    .toast-wrap { position: fixed; bottom: 20px; right: 20px; z-index: 9999; display: flex; flex-direction: column; gap: 8px; }
-    .toast { padding: 13px 18px; border-radius: 6px; font-size: 13px; font-weight: 500; background: var(--black-3); border: 1px solid var(--border); color: var(--white); animation: toastIn .25s ease-out; box-shadow: 0 4px 20px rgba(0,0,0,0.5); }
-    .toast.success { border-left: 3px solid var(--success); }
-    .toast.error { border-left: 3px solid var(--danger); }
-    .toast.info { border-left: 3px solid var(--cyan); }
-    @keyframes toastIn { from { transform: translateX(60px); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
-
-    /* ── Urgent badge ── */
-    .urgent-badge { display: inline-block; background: rgba(231,76,60,0.18); color: #f26a5c; font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .06em; padding: 2px 8px; border-radius: 10px; margin-left: 8px; }
-
-    /* ── Mobile ── */
-    @media (max-width: 600px) {
-      .app-content { padding: 20px 16px; }
-      .doc-preview-frame { padding: 20px 16px; }
-      .modal-box { padding: 20px; }
+    .sign-lede { font-size: var(--fs-14); color: var(--text-2); line-height: 1.5; margin-bottom: var(--sp-4); }
+    #signArea .field { margin-bottom: var(--sp-4); }
+    .sig-wrap { position: relative; }
+    .esig-legal { margin-top: var(--sp-3); font-size: var(--fs-12); color: var(--text-3); line-height: 1.5; padding: var(--sp-3); background: var(--surface-2); border-radius: var(--r-md); border: 1px solid var(--border); }
+    @media (max-width: 767.98px) {
+      dialog.dlg-sign { width: 100%; max-width: 100%; height: 100vh; height: 100dvh; max-height: 100dvh; margin: 0; border-radius: 0; border-width: 0; }
+      dialog.dlg-sign .dlg-head::before { display: none; }
+      dialog.dlg-sign .dlg-head { padding-top: var(--sp-3); }
+      .doc-preview-frame { padding: var(--sp-4); max-height: 32vh; }
     }
   </style>
 </head>
@@ -245,103 +191,120 @@
     <div class="login-logo">
       <img src="logo-full.webp" alt="Baseline Studio" onerror="this.style.display='none'">
     </div>
-    <div class="login-title">TEAM PORTAL</div>
-    <div class="login-sub">Baseline Studio — Staff Access</div>
-    <div class="login-error" id="loginError"></div>
+    <h1 class="login-title">TEAM PORTAL</h1>
+    <div class="login-sub">Baseline Studio staff access</div>
     <form onsubmit="doLogin(event)">
-      <div class="form-group">
-        <label class="form-label">Email</label>
-        <input type="email" class="form-input" id="loginEmail" required autocomplete="email" placeholder="you@email.com">
+      <div class="field">
+        <label class="field-label" for="loginEmail">Email</label>
+        <input type="email" class="input" id="loginEmail" required autocomplete="email" inputmode="email" autocapitalize="off" spellcheck="false" enterkeyhint="next" placeholder="you@email.com">
       </div>
-      <div class="form-group">
-        <label class="form-label">Password</label>
-        <input type="password" class="form-input" id="loginPassword" required autocomplete="current-password" placeholder="••••••••">
+      <div class="field">
+        <label class="field-label" for="loginPassword">Password</label>
+        <input type="password" class="input" id="loginPassword" required autocomplete="current-password" enterkeyhint="go" placeholder="••••••••">
       </div>
-      <button type="submit" class="btn btn-primary" style="width:100%;padding:14px;font-size:14px;" id="loginBtn">Sign In</button>
+      <div class="login-error" id="loginError" role="alert"></div>
+      <button type="submit" class="btn btn-primary" id="loginBtn">Sign In</button>
     </form>
   </div>
 </div>
 
 <!-- ── App ──────────────────────────────────────────────────────────────────── -->
 <div class="app-wrap" id="appWrap">
-  <div class="app-topbar">
-    <div class="app-topbar-logo">
-      <img src="logo-full.webp" alt="Baseline Studio" style="height:28px;width:auto;" onerror="this.style.display='none'">
-      <span>BASELINE STUDIO</span>
+  <header class="appbar">
+    <div class="emp-brand">
+      <img src="logo-full.webp" alt="Baseline Studio" onerror="this.style.display='none'">
+      <span class="emp-brand-text">BASELINE STUDIO</span>
     </div>
-    <div class="app-topbar-user">
-      <span class="app-topbar-name" id="topbarName"></span>
-      <span id="topbarRole" style="font-size:12px;"></span>
-      <button class="btn btn-secondary btn-sm" onclick="doLogout()">Logout</button>
+    <span class="appbar-spacer"></span>
+    <div class="emp-user">
+      <span class="emp-name" id="topbarName"></span>
+      <span id="topbarRole"></span>
     </div>
-  </div>
+    <button class="btn btn-secondary btn-sm" type="button" onclick="doLogout()"><span data-icon="log-out" aria-hidden="true"></span> Log out</button>
+  </header>
 
-  <div class="app-nav">
-    <button class="app-nav-btn active" onclick="showSection('docs')" id="navDocs">
-      Documents
-      <span class="app-nav-badge" id="docsBadge" style="display:none;"></span>
-    </button>
-    <button class="app-nav-btn" onclick="showSection('blasts')" id="navBlasts">
-      Blasts
-      <span class="app-nav-badge" id="blastsBadge" style="display:none;"></span>
-    </button>
-  </div>
+  <main class="emp-content">
+    <nav class="tabs" role="tablist" aria-label="Team portal sections">
+      <button class="tab-btn app-nav-btn active" type="button" role="tab" aria-selected="true" aria-controls="sectionDocs" onclick="showSection('docs')" id="navDocs">
+        Documents
+        <span class="app-nav-badge" id="docsBadge" style="display:none;"></span>
+      </button>
+      <button class="tab-btn app-nav-btn" type="button" role="tab" aria-selected="false" aria-controls="sectionBlasts" onclick="showSection('blasts')" id="navBlasts">
+        Blasts
+        <span class="app-nav-badge" id="blastsBadge" style="display:none;"></span>
+      </button>
+    </nav>
 
-  <div class="app-content">
     <!-- Documents Section -->
-    <div class="app-section active" id="sectionDocs">
-      <div style="font-family:'Anton',sans-serif;font-size:24px;margin-bottom:20px;">My Documents</div>
-      <div class="panel" id="docsPanel">
-        <div class="panel-empty" id="docsEmpty" style="display:none;">No documents assigned to you yet.</div>
-        <div id="docsList"></div>
+    <section class="app-section active" id="sectionDocs" role="tabpanel" aria-labelledby="navDocs">
+      <div class="page-head"><h1 class="page-title">My Documents</h1></div>
+      <div id="docsPanel">
+        <div class="empty" id="docsEmpty" hidden>
+          <span data-icon="file-text" aria-hidden="true"></span>
+          <p class="empty-title">No documents yet</p>
+          <p class="empty-text">When we send you something to sign, it shows up here.</p>
+        </div>
+        <div class="row-list" id="docsList"></div>
       </div>
-    </div>
+    </section>
 
     <!-- Blasts Section -->
-    <div class="app-section" id="sectionBlasts">
-      <div style="font-family:'Anton',sans-serif;font-size:24px;margin-bottom:20px;">Team Blasts</div>
-      <div class="panel" id="blastsPanel">
-        <div class="panel-empty" id="blastsEmpty" style="display:none;">No blasts yet.</div>
+    <section class="app-section" id="sectionBlasts" role="tabpanel" aria-labelledby="navBlasts">
+      <div class="page-head"><h1 class="page-title">Team Blasts</h1></div>
+      <div id="blastsPanel">
+        <div class="empty" id="blastsEmpty" hidden>
+          <span data-icon="inbox" aria-hidden="true"></span>
+          <p class="empty-title">No blasts yet</p>
+          <p class="empty-text">Updates from the team show up here.</p>
+        </div>
         <div id="blastsList"></div>
       </div>
-    </div>
-  </div>
+    </section>
+  </main>
 </div>
 
-<!-- ── Sign Document Modal ───────────────────────────────────────────────────── -->
-<div class="modal-bg" id="signModal">
-  <div class="modal-box">
-    <button class="modal-close" onclick="closeSignModal()">×</button>
-    <div class="modal-title" id="signModalTitle">Sign Document</div>
+<!-- ── Sign / View Document Sheet ────────────────────────────────────────────── -->
+<dialog class="dlg dlg-sheet dlg-sign" id="signModal" aria-labelledby="signModalTitle">
+  <div class="dlg-head">
+    <h2 class="dlg-title" id="signModalTitle">Sign Document</h2>
+    <button class="btn btn-ghost btn-icon" type="button" aria-label="Close" onclick="requestCloseSign()"><span data-icon="x" aria-hidden="true"></span></button>
+  </div>
+  <div class="dlg-body">
     <div id="signModalDoc" class="doc-preview-frame"></div>
-    <div style="border-top:1px solid var(--border);padding-top:20px;">
-      <div style="font-weight:600;font-size:14px;margin-bottom:16px;">Your Electronic Signature</div>
-      <div class="esig-section">
-        <div class="esig-label">Full Legal Name</div>
-        <input type="text" class="form-input" id="esigTypedName" placeholder="Type your full name as it appears on legal documents">
+    <section id="signArea" aria-label="Your electronic signature">
+      <p class="sign-lede">Review the agreement, add your name, and sign. Takes about 2 minutes.</p>
+      <div class="field">
+        <label class="field-label" for="esigTypedName">Full legal name</label>
+        <input type="text" class="input" id="esigTypedName" autocomplete="name" enterkeyhint="done" placeholder="Your full name as it appears on legal documents">
       </div>
-      <div class="esig-section">
-        <div class="esig-label">Draw Your Signature</div>
-        <div class="esig-canvas-wrap" id="sigCanvasWrap">
-          <canvas class="esig-canvas" id="sigCanvas" height="120"></canvas>
-          <button class="esig-canvas-clear" onclick="clearCanvas()">Clear</button>
+      <div class="field">
+        <span class="field-label" id="sigCanvasLabel">Draw your signature</span>
+        <div class="sig-wrap" id="sigCanvasWrap">
+          <canvas class="sigpad" id="sigCanvas" height="160" role="img" aria-labelledby="sigCanvasLabel"></canvas>
+        </div>
+        <div class="sigpad-bar">
+          <span class="field-hint show-phone">Turn your phone sideways for more room.</span>
+          <button class="btn btn-ghost btn-sm" type="button" onclick="clearCanvas()" style="margin-left:auto;">Clear</button>
         </div>
       </div>
-      <div class="esig-legal" id="esigLegal">
-        By clicking "Submit Signature" you confirm: (1) you are <span id="esigRecipientName"></span>, (2) this electronic signature is legally binding under the E-SIGN Act (15 U.S.C. § 7001), (3) you have read and agree to the document above, and (4) you intend this digital record to have the same legal effect as a handwritten signature. Signed on <span id="esigTimestamp"></span>.
-      </div>
-      <div style="display:flex;gap:10px;margin-top:16px;">
-        <button class="btn btn-primary" style="flex:1;padding:13px;" onclick="submitSignature()" id="submitSigBtn">Submit Signature</button>
-        <button class="btn btn-secondary" onclick="closeSignModal()">Cancel</button>
-      </div>
-    </div>
+      <label class="check"><input type="checkbox" id="esigConsent"><span class="check-box"></span><span class="check-text">I agree to sign electronically and receive records electronically.</span></label>
+      <p class="esig-legal" id="esigLegal">
+        By choosing "Submit signature" you confirm: (1) you are <span id="esigRecipientName"></span>, (2) this electronic signature is legally binding under the E-SIGN Act (15 U.S.C. § 7001), (3) you have read and agree to the document above, and (4) you intend this digital record to have the same legal effect as a handwritten signature. Signed on <span id="esigTimestamp"></span>.
+      </p>
+    </section>
   </div>
-</div>
+  <div class="dlg-foot" id="signFoot">
+    <button class="btn btn-secondary" type="button" id="signCancelBtn" onclick="requestCloseSign()">Cancel</button>
+    <button class="btn btn-primary" type="button" style="flex:1;" onclick="submitSignature()" id="submitSigBtn">Submit signature</button>
+  </div>
+</dialog>
 
 <!-- ── Toast Container ───────────────────────────────────────────────────────── -->
-<div class="toast-wrap" id="toastWrap"></div>
+<div id="toastContainer" aria-live="polite"></div>
 
 <script src="portal-supabase.js?v=14"></script>
+<script src="crm-icons.js?v=1"></script>
+<script src="crm-ui.js?v=1"></script>
 <script>
   // ── Constants ────────────────────────────────────────────────────────────────
   // Replace with your actual Supabase URL and anon key
@@ -358,12 +321,50 @@
   let _currentSignDocId = null;
   let _sigPainting = false;
 
+  // ── Small helpers ────────────────────────────────────────────────────────────
+  function esc(v) {
+    return String(v == null ? '' : v).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+  }
+  function icon(name, size) {
+    return (window.CRMUI && CRMUI.icon) ? CRMUI.icon(name, size || 20) : '';
+  }
+  // Fill the static icon slots. data-icon-replace swaps the slot for the svg itself (empty states want a direct child).
+  function hydrateIcons() {
+    document.querySelectorAll('[data-icon]').forEach(el => {
+      const svg = icon(el.getAttribute('data-icon'), el.closest('.empty') ? 32 : 20);
+      if (!svg) return;
+      if (el.closest('.empty')) el.outerHTML = svg; else el.innerHTML = svg;
+    });
+  }
+  function _isoLocal(ms) {
+    const d = new Date(ms);
+    return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
+  }
+  function fmtDay(ms) {
+    if (!ms) return '';
+    return (window.CRMUI && CRMUI.fmt) ? CRMUI.fmt.date(_isoLocal(ms), 'list') : new Date(ms).toLocaleDateString();
+  }
+  function fmtWhen(ms) {
+    if (!ms) return '';
+    if (!(window.CRMUI && CRMUI.fmt)) return new Date(ms).toLocaleString();
+    const d = new Date(ms);
+    return CRMUI.fmt.date(_isoLocal(ms), 'list') + ', ' + CRMUI.fmt.time(String(d.getHours()).padStart(2, '0') + ':' + String(d.getMinutes()).padStart(2, '0'));
+  }
+  function setBusy(btn, busy, label) {
+    btn.disabled = busy;
+    btn.setAttribute('aria-busy', busy ? 'true' : 'false');
+    btn.setAttribute('aria-disabled', busy ? 'true' : 'false');
+    btn.textContent = label;
+  }
+
   // ── Toast ────────────────────────────────────────────────────────────────────
   function showToast(msg, type='info', dur=3500) {
-    const wrap = document.getElementById('toastWrap');
+    if (window.CRMUI && CRMUI.toast) { CRMUI.toast(msg, type, dur); return; }
+    const wrap = document.getElementById('toastContainer');
     const t = document.createElement('div');
-    t.className = `toast ${type}`;
-    t.textContent = msg;
+    t.className = `toast toast-${type}`;
+    t.innerHTML = '<span class="toast-msg"></span>';
+    t.firstChild.textContent = msg;
     wrap.appendChild(t);
     setTimeout(() => t.remove(), dur);
   }
@@ -376,8 +377,7 @@
     const btn = document.getElementById('loginBtn');
     const err = document.getElementById('loginError');
     err.style.display = 'none';
-    btn.textContent = 'Signing in…';
-    btn.disabled = true;
+    setBusy(btn, true, 'Signing in…');
     try {
       const r = await fetch(`${EP_SUPABASE_URL}/auth/v1/token?grant_type=password`, {
         method: 'POST',
@@ -388,7 +388,7 @@
       if (!r.ok || !data.access_token) {
         err.textContent = data.error_description || data.msg || 'Invalid email or password.';
         err.style.display = 'block';
-        btn.textContent = 'Sign In'; btn.disabled = false;
+        setBusy(btn, false, 'Sign In');
         return;
       }
       _empToken = data.access_token;
@@ -404,7 +404,7 @@
     } catch(ex) {
       err.textContent = 'Connection error. Please check your internet and try again.';
       err.style.display = 'block';
-      btn.textContent = 'Sign In'; btn.disabled = false;
+      setBusy(btn, false, 'Sign In');
     }
   }
 
@@ -414,6 +414,10 @@
     document.getElementById('appWrap').style.display = 'flex';
     document.getElementById('topbarName').textContent = _empSession.name;
     document.getElementById('topbarRole').textContent = _empSession.role;
+    if (window.CRMUI && CRMUI.skeleton) {
+      CRMUI.skeleton(document.getElementById('docsList'), 3);
+      CRMUI.skeleton(document.getElementById('blastsList'), 2, 'card');
+    }
     await loadMyData();
     renderDocs();
     renderBlasts();
@@ -465,33 +469,48 @@
   // ── Section switching ────────────────────────────────────────────────────────
   function showSection(sec) {
     document.querySelectorAll('.app-section').forEach(s => s.classList.remove('active'));
-    document.querySelectorAll('.app-nav-btn').forEach(b => b.classList.remove('active'));
+    document.querySelectorAll('.app-nav-btn').forEach(b => { b.classList.remove('active'); b.setAttribute('aria-selected', 'false'); });
     document.getElementById('section' + sec.charAt(0).toUpperCase() + sec.slice(1))?.classList.add('active');
-    document.getElementById('nav' + sec.charAt(0).toUpperCase() + sec.slice(1))?.classList.add('active');
+    const nav = document.getElementById('nav' + sec.charAt(0).toUpperCase() + sec.slice(1));
+    if (nav) { nav.classList.add('active'); nav.setAttribute('aria-selected', 'true'); }
   }
 
   // ── Documents rendering ──────────────────────────────────────────────────────
+  // One row per document. The first unsigned one gets the primary Sign button; any others get a secondary one,
+  // so a screen never carries more than one filled action.
   function renderDocs() {
     const list = document.getElementById('docsList');
     const empty = document.getElementById('docsEmpty');
+    list.removeAttribute('aria-busy');
     if (!_myDocs.length) {
-      empty.style.display = 'block'; list.innerHTML = ''; return;
+      empty.hidden = false; list.innerHTML = ''; return;
     }
-    empty.style.display = 'none';
+    empty.hidden = true;
+    let primaryUsed = false;
     list.innerHTML = _myDocs.map(doc => {
       const isPending = doc.status === 'pending';
-      const statusBadge = isPending
-        ? `<span class="doc-status doc-status-pending">Needs Signature</span>`
-        : `<span class="doc-status doc-status-signed">Signed ${doc.signedAt ? new Date(doc.signedAt).toLocaleDateString() : ''}</span>`;
-      return `<div class="doc-item">
-        <div style="flex:1;min-width:0;">
-          <div class="doc-item-name">${doc.templateName || 'Document'}</div>
-          <div class="doc-item-meta">Sent ${doc.sentAt ? new Date(doc.sentAt).toLocaleDateString() : ''}${doc.message ? ' — "' + doc.message.substring(0,60) + (doc.message.length > 60 ? '...' : '') + '"' : ''}</div>
-        </div>
-        <div style="display:flex;align-items:center;gap:12px;flex-shrink:0;">
-          ${statusBadge}
-          ${isPending ? `<button class="btn btn-primary btn-sm" onclick="openSignModal('${doc.id}')">Review &amp; Sign</button>` : `<button class="btn btn-secondary btn-sm" onclick="openViewModal('${doc.id}')">View</button>`}
-        </div>
+      const name = esc(doc.templateName || 'Document');
+      const id = esc(doc.id);
+      const pill = isPending
+        ? `<span class="pill pill-warn" data-ui="pill">To sign</span>`
+        : `<span class="pill pill-ok" data-ui="pill">Signed${doc.signedAt ? ' ' + esc(fmtDay(doc.signedAt)) : ''}</span>`;
+      let action;
+      if (isPending) {
+        const cls = primaryUsed ? 'btn-secondary' : 'btn-primary';
+        primaryUsed = true;
+        action = `<button class="btn ${cls}" type="button" aria-label="Sign ${name}" onclick="openSignModal('${id}')">Sign</button>`;
+      } else {
+        action = `<button class="btn btn-secondary" type="button" aria-label="View ${name}" onclick="openViewModal('${id}')">View</button>`;
+      }
+      const note = doc.message ? `<span class="row-sub">"${esc(doc.message.substring(0,60))}${doc.message.length > 60 ? '...' : ''}"</span>` : '';
+      return `<div class="row emp-doc">
+        <span class="row-ic ${isPending ? 'is-warn' : 'is-ok'}">${icon(isPending ? 'file-signature' : 'file-check', 20)}</span>
+        <span class="row-main">
+          <span class="row-title">${name}</span>
+          <span class="row-sub">Sent ${esc(fmtDay(doc.sentAt))}</span>
+          ${note}
+        </span>
+        <span class="emp-doc-trail">${pill}${action}</span>
       </div>`;
     }).join('');
   }
@@ -500,23 +519,29 @@
   function renderBlasts() {
     const list = document.getElementById('blastsList');
     const empty = document.getElementById('blastsEmpty');
+    list.removeAttribute('aria-busy');
     if (!_myBlasts.length) {
-      empty.style.display = 'block'; list.innerHTML = ''; return;
+      empty.hidden = false; list.innerHTML = ''; return;
     }
-    empty.style.display = 'none';
+    empty.hidden = true;
     const acknowledgedIds = new Set(_myReceipts.map(r => r.blastId));
     list.innerHTML = _myBlasts.map(blast => {
       const isAcknowledged = acknowledgedIds.has(blast.id);
-      return `<div class="blast-item" id="blast_${blast.id}" style="${blast.urgent && !isAcknowledged ? 'border-left:3px solid var(--danger);' : ''}">
-        <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:12px;margin-bottom:8px;">
-          <div style="font-weight:600;">${blast.subject}${blast.urgent ? '<span class="urgent-badge">URGENT</span>' : ''}</div>
-          ${isAcknowledged
-            ? `<span style="font-size:12px;color:var(--success);font-weight:700;flex-shrink:0;">Acknowledged</span>`
-            : `<button class="btn btn-success btn-sm" style="flex-shrink:0;" onclick="acknowledgeBlast('${blast.id}')">Acknowledge</button>`}
+      const urgent = !!blast.urgent;
+      const bid = esc(blast.id);
+      return `<article class="card blast${urgent && !isAcknowledged ? ' is-urgent' : ''}" id="blast_${bid}">
+        <div class="blast-head">
+          <h2 class="blast-subject">${esc(blast.subject)}</h2>
+          ${urgent ? `<span class="pill pill-danger" data-ui="pill">Urgent</span>` : ''}
         </div>
-        <div class="blast-item-body">${(blast.body || '').replace(/\n/g, '<br>')}</div>
-        <div class="blast-item-meta">From ${blast.authorName || 'Management'} &middot; ${blast.sentAt ? new Date(blast.sentAt).toLocaleString() : ''} &middot; To: ${(blast.targetRoles || []).join(', ')}</div>
-      </div>`;
+        <p class="blast-body">${esc(blast.body || '').replace(/\n/g, '<br>')}</p>
+        <div class="blast-foot">
+          <span class="t-meta">From ${esc(blast.authorName || 'Management')} &middot; ${esc(fmtWhen(blast.sentAt))} &middot; To: ${esc((blast.targetRoles || []).join(', '))}</span>
+          ${isAcknowledged
+            ? `<span class="pill pill-ok" data-ui="pill">Read</span>`
+            : `<button class="btn btn-secondary" type="button" onclick="acknowledgeBlast('${bid}')">Got it</button>`}
+        </div>
+      </article>`;
     }).join('');
   }
 
@@ -535,20 +560,37 @@
     }
     updateBadges();
     renderBlasts();
-    showToast('Acknowledged', 'success');
+    showToast('Marked as read.', 'success');
   }
 
-  // ── Sign document modal ──────────────────────────────────────────────────────
+  // ── Sign / view sheet ────────────────────────────────────────────────────────
+  function _signDlg() { return document.getElementById('signModal'); }
+  function _signDirty() { return !!_currentSignDocId && !document.getElementById('signArea').hidden && _sigPoints && _sigPoints.length >= 5; }
+  function _openSheet() {
+    const dlg = _signDlg();
+    if (window.CRMUI && CRMUI.open) CRMUI.open(dlg, { dirty: _signDirty, onClose: _afterSheetClosed });
+    else if (!dlg.open) { try { dlg.showModal(); } catch (e) { dlg.setAttribute('open', ''); } }
+  }
+  function _afterSheetClosed() { _currentSignDocId = null; }
+  function _setSheetMode(mode) {
+    const signing = mode === 'sign';
+    document.getElementById('signArea').hidden = !signing;
+    document.getElementById('submitSigBtn').hidden = !signing;
+    document.getElementById('signCancelBtn').textContent = signing ? 'Cancel' : 'Close';
+  }
+
   function openSignModal(instanceId) {
     const doc = _myDocs.find(d => d.id === instanceId);
     if (!doc) return;
     _currentSignDocId = instanceId;
+    _setSheetMode('sign');
     document.getElementById('signModalTitle').textContent = doc.templateName || 'Document';
     document.getElementById('signModalDoc').innerHTML = doc.htmlContent || '(Document content unavailable)';
     document.getElementById('esigRecipientName').textContent = _empSession.name;
     document.getElementById('esigTimestamp').textContent = new Date().toLocaleString();
     document.getElementById('esigTypedName').value = _empSession.name;
-    document.getElementById('signModal').classList.add('open');
+    document.getElementById('esigConsent').checked = false;
+    _openSheet();
     initCanvas();
   }
 
@@ -556,18 +598,24 @@
     const doc = _myDocs.find(d => d.id === instanceId);
     if (!doc) return;
     _currentSignDocId = instanceId;
+    _setSheetMode('view');
     document.getElementById('signModalTitle').textContent = doc.templateName || 'Document';
     document.getElementById('signModalDoc').innerHTML = doc.htmlContent || '(Document content unavailable)';
-    const sigArea = document.querySelector('#signModal > .modal-box > div:last-child');
-    if (sigArea) sigArea.style.display = 'none';
-    document.getElementById('signModal').classList.add('open');
+    _openSheet();
   }
 
+  // Close button, Cancel and Esc ask first when a signature has been drawn.
+  function requestCloseSign() {
+    const dlg = _signDlg();
+    if (window.CRMUI && CRMUI.close) CRMUI.close(dlg);
+    else closeSignModal();
+  }
   function closeSignModal() {
-    document.getElementById('signModal').classList.remove('open');
+    const dlg = _signDlg();
+    if (window.CRMUI && CRMUI.close) CRMUI.close(dlg, { force: true });
+    else if (dlg.open) dlg.close();
     _currentSignDocId = null;
-    const sigArea = document.querySelector('#signModal > .modal-box > div:last-child');
-    if (sigArea) sigArea.style.display = 'block';
+    _setSheetMode('sign');
   }
 
   // ── Canvas signature pad ──────────────────────────────────────────────────────
@@ -576,8 +624,9 @@
   function initCanvas() {
     _canvas = document.getElementById('sigCanvas');
     _ctx = _canvas.getContext('2d');
-    const wrap = document.getElementById('sigCanvasWrap');
-    _canvas.width = wrap.offsetWidth || 540;
+    // Size the bitmap to what is on screen so strokes are not stretched.
+    _canvas.width = _canvas.clientWidth || document.getElementById('sigCanvasWrap').offsetWidth || 540;
+    _canvas.height = _canvas.clientHeight || 160;
     _sigPoints = [];
     _ctx.clearRect(0, 0, _canvas.width, _canvas.height);
     _ctx.strokeStyle = '#1a1a1a';
@@ -585,6 +634,8 @@
     _ctx.lineCap = 'round';
     _ctx.lineJoin = 'round';
 
+    if (_canvas._bound) return;
+    _canvas._bound = true;
     _canvas.addEventListener('mousedown', startDraw);
     _canvas.addEventListener('mousemove', draw);
     _canvas.addEventListener('mouseup', stopDraw);
@@ -613,11 +664,12 @@
   // ── Submit signature ──────────────────────────────────────────────────────────
   async function submitSignature() {
     const typedName = (document.getElementById('esigTypedName')?.value || '').trim();
-    if (!typedName) { showToast('Enter your full legal name', 'error'); return; }
-    if (!_sigPoints || _sigPoints.length < 5) { showToast('Please draw your signature in the box above', 'error'); return; }
+    if (!typedName) { showToast('Type your full legal name to sign.', 'error'); return; }
+    if (!_sigPoints || _sigPoints.length < 5) { showToast('Draw your signature in the box first.', 'error'); return; }
+    if (!document.getElementById('esigConsent').checked) { showToast('Check the box to agree to sign electronically.', 'error'); return; }
     const signatureDataUrl = _canvas ? _canvas.toDataURL('image/png') : '';
     const btn = document.getElementById('submitSigBtn');
-    btn.textContent = 'Submitting…'; btn.disabled = true;
+    setBusy(btn, true, 'Submitting…');
     const sigData = {
       typedName,
       signatureDataUrl,
@@ -631,9 +683,9 @@
       p_instance_id: _currentSignDocId,
       p_signature_json: sigData
     });
-    btn.textContent = 'Submit Signature'; btn.disabled = false;
+    setBusy(btn, false, 'Submit signature');
     if (result === true || result === 'true') {
-      showToast('Signed successfully. Your signature is on file.', 'success', 5000);
+      showToast('Signed. Your signature is on file.', 'success', 5000);
       // Update local state
       const doc = _myDocs.find(d => d.id === _currentSignDocId);
       if (doc) { doc.status = 'signed'; doc.signedAt = Date.now(); doc.signatureData = sigData; }
@@ -641,8 +693,8 @@
       updateBadges();
       renderDocs();
     } else {
-      // RPC not deployed yet — store locally and show clear message
-      showToast('Signature saved locally. Contact Saul to complete Supabase setup.', 'info', 6000);
+      // RPC not deployed yet. Store locally and show a clear message.
+      showToast('Your signature is saved on this device only. Let Saul know so he can finish the setup.', 'info', 6000);
       const doc = _myDocs.find(d => d.id === _currentSignDocId);
       if (doc) { doc.status = 'signed'; doc.signedAt = Date.now(); doc.signatureData = sigData; }
       closeSignModal();
@@ -656,9 +708,13 @@
     _empSession = null; _empToken = null;
     document.getElementById('appWrap').style.display = 'none';
     document.getElementById('loginWrap').style.display = 'flex';
+    const btn = document.getElementById('loginBtn');
+    if (btn) setBusy(btn, false, 'Sign In');
+    showSection('docs');
   }
 
   // ── Session restore ───────────────────────────────────────────────────────────
+  hydrateIcons();
   (function restoreSession() {
     try {
       const s = JSON.parse(sessionStorage.getItem('bs_emp_session'));

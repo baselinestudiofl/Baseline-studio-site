@@ -1,0 +1,104 @@
+/* crm-tokens.css v1 : design tokens for the Baseline Studio CRM (provider, client, login, employee pages).
+ * Tokens only. Load AFTER fonts/fonts.css and fable.css, BEFORE any page CSS and crm-ui.css.
+ * Contrast ratios in the comments are WCAG 2.x relative-luminance ratios against the named surface.
+ * Do not add component rules here. Do not add colors here that are not documented in UI-PLAN.md section 1.2.
+ */
+:root {
+  color-scheme: dark;
+
+  /* Surfaces: depth by lightness, no shadows on panels */
+  --surface-0: #07070d;   /* page */
+  --surface-1: #0e0f1a;   /* panels, cards, rail, top bar, bottom bar */
+  --surface-2: #151726;   /* hover rows, inputs, nested cards */
+  --surface-3: #1c1f33;   /* floating: menus, drawers, sheets, palette */
+  --surface-4: #262a42;   /* toasts, tooltips, selected chips */
+  --scrim: rgba(0, 0, 0, 0.60);
+
+  /* Text (text-3 is the floor for anything readable) */
+  --text-1: #f4f6f8;                       /* 18.6:1 on s0, 13.0:1 on s4 */
+  --text-2: rgba(255, 255, 255, 0.72);     /* 10.4:1 on s0, 8.0:1 on s4 */
+  --text-3: rgba(255, 255, 255, 0.62);     /* 7.8:1 on s0, 6.4:1 on s4 */
+  --text-disabled: rgba(255, 255, 255, 0.38); /* disabled controls only */
+  --text-on-accent: #07070d;               /* 7.05:1 on cyan */
+  --text-on-light: #111111;                /* print and paper surfaces */
+
+  /* Borders */
+  --border: rgba(255, 255, 255, 0.08);     /* dividers only, never a control edge */
+  --border-ui: rgba(255, 255, 255, 0.38);  /* control edges, 3.5:1 on s0..s4 */
+  --border-strong: rgba(255, 255, 255, 0.55);
+
+  /* Accent, rationed: one primary button per view, focus ring, selected nav/tab/row, links */
+  --cyan: #1FA3E0;          /* 7.05:1 on s0, 6.69 on s1, 4.94 on s4 as text */
+  --cyan-hover: #35b4ee;
+  --cyan-press: #1585b8;    /* dark text on it: 4.86:1 */
+  --cyan-tint: rgba(31, 163, 224, 0.12);
+  --focus: #4cb8ea;         /* ring, 8.95:1 on s0 */
+
+  /* Status: text/icon color + 14% tint fill. Never color alone (pill = tint + text + icon/dot + word) */
+  --ok: #3ddc97;      --ok-tint: rgba(61, 220, 151, 0.14);      /* 11.4:1 on s0 */
+  --warn: #f5b53d;    --warn-tint: rgba(245, 181, 61, 0.14);    /* 11.1:1 */
+  --danger: #ff7a7a;  --danger-tint: rgba(255, 122, 122, 0.14); /* 8.0:1 */
+  --info: #4cb8ea;    --info-tint: rgba(76, 184, 234, 0.14);    /* 9.0:1 */
+  --violet: #b69cff;  --violet-tint: rgba(182, 156, 255, 0.14); /* 8.8:1 */
+  --neutral: rgba(255, 255, 255, 0.62); --neutral-tint: rgba(255, 255, 255, 0.08);
+  --danger-fill: #c23b3b;  /* solid destructive button, white text 5.27:1 */
+  --paper-accent: #0b5f87; /* accent on white paper (print), 7.0:1 on #fff */
+  --danger-fill-hover: #ad3333; --danger-fill-press: #962b2b;  /* white text 6.5:1 and 7.8:1 */
+  --text-on-danger: #ffffff;
+  --paper: #fcfcfc;        /* signature pad and print paper backing */
+
+  /* Legacy aliases so untouched code keeps rendering (the live pages reference these) */
+  --black: var(--surface-0); --black-2: var(--surface-1); --black-3: var(--surface-2); --black-4: var(--surface-3);
+  --white: var(--text-1); --gray: var(--text-3); --cyan-dark: var(--cyan-press);
+  --success: #3ddc97; --warning: #f5b53d;
+  /* --danger stays #ff7a7a for TEXT; for fills use --danger-fill */
+  --s-new: var(--cyan); --s-contacted: var(--warn); --s-quoted: var(--violet); --s-booked: var(--ok); --s-archived: var(--neutral);
+
+  /* Type */
+  --font-display: 'Anton', Impact, sans-serif;      /* page titles, countdown, money headlines only */
+  --font-body: 'Barlow', system-ui, -apple-system, 'Segoe UI', sans-serif;
+  --font-head: var(--font-display);                 /* legacy alias used by the client portal */
+  --fs-11: 11px;  --fs-12: 12px;  --fs-13: 13px;  --fs-14: 14px;  --fs-15: 15px;
+  --fs-16: 16px;  --fs-18: 18px;  --fs-20: 20px;  --fs-24: 24px;  --fs-32: 32px;  --fs-48: 48px;
+  --lh-tight: 1.2; --lh-body: 1.45; --lh-loose: 1.6;
+
+  /* Spacing (4px base), radius, control heights */
+  --sp-1: 4px; --sp-2: 8px; --sp-3: 12px; --sp-4: 16px; --sp-5: 20px; --sp-6: 24px;
+  --sp-8: 32px; --sp-10: 40px; --sp-12: 48px; --sp-16: 64px;
+  --r-sm: 4px; --r-md: 6px; --r-lg: 10px; --r-xl: 14px; --r-pill: 999px;
+  --h-sm: 32px; --h-md: 40px; --h-touch: 44px; --h-lg: 52px;
+  --h-ctl: 40px;  /* default control height; becomes 44px on touch and phone (see media query below) */
+  --row-compact: 32px; --row-default: 40px; --row-touch: 56px;
+
+  /* Elevation: floating layers only */
+  --shadow-float: 0 8px 24px rgba(0, 0, 0, 0.50), 0 0 0 1px rgba(255, 255, 255, 0.06);
+
+  /* Motion */
+  --t-fast: 120ms; --t-base: 180ms; --t-slow: 240ms;
+  --ease-out: cubic-bezier(0.2, 0, 0, 1);
+  --ease-in: cubic-bezier(0.4, 0, 1, 1);
+
+  /* Z */
+  --z-sticky: 20; --z-nav: 30; --z-drawer: 50; --z-modal: 60; --z-toast: 80;
+
+  /* Layout */
+  --gutter: 16px;  /* 24px at >= 1024 */
+  --content-max: 1280px; --form-max: 560px; --settings-max: 640px; --reading-max: 68ch;
+  --rail-w: 232px; --appbar-h: 52px; --bottombar-h: 56px;
+  --safe-bottom: env(safe-area-inset-bottom, 0px);
+}
+
+@media (min-width: 1024px) {
+  :root { --gutter: 24px; --appbar-h: 56px; }
+}
+@media (min-width: 768px) and (max-width: 1023.98px) {
+  :root { --appbar-h: 56px; --rail-w: 56px; }
+}
+@media (pointer: coarse), (max-width: 767.98px) {
+  :root { --h-ctl: 44px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  :root { --t-fast: 0.01ms; --t-base: 0.01ms; --t-slow: 0.01ms; }
+}
+
+:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }

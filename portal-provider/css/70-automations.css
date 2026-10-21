@@ -1,0 +1,60 @@
+/* P7: Automations and Marketing. Tokens only (crm-tokens.css). Loaded after the page <style>. */
+
+.auto-wrap, .mk-wrap { display: flex; flex-direction: column; gap: var(--sp-5); max-width: 880px; }
+.auto-card, .mk-import { background: var(--surface-1); border: 1px solid var(--border); border-radius: var(--r-lg); padding: var(--sp-5); }
+.auto-h, .mk-h { margin: 0 0 var(--sp-3); font: 600 var(--fs-16)/1.3 var(--font-body); color: var(--text-1); }
+
+/* Rules as sentence rows */
+.auto-list { display: flex; flex-direction: column; gap: var(--sp-2); }
+.auto-row { display: flex; align-items: center; gap: var(--sp-3); min-height: 64px; padding: var(--sp-2) var(--sp-2) var(--sp-2) var(--sp-4); background: var(--surface-2); border: 1px solid var(--border); border-radius: var(--r-md); }
+.auto-main { flex: 1; min-width: 0; }
+.auto-sentence { font: 500 var(--fs-14)/1.45 var(--font-body); color: var(--text-1); overflow-wrap: anywhere; }
+.auto-row.is-off .auto-sentence { color: var(--text-2); }
+.auto-meta { display: flex; align-items: center; gap: var(--sp-2); margin-top: var(--sp-1); }
+.auto-paused { font-size: var(--fs-12); color: var(--text-3); }
+.auto-trail { display: flex; align-items: center; flex: none; }
+
+/* Builder drawer */
+.auto-fs, .mk-fs { min-width: 0; margin: 0 0 var(--sp-5); padding: 0; border: 0; }
+.auto-fs[hidden] { display: none; }
+.auto-fs legend, .mk-fs legend { margin: 0 0 var(--sp-3); padding: 0; font: 600 var(--fs-11)/1.2 var(--font-body); letter-spacing: 0.04em; text-transform: uppercase; color: var(--text-3); }
+.dlg .banner + .mk-fs { margin-top: var(--sp-5); }
+
+/* Activity log (also used inside the lead modal) */
+.auto-log { display: flex; flex-direction: column; }
+.auto-log-row { display: flex; align-items: center; flex-wrap: wrap; gap: var(--sp-2) var(--sp-3); min-height: 44px; padding: var(--sp-2) var(--sp-3); border-bottom: 1px solid var(--border); font-size: var(--fs-13); }
+.auto-log-row:last-child { border-bottom-color: transparent; }
+.auto-log-row.is-failed { background: var(--danger-tint); border-radius: var(--r-md); border-bottom-color: transparent; }
+.auto-log-what { flex: 1; min-width: 0; color: var(--text-1); overflow-wrap: anywhere; }
+.auto-log-who, .auto-log-when { color: var(--text-3); white-space: nowrap; }
+.auto-log-what .auto-log-when { white-space: normal; }
+
+/* Campaign cards */
+.mk-list { display: flex; flex-direction: column; gap: var(--sp-3); }
+.mk-card { display: flex; align-items: flex-start; justify-content: space-between; gap: var(--sp-4); padding: var(--sp-4) var(--sp-5); background: var(--surface-1); border: 1px solid var(--border); border-radius: var(--r-lg); }
+.mk-card-main { flex: 1; min-width: 0; }
+.mk-card-head { display: flex; align-items: center; flex-wrap: wrap; gap: var(--sp-2) var(--sp-3); }
+.mk-card-title { margin: 0; font: 600 var(--fs-16)/1.3 var(--font-body); color: var(--text-1); overflow-wrap: anywhere; }
+.mk-card-meta { margin-top: var(--sp-1); font-size: var(--fs-13); line-height: 1.45; color: var(--text-3); overflow-wrap: anywhere; }
+.mk-card-subject { margin-top: var(--sp-2); font-size: var(--fs-14); line-height: 1.45; color: var(--text-2); overflow-wrap: anywhere; }
+.mk-card-err { color: var(--danger); }
+.mk-card-actions { display: flex; align-items: center; gap: var(--sp-2); flex: none; }
+
+/* Send confirm (#campaignSendModal) */
+.mk-send-p { margin: 0 0 var(--sp-3); font-size: var(--fs-14); line-height: 1.5; }
+.mk-send-list { margin: 0 0 var(--sp-3) var(--sp-5); font-size: var(--fs-13); line-height: 1.5; color: var(--text-2); }
+.mk-send-fails { max-height: 180px; overflow: auto; }
+.mk-send-bad { color: var(--danger); }
+#campaignSendActions { flex-wrap: wrap; }
+
+@media (max-width: 767.98px) {
+  .auto-card, .mk-import { padding: var(--sp-4); }
+  .mk-card { flex-direction: column; padding: var(--sp-4); }
+  .mk-card-actions { width: 100%; }
+  .mk-card-actions .btn { flex: 1; }
+  .auto-log-row .btn { flex: none; }
+  #campaignSendActions .btn { flex: 1; }
+}
+
+/* Inline link in the campaign error line: keep a 44px hit area without changing the line's look. */
+.mk-card-err .link { display: inline-flex; align-items: center; min-height: 44px; padding: 0 4px; }

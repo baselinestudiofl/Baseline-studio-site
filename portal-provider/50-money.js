@@ -1,81 +1,561 @@
 // ============================================================================
-// portal-provider/50-money.js  -  money: event invoice tab, invoices, quote builder, service catalog, reports
-// Classic script (no modules, no build step). Split verbatim from portal-provider.html (task 1A).
+// portal-provider/50-money.js  -  money: event Money tab, payment schedule, invoices, quote builder, service catalog, reports
+// Classic script (no modules, no build step). Split verbatim from portal-provider.html (task 1A); redesigned in the UI pass (lane P3).
 // Shares the global scope with the other portal-provider/*.js files; load order is set by the script tags in portal-provider.html.
+// Public globals other lanes call (ui-notes/CONTRACTS.md): openQuoteBuilderModal(eventIdOrNull, {inquiry|fromEvent}), renderPaymentSchedule(ev),
+// openCreateInvoiceFromEvent(eventId, {deposit|balance, amount, label}), markInvoicePaid(id), confirmPaymentReport(eventId).
 // ============================================================================
 
-    // ── Event Invoices tab ────────────────────────────────────────────────────
-    function renderEventInvoices(event) {
-      const allInvoices = getDB('invoices') || [];
-      const evInvoices  = allInvoices.filter(i => i.eventId === event.id);
-      const total       = evInvoices.reduce((s, i) => s + (i.total || 0), 0);
-      const paid        = evInvoices.filter(i => i.status === 'paid').reduce((s, i) => s + (i.total || 0), 0);
-      const outstanding = total - paid;
-
-      let rows = '';
-      evInvoices.sort((a,b) => (b.createdAt||0)-(a.createdAt||0)).forEach(inv => {
-        const due = inv.dueDate ? new Date(inv.dueDate).toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'}) : '—';
-        const isOverdue = inv.status !== 'paid' && inv.dueDate && new Date(inv.dueDate) < new Date();
-        const sc = inv.status === 'paid' ? 'var(--success)' : isOverdue ? 'var(--danger)' : 'var(--warning)';
-        rows += `<tr>
-          <td style="font-family:monospace;">${inv.invoiceNum||'INV-???'}</td>
-          <td style="font-weight:600;">$${(inv.total||0).toLocaleString()}</td>
-          <td>${due}</td>
-          <td><span style="color:${sc};font-weight:600;">${isOverdue && inv.status!=='paid' ? 'OVERDUE' : inv.status.toUpperCase()}</span></td>
-          <td>
-            <div style="display:flex;gap:4px;flex-wrap:wrap;">
-              <button class="btn btn-primary" style="font-size:12px;padding:4px 10px;background:rgba(31,163,224,0.18);border-color:rgba(31,163,224,0.65);color:var(--cyan);" onclick="sendInvoice('${inv.id}')">✉ Send</button>
-              ${inv.status !== 'paid' ? `<button class="btn btn-secondary" style="font-size:12px;padding:4px 8px;" onclick="markInvoicePaid('${inv.id}');document.getElementById('tabInvoices').innerHTML=renderEventInvoices(window.currentEvent)">Paid</button>` : ''}
-              <button class="btn btn-secondary" style="font-size:12px;padding:4px 8px;" onclick="exportInvoicePDF('${inv.id}')">PDF</button>
-              <button class="btn btn-danger" style="font-size:12px;padding:4px 8px;" onclick="deleteInvoice('${inv.id}');document.getElementById('tabInvoices').innerHTML=renderEventInvoices(window.currentEvent)">✕</button>
-            </div>
-          </td>
-        </tr>`;
-      });
-
-      const summaryColor = outstanding > 0 ? 'var(--warning)' : 'var(--success)';
-      return `
-        <div style="display:flex;gap:12px;margin-bottom:20px;flex-wrap:wrap;">
-          <div class="invoice-total-card"><div class="invoice-total-label">Invoiced</div><div class="invoice-total-value">$${total.toLocaleString()}</div></div>
-          <div class="invoice-total-card"><div class="invoice-total-label">Collected</div><div class="invoice-total-value green">$${paid.toLocaleString()}</div></div>
-          <div class="invoice-total-card"><div class="invoice-total-label">Outstanding</div><div class="invoice-total-value" style="color:${summaryColor};">$${outstanding.toLocaleString()}</div></div>
-        </div>
-        ${evInvoices.length ? `
-          <div style="overflow-x:auto;margin-bottom:16px;">
-            <table class="data-table">
-              <thead><tr><th>Invoice #</th><th>Amount</th><th>Due</th><th>Status</th><th>Actions</th></tr></thead>
-              <tbody>${rows}</tbody>
-            </table>
-          </div>` : `<div style="padding:20px;text-align:center;color:var(--gray);font-size:13px;border:1px dashed var(--border);border-radius:6px;margin-bottom:16px;">No invoices yet for this event</div>`}
-        <div style="display:flex;gap:8px;flex-wrap:wrap;">
-          <button class="btn btn-primary" onclick="openCreateInvoiceFromEvent('${event.id}')">+ Create Invoice</button>
-          <button class="btn btn-secondary" onclick="openQuoteBuilderModal('${event.id}')">📋 Build Quote First</button>
-        </div>`;
+    // ── Money helpers (pure: no DOM, no storage) ──────────────────────────────
+    // Amounts are dollars in storage (as before). Anything that adds or compares money goes through integer cents so a schedule
+    // always sums to the cent.
+    function _mnyCents(v) {
+      const n = Number(v);
+      return isFinite(n) ? Math.round(n * 100) : 0;
+    }
+    function _mnyUSD(c) {
+      const a = Math.abs(c);
+      const whole = a % 100 === 0;
+      return (c < 0 ? '-' : '') + '$' + (a / 100).toLocaleString('en-US', { minimumFractionDigits: whole ? 0 : 2, maximumFractionDigits: 2 });
+    }
+    function _mnyDate(v) {
+      if (v === null || v === undefined || v === '') return null;
+      if (v instanceof Date) return isNaN(v.getTime()) ? null : v;
+      if (typeof v === 'number') { const d = new Date(v); return isNaN(d.getTime()) ? null : d; }
+      const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(String(v));
+      if (m) return new Date(+m[1], +m[2] - 1, +m[3], 12, 0, 0);
+      const d = new Date(v);
+      return isNaN(d.getTime()) ? null : d;
+    }
+    function _mnyDay(d) {
+      const x = _mnyDate(d) || new Date();
+      return new Date(x.getFullYear(), x.getMonth(), x.getDate(), 12, 0, 0).getTime();
+    }
+    function _mnyAddDays(d, n) {
+      const x = _mnyDate(d);
+      return x ? new Date(x.getFullYear(), x.getMonth(), x.getDate() + n, 12, 0, 0) : null;
+    }
+    function _mnyISO(d) {
+      const x = _mnyDate(d);
+      if (!x) return '';
+      return x.getFullYear() + '-' + String(x.getMonth() + 1).padStart(2, '0') + '-' + String(x.getDate()).padStart(2, '0');
+    }
+    function _mnyShort(v, now) {
+      const d = _mnyDate(v);
+      if (!d) return '';
+      const same = d.getFullYear() === (_mnyDate(now) || new Date()).getFullYear();
+      return d.toLocaleDateString('en-US', same ? { month: 'short', day: 'numeric' } : { month: 'short', day: 'numeric', year: 'numeric' });
+    }
+    function _mnyLong(v) {
+      const d = _mnyDate(v);
+      return d ? d.toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' }) : '';
+    }
+    // Same rule the client portal uses to tell a deposit invoice from a balance invoice.
+    function _mnyKind(inv) {
+      const text = (Array.isArray(inv && inv.lines) ? inv.lines : []).map(l => (l && l.desc) || '').join(' ') + ' ' + ((inv && inv.notes) || '');
+      return /deposit/i.test(text) ? 'deposit' : /balance|final/i.test(text) ? 'balance' : 'other';
+    }
+    // paid | overdue | partial | sent | draft | void. Draft means it was never emailed from here.
+    function _mnyInvStatus(inv, now) {
+      const s = String((inv && inv.status) || '').toLowerCase();
+      if (s === 'paid') return 'paid';
+      if (/^(void|voided|cancelled|canceled)$/.test(s)) return 'void';
+      const due = _mnyDate(inv && inv.dueDate);
+      if (due && _mnyDay(due) < _mnyDay(now)) return 'overdue';
+      if (s === 'partial') return 'partial';
+      return inv && inv.sentAt ? 'sent' : 'draft';
+    }
+    // Money received on one invoice, in cents: the payments list, or the whole total for an invoice that was marked paid before payments were listed.
+    function _mnyInvPaidC(inv) {
+      if (Array.isArray(inv && inv.payments) && inv.payments.length) return inv.payments.reduce((s, p) => s + _mnyCents(p && p.amount), 0);
+      return String((inv && inv.status) || '').toLowerCase() === 'paid' ? _mnyCents(inv.total) : 0;
+    }
+    function _mnyNum(inv) {
+      const n = String((inv && inv.invoiceNum) || '');
+      const m = /^INV-?(\d+)$/i.exec(n);
+      return m ? m[1] : (n || '0000');
+    }
+    function _mnyFirst(name) {
+      return String(name || '').trim().split(/\s+/)[0] || 'Your client';
     }
 
-    // ── Invoice helpers ───────────────────────────────────────────────────────
-    function openCreateInvoiceFromEvent(eventId) {
-      const ev = (getDB('events') || []).find(e => e.id === eventId);
+    // The payment schedule for one event, from the event price, the contract terms and the invoices already made.
+    // Deposit = the event's own deposit amount when it has one, else terms.depositPercent of the total. Balance = the rest, so the two
+    // always add up to the total to the cent. A row is paid when its flag is set (ev.depositPaid / ev.balancePaid), when a paid invoice of
+    // that kind exists, or when paid invoices of no particular kind cover it.
+    function _mnySchedule(ev, invoices, terms, now) {
+      const t = terms || {};
+      const pct = Number(t.depositPercent) > 0 ? Number(t.depositPercent) : 50;
+      const days = isFinite(Number(t.balanceDueDays)) && t.balanceDueDays !== '' && t.balanceDueDays !== null ? Number(t.balanceDueDays) : 14;
+      const nowD = _mnyDate(now) || new Date();
+      const today = _mnyDay(nowD);
+      const evInv = (invoices || []).filter(i => i && i.eventId === ev.id && _mnyInvStatus(i, nowD) !== 'void');
+      let totalC = _mnyCents(ev.basePrice);
+      let fromInvoices = false;
+      if (totalC <= 0) {
+        totalC = evInv.reduce((s, i) => s + _mnyCents(i.total), 0);
+        fromInvoices = totalC > 0;
+      }
+      const out = { ok: false, totalC: 0, depositC: 0, balanceC: 0, paidC: 0, remainingC: 0, pctPaid: 0, rows: [], extras: [], extrasUnpaidC: 0, fromInvoices, days, pct };
+      if (totalC <= 0) { out.extras = evInv; return out; }
+      let depositC = _mnyCents(ev.depositAmount);
+      if (fromInvoices || depositC <= 0 || depositC > totalC) depositC = Math.round(totalC * pct / 100);
+      const balanceC = totalC - depositC;
+      const paidInv = i => _mnyInvStatus(i, nowD) === 'paid';
+      const byKind = { deposit: [], balance: [], other: [] };
+      evInv.forEach(i => byKind[_mnyKind(i)].push(i));
+      let otherPaidC = byKind.other.filter(paidInv).reduce((s, i) => s + _mnyCents(i.total), 0);
+      let depPaid = ev.depositPaid === true || byKind.deposit.some(paidInv);
+      let balPaid = balanceC > 0 && (ev.balancePaid === true || byKind.balance.some(paidInv));
+      if (!depPaid && otherPaidC >= depositC) { depPaid = true; otherPaidC -= depositC; }
+      if (balanceC > 0 && !balPaid && depPaid && otherPaidC >= balanceC) balPaid = true;
+      const pick = list => list.find(i => !paidInv(i)) || list.slice().sort((a, b) => (b.paidAt || 0) - (a.paidAt || 0))[0] || null;
+      const evDate = _mnyDate(ev.date);
+      const balDue = evDate ? _mnyAddDays(evDate, -days) : null;
+      const rows = [];
+      const depInv = pick(byKind.deposit);
+      rows.push({ key: 'deposit', label: 'Deposit', amountC: depositC, pct: Math.round(depositC * 100 / totalC), paid: depPaid,
+        paidAt: depPaid && depInv && paidInv(depInv) ? (depInv.paidAt || null) : null, due: null, dueText: 'Due at signing', overdue: false, daysUntil: null, inv: depInv });
+      if (balanceC > 0) {
+        const balInv = pick(byKind.balance);
+        const daysUntil = balDue ? Math.round((_mnyDay(balDue) - today) / 86400000) : null;
+        rows.push({ key: 'balance', label: 'Balance', amountC: balanceC, pct: 100 - rows[0].pct, paid: balPaid,
+          paidAt: balPaid && balInv && paidInv(balInv) ? (balInv.paidAt || null) : null, due: balDue,
+          dueText: days + ' days before the event', overdue: !balPaid && daysUntil !== null && daysUntil < 0, daysUntil, inv: balInv });
+      }
+      out.ok = true;
+      out.totalC = totalC; out.depositC = depositC; out.balanceC = balanceC;
+      out.rows = rows;
+      out.paidC = rows.filter(r => r.paid).reduce((s, r) => s + r.amountC, 0);
+      out.remainingC = totalC - out.paidC;
+      out.pctPaid = Math.round(out.paidC * 100 / totalC);
+      out.extras = byKind.other;
+      out.extrasUnpaidC = byKind.other.filter(i => !paidInv(i)).reduce((s, i) => s + _mnyCents(i.total), 0);
+      return out;
+    }
+
+    // ── Small DOM-side helpers ────────────────────────────────────────────────
+    function _mnyIcon(name, size) {
+      return (typeof CRMUI !== 'undefined' && CRMUI.icon) ? CRMUI.icon(name, size || 16) : '';
+    }
+    function _mnyTerms() {
+      if (typeof BSContracts !== 'undefined' && BSContracts.getTerms) return BSContracts.getTerms(getDB('settings'));
+      return { depositPercent: 50, balanceDueDays: 14 };
+    }
+    function _mnyDeposit(total) {
+      return Math.round(total * (Number(_mnyTerms().depositPercent) || 50) / 100);
+    }
+    function _mnyEvent(id) {
+      return (getDB('events') || []).find(e => e && e.id === id) || null;
+    }
+    function _mnyPaymentsOff() {
+      const s = getDB('settings');
+      return !(s && s.payments && s.payments.enabled === true);
+    }
+    function _mnyZelle() {
+      const s = getDB('settings');
+      const z = s && s.payments && typeof s.payments.zelle === 'string' ? s.payments.zelle.trim() : '';
+      return z || '(786) 302-6056';
+    }
+    function _mnyPill(status) {
+      const map = { paid: ['ok', 'Paid'], overdue: ['danger', 'Overdue'], sent: ['info', 'Sent'], partial: ['warn', 'Part paid'], draft: ['neutral', 'Draft'], void: ['neutral', 'Void'] };
+      const m = map[status] || map.draft;
+      return `<span class="pill pill-${m[0]}" data-ui="pill">${m[1]}</span>`;
+    }
+    // CRMUI.confirm, with the id the flow harness looks for.
+    function _mnyConfirm(o) {
+      if (typeof CRMUI === 'undefined' || !CRMUI.confirm) { showToast('Could not open the confirm box. Reload and try again.', 'error'); return Promise.resolve(false); }
+      const p = CRMUI.confirm(o);
+      const all = document.querySelectorAll('dialog.dlg-confirm');
+      const d = all[all.length - 1];
+      if (d) { const old = document.getElementById('crmConfirm'); if (old && old !== d) old.removeAttribute('id'); d.id = 'crmConfirm'; }
+      return p;
+    }
+    function _mnyMarkBusy(btn, on) {
+      if (!btn) return;
+      if (on) { btn.setAttribute('aria-busy', 'true'); btn.setAttribute('aria-disabled', 'true'); btn.disabled = true; }
+      else { btn.removeAttribute('aria-busy'); btn.removeAttribute('aria-disabled'); btn.disabled = false; }
+    }
+    // Repaint whatever money views are on screen after a change.
+    function _mnyRefreshViews() {
+      try { renderInvoices(); } catch (e) { /* section not mounted */ }
+      const tab = document.getElementById('tabInvoices');
+      if (tab && window.currentEvent) {
+        const fresh = _mnyEvent(window.currentEvent.id) || window.currentEvent;
+        tab.innerHTML = renderEventInvoices(fresh);
+      }
+      const dash = document.getElementById('dashboard');
+      if (dash && dash.classList.contains('active') && typeof renderDashboard === 'function') { try { renderDashboard(); } catch (e) { /* home owns its errors */ } }
+    }
+    function _mnyReport(ev) {
+      const pr = ev && ev.clientNotes && ev.clientNotes.paymentReported;
+      if (!pr || typeof pr !== 'object' || pr.confirmedAt) return null;
+      return pr;
+    }
+
+    // ── Payments-off banner (one per view) ────────────────────────────────────
+    function _mnyOffBanner() {
+      if (!_mnyPaymentsOff()) return '';
+      return `<div class="banner banner-info mny-banner">${_mnyIcon('info', 18)}<div class="banner-body">Online payments are off. Clients see Zelle and manual instructions.</div>
+        <button type="button" class="btn btn-ghost btn-sm" onclick="switchSection('settings')">Settings</button></div>`;
+    }
+
+    // ── Client says paid ──────────────────────────────────────────────────────
+    function _mnyReportCard(ev) {
+      const pr = _mnyReport(ev);
+      if (!pr) return '';
+      const amt = Number(pr.amount) > 0 ? ' a payment of <strong class="num">' + _mnyUSD(_mnyCents(pr.amount)) + '</strong>' : ' a payment';
+      const when = _mnyDate(pr.at) ? ' on ' + _mnyShort(pr.at) : '';
+      return `<div class="mny-report" data-payment-report="${esc(ev.id)}">
+        <div class="mny-report-main">${_mnyIcon('banknote', 20)}<div>
+          <div class="mny-report-title"><span data-user-content>${esc(_mnyFirst(ev.clientName))}</span> reported${amt}${esc(when)}.</div>
+          <div class="mny-report-sub">Check your Zelle, then confirm. Nothing changes until you do.</div></div></div>
+        <button type="button" class="btn btn-secondary mny-confirm" onclick="confirmPaymentReport('${esc(ev.id)}')">${_mnyIcon('check', 16)}Confirm and mark paid</button>
+      </div>`;
+    }
+    // One tap: finds the invoice the client named (or the next unpaid one) and marks it paid, with undo.
+    function confirmPaymentReport(eventId) {
+      const ev = _mnyEvent(eventId);
+      const pr = _mnyReport(ev);
+      if (!ev || !pr) return;
+      const now = new Date();
+      const open = (getDB('invoices') || []).filter(i => i.eventId === eventId && ['sent', 'draft', 'overdue', 'partial'].includes(_mnyInvStatus(i, now)));
+      const key = String(pr.invoice || '');
+      let inv = key ? open.find(i => String(i.invoiceNum || '') === key || String(i.id) === key) : null;
+      if (!inv && !key) inv = open.slice().sort((a, b) => (_mnyDay(a.dueDate || '2999-12-31')) - (_mnyDay(b.dueDate || '2999-12-31')))[0] || null;
+      if (inv) { recordInvoicePayment(inv.id, Number(pr.amount) > 0 ? Number(pr.amount) : 0, { fromReport: true, toast: true }); return; }
+      const s = _mnySchedule(ev, getDB('invoices') || [], _mnyTerms(), now);
+      const row = s.ok ? s.rows.find(r => !r.paid) : null;
+      if (row) { _mnyMarkRowPaid(ev.id, row.key, { fromReport: true }); return; }
+      pr.confirmedAt = new Date().toISOString();
+      setDB('events', getDB('events'));
+      _mnyRefreshViews();
+      showToast('Payment report cleared. There was nothing unpaid to mark.', 'info');
+    }
+
+    // ── Payment schedule card (contract: renderPaymentSchedule(ev) -> HTML string) ──
+    function renderPaymentSchedule(ev) {
+      const e = _mnyEvent(ev && ev.id) || ev || {};
+      const now = new Date();
+      const s = _mnySchedule(e, getDB('invoices') || [], _mnyTerms(), now);
+      if (!s.ok) {
+        return `<div class="card mny-card" id="paymentSchedule"><div class="card-head"><h2 class="card-title">Payment schedule</h2></div>
+          <p class="mny-note">No price on this event yet. Add one on Overview or build a quote, and the deposit and balance show up here.</p>
+          <button type="button" class="btn btn-secondary" onclick="openQuoteBuilderModal('${esc(e.id)}')">${_mnyIcon('file-text', 16)}Build quote</button></div>`;
+      }
+      const rows = s.rows.map(r => {
+        const state = r.paid ? 'paid' : r.overdue ? 'overdue' : 'due';
+        let pill;
+        if (r.paid) pill = `<span class="pill pill-ok" data-ui="pill">Paid${r.paidAt ? ' ' + esc(_mnyShort(r.paidAt, now)) : ''}</span>`;
+        else if (r.overdue) pill = `<span class="pill pill-danger" data-ui="pill">Overdue, was due ${esc(_mnyShort(r.due, now))}</span>`;
+        else if (r.key === 'deposit') pill = `<span class="pill pill-warn" data-ui="pill">Due at signing</span>`;
+        else if (r.due) pill = `<span class="pill ${r.daysUntil <= 7 ? 'pill-warn' : 'pill-neutral'}" data-ui="pill">Due ${esc(_mnyShort(r.due, now))}</span>`;
+        else pill = `<span class="pill pill-neutral" data-ui="pill">${esc(r.dueText)}</span>`;
+        const got = r.inv && !r.paid ? _mnyInvPaidC(r.inv) : 0;
+        const ref = r.inv ? ` · <span class="num">${esc(r.inv.invoiceNum || '')}</span>` + (got > 0 ? ` · ${_mnyUSD(got)} received` : '') : '';
+        let acts = '';
+        if (!r.paid) {
+          acts = `<div class="mny-sact">${r.inv
+            ? `<button type="button" class="btn btn-secondary btn-sm" onclick="_mnyRemindRow('${esc(e.id)}','${r.key}')">${r.inv.sentAt ? 'Send reminder' : 'Send invoice'}</button>`
+            : `<button type="button" class="btn btn-secondary btn-sm" onclick="_mnyRowInvoice('${esc(e.id)}','${r.key}')">Create invoice</button>`}
+            <button type="button" class="btn btn-secondary btn-sm" onclick="_mnyMarkRowPaid('${esc(e.id)}','${r.key}')">Mark paid</button></div>`;
+        }
+        return `<li class="mny-srow is-${state}" data-sched="${r.key}">
+          <span class="mny-sico">${_mnyIcon(r.paid ? 'circle-check' : r.overdue ? 'triangle-alert' : 'circle', 20)}</span>
+          <div class="mny-smain"><div class="mny-stitle">${r.label} <span class="mny-spct">${r.pct}%</span></div>
+            <div class="mny-smeta">${esc(r.dueText)}${ref}</div></div>
+          <div class="mny-samt num">${_mnyUSD(r.amountC)}</div>
+          <div class="mny-spill">${pill}</div>${acts}</li>`;
+      }).join('');
+      const extra = s.extras.length
+        ? `<p class="mny-note">Not in the schedule: ${s.extras.length === 1 ? 'invoice <span class="num">' + esc(s.extras[0].invoiceNum || '') + '</span>' : s.extras.length + ' other invoices'}${s.extrasUnpaidC > 0 ? ', ' + _mnyUSD(s.extrasUnpaidC) + ' unpaid' : ', paid'}.</p>` : '';
+      return `<div class="card mny-card" id="paymentSchedule">
+        <div class="card-head"><h2 class="card-title">Payment schedule</h2></div>
+        <ul class="mny-sched">${rows}</ul>
+        <div class="mny-sfoot">
+          <div><span class="mny-flabel">Total</span><span class="mny-fval num">${_mnyUSD(s.totalC)}</span></div>
+          <div><span class="mny-flabel">Paid</span><span class="mny-fval num is-ok">${_mnyUSD(s.paidC)}</span></div>
+          <div><span class="mny-flabel">Remaining</span><span class="mny-fval num ${s.remainingC > 0 ? 'is-warn' : 'is-ok'}">${_mnyUSD(s.remainingC)}</span></div>
+        </div>
+        <div class="sched-bar" role="img" aria-label="${s.pctPaid}% paid"><span style="width:${s.pctPaid}%"></span></div>
+        <div class="mny-bartext num">${s.pctPaid}% paid</div>${extra}</div>`;
+    }
+
+    // schedule row actions
+    function _mnyRowInvoice(eventId, key) {
+      openCreateInvoiceFromEvent(eventId, key === 'balance' ? { balance: true } : { deposit: true });
+    }
+    function _mnyRemindRow(eventId, key) {
+      const ev = _mnyEvent(eventId);
+      const s = ev ? _mnySchedule(ev, getDB('invoices') || [], _mnyTerms(), new Date()) : null;
+      const row = s && s.ok ? s.rows.find(r => r.key === key) : null;
+      if (row && row.inv) sendInvoiceConfirm(row.inv.id, { reminder: !!row.inv.sentAt });
+    }
+    // Mark a schedule row paid. With an unpaid invoice behind it, that invoice is marked. Without one, the event flag is set and a payment is logged
+    // so Reports still count it.
+    function _mnyMarkRowPaid(eventId, key, opts) {
+      const events = getDB('events') || [];
+      const ev = events.find(e => e && e.id === eventId);
+      if (!ev) return;
+      const s = _mnySchedule(ev, getDB('invoices') || [], _mnyTerms(), new Date());
+      const row = s.ok ? s.rows.find(r => r.key === key) : null;
+      if (!row || row.paid) return;
+      if (row.inv && _mnyInvStatus(row.inv, new Date()) !== 'paid') { markInvoicePaid(row.inv.id, opts); return; }
+      const flag = key === 'balance' ? 'balancePaid' : 'depositPaid';
+      const prev = { flag: ev[flag], confirmed: null };
+      const pr = _mnyReport(ev);
+      if (pr && (opts && opts.fromReport)) { prev.confirmed = pr.confirmedAt || null; pr.confirmedAt = new Date().toISOString(); }
+      ev[flag] = true;
+      const txs = getDB('transactions') || [];
+      const tx = { id: genId(), eventId: ev.id, clientName: ev.clientName || '', amount: row.amountC / 100, type: row.label + ' payment', note: ev.name || '', date: Date.now(), manual: true };
+      if (opts && opts.fromReport) tx.method = 'Zelle';
+      txs.push(tx);
+      setDB('transactions', txs);
+      setDB('events', events);
+      _mnyRefreshViews();
+      showUndoToast('Marked paid: ' + row.label.toLowerCase() + ', ' + _mnyUSD(row.amountC) + '.', function () {
+        const evs = getDB('events') || [];
+        const e2 = evs.find(e => e && e.id === eventId);
+        if (e2) { e2[flag] = prev.flag === undefined ? false : prev.flag; const p2 = _mnyReport(e2) || (e2.clientNotes && e2.clientNotes.paymentReported); if (p2 && opts && opts.fromReport) { if (prev.confirmed) p2.confirmedAt = prev.confirmed; else delete p2.confirmedAt; } }
+        setDB('transactions', (getDB('transactions') || []).filter(t => t.id !== tx.id));
+        setDB('events', evs);
+        _mnyRefreshViews();
+        showToast('Back to unpaid.', 'info');
+      });
+    }
+
+    // ── Invoice list, shared by the Money page and the event Money tab ─────────
+    function _mnyVerb(inv, now) {
+      const st = _mnyInvStatus(inv, now);
+      if (st === 'paid') return { label: 'PDF', fn: `exportInvoicePDF('${esc(inv.id)}')`, icon: 'download' };
+      if (st === 'void') return null;
+      if (!inv.sentAt) return { label: 'Send', fn: `sendInvoiceConfirm('${esc(inv.id)}')`, icon: 'send' };
+      return { label: 'Remind', fn: `sendInvoiceConfirm('${esc(inv.id)}',{reminder:true})`, icon: 'send' };
+    }
+    function _mnyInvActions(inv, now) {
+      const v = _mnyVerb(inv, now);
+      const st = _mnyInvStatus(inv, now);
+      const pr = _mnyReport(_mnyEvent(inv.eventId));
+      const reported = pr && st !== 'paid' && (!pr.invoice || String(pr.invoice) === String(inv.invoiceNum || '') || String(pr.invoice) === String(inv.id));
+      const verb = reported
+        ? `<button type="button" class="btn btn-secondary btn-sm mny-confirm" onclick="confirmPaymentReport('${esc(inv.eventId)}')">Confirm paid</button>`
+        : v ? `<button type="button" class="btn btn-secondary btn-sm" onclick="${v.fn}">${v.label}</button>` : '';
+      return verb + `<button type="button" class="btn btn-ghost btn-icon btn-sm" aria-label="More for invoice ${esc(_mnyNum(inv))}" onclick="_mnyInvMenu(this,'${esc(inv.id)}')">${_mnyIcon('ellipsis-vertical', 18)}</button>`;
+    }
+    function _mnyInvMenu(btn, id) {
+      const inv = (getDB('invoices') || []).find(i => i.id === id);
+      if (!inv || typeof CRMUI === 'undefined') return;
+      const st = _mnyInvStatus(inv, new Date());
+      const items = [];
+      if (st !== 'paid' && st !== 'void') items.push({ label: 'Mark paid', icon: 'circle-check', onSelect: () => markInvoicePaid(id) });
+      if (st === 'paid') items.push({ label: 'Mark unpaid', icon: 'undo-2', onSelect: () => markInvoiceUnpaid(id) });
+      items.push({ label: 'Download PDF', icon: 'download', onSelect: () => exportInvoicePDF(id) });
+      if (inv.eventId && typeof navigateToEvent === 'function' && _mnyEvent(inv.eventId)) items.push({ label: 'Open event', icon: 'arrow-up-right', onSelect: () => navigateToEvent(inv.eventId) });
+      items.push({ label: 'Delete invoice', icon: 'trash-2', danger: true, onSelect: () => deleteInvoice(id) });
+      CRMUI.menu(btn, items, { label: 'Invoice actions', align: 'right' });
+    }
+    // ctx.client: show the client column (Money page). Event tab leaves it out.
+    function _mnyInvList(list, ctx) {
+      ctx = ctx || {};
+      const now = new Date();
+      const showClient = ctx.client !== false;
+      const sorted = list.slice().sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
+      const recv = (inv, st) => { const c = st === 'paid' ? 0 : _mnyInvPaidC(inv); return c > 0 ? ` <span class="pill pill-neutral pill-sm" data-ui="pill">${_mnyUSD(c)} received</span>` : ''; };
+      const tbody = sorted.map(inv => {
+        const st = _mnyInvStatus(inv, now);
+        const due = inv.dueDate ? esc(_mnyShort(inv.dueDate, now)) : 'On receipt';
+        const rep = _mnyReport(_mnyEvent(inv.eventId));
+        const says = rep && st !== 'paid' && (!rep.invoice || String(rep.invoice) === String(inv.invoiceNum || '') || String(rep.invoice) === String(inv.id))
+          ? ` <span class="pill pill-info pill-sm" data-ui="pill">Client says paid ${esc(_mnyShort(rep.at, now))}</span>` : '';
+        const who = showClient
+          ? `<td><div class="mny-cell-main" data-user-content>${esc(inv.clientName || '')}</div><div class="mny-cell-sub" data-user-content>${esc(inv.eventName || 'No event')}</div></td>`
+          : '';
+        return `<tr data-inv="${esc(inv.id)}"><td class="num mny-no">${esc(_mnyNum(inv))}</td>${who}<td class="num">${_mnyUSD(_mnyCents(inv.total))}</td><td>${due}</td><td>${_mnyPill(st)}${recv(inv, st)}${says}</td><td class="mny-acts">${_mnyInvActions(inv, now)}</td></tr>`;
+      }).join('');
+      const table = `<div class="tbl-wrap"><table class="tbl"><thead><tr><th>No.</th>${showClient ? '<th>Client and event</th>' : ''}<th class="num">Amount</th><th>Due</th><th>Status</th><th><span class="sr-only">Actions</span></th></tr></thead><tbody id="${ctx.bodyId || 'invoicesTableBody'}">${tbody}</tbody></table></div>`;
+      const cards = sorted.map(inv => {
+        const st = _mnyInvStatus(inv, now);
+        const rep = _mnyReport(_mnyEvent(inv.eventId));
+        const says = rep && st !== 'paid' && (!rep.invoice || String(rep.invoice) === String(inv.invoiceNum || '') || String(rep.invoice) === String(inv.id))
+          ? ` <span class="pill pill-info pill-sm" data-ui="pill">Client says paid</span>` : '';
+        const title = showClient ? esc(inv.clientName || 'No name') : 'Invoice ' + esc(_mnyNum(inv));
+        const sub = showClient ? `<span class="num">${esc(_mnyNum(inv))}</span> · ${esc(inv.eventName || 'No event')}` : (inv.dueDate ? 'Due ' + esc(_mnyShort(inv.dueDate, now)) : 'Due on receipt');
+        return `<div class="row mny-row" data-inv="${esc(inv.id)}">
+          <div class="mny-row-top"><span class="row-title"${showClient ? ' data-user-content' : ''}>${title}</span><span class="mny-amt num">${_mnyUSD(_mnyCents(inv.total))}</span></div>
+          <div class="row-sub"${showClient ? ' data-user-content' : ''}>${sub}</div>
+          <div class="mny-row-bot"><span class="mny-row-state">${_mnyPill(st)}${recv(inv, st)}${says}${showClient ? `<span class="mny-due">${inv.dueDate ? 'Due ' + esc(_mnyShort(inv.dueDate, now)) : 'Due on receipt'}</span>` : ''}</span>
+            <span class="mny-row-act">${_mnyInvActions(inv, now)}</span></div></div>`;
+      }).join('');
+      return table + `<div class="row-list">${cards}</div>`;
+    }
+
+    // ── Event Money tab (P2 mounts this inside #tabInvoices) ───────────────────
+    function renderEventInvoices(event) {
+      const ev = _mnyEvent(event && event.id) || event || {};
+      const evInvoices = (getDB('invoices') || []).filter(i => i.eventId === ev.id && _mnyInvStatus(i, new Date()) !== 'void');
+      const list = evInvoices.length
+        ? _mnyInvList(evInvoices, { client: false, bodyId: 'eventInvoicesBody' })
+        : `<div class="empty">${_mnyIcon('receipt', 32)}<h3 class="empty-title">No invoices on this event yet</h3><p class="empty-text">Create the deposit invoice from the schedule above, or build a quote first.</p></div>`;
+      return `<div class="mny-tab">
+        ${_mnyOffBanner()}
+        ${_mnyReportCard(ev)}
+        ${renderPaymentSchedule(ev)}
+        <div class="card mny-card">
+          <div class="card-head"><h2 class="card-title">Invoices</h2>
+            <button type="button" class="btn btn-secondary btn-sm" onclick="openCreateInvoiceFromEvent('${esc(ev.id)}')">${_mnyIcon('plus', 16)}Create invoice</button></div>
+          ${list}
+        </div>
+        <div class="mny-tab-foot"><button type="button" class="btn btn-secondary" onclick="openQuoteBuilderModal('${esc(ev.id)}',{fromEvent:true})">${_mnyIcon('file-text', 16)}Build quote</button></div>
+      </div>`;
+    }
+
+    // ── Create invoice: the sheet's markup is built here (the page only carries an empty shell) ──
+    function _mnyEnsureInvoiceModal() {
+      const m = document.querySelector('#createInvoiceModal .modal');
+      if (!m || m.dataset.mny === '1') return;
+      m.dataset.mny = '1';
+      m.style.setProperty('--mw', '680px');
+      m.innerHTML = `
+        <button type="button" class="modal-close btn btn-ghost btn-icon" onclick="closeModal('createInvoiceModal')" aria-label="Close">${_mnyIcon('x', 20)}</button>
+        <div class="modal-title">New invoice</div>
+        <form id="createInvoiceForm" onsubmit="saveInvoice(event)">
+          <fieldset class="mny-chunk"><legend class="section-label">Who it is for</legend>
+            <div class="field"><label class="field-label" for="invClientPicker">Pick a client</label>
+              <select class="input" id="invClientPicker" onchange="autoFillInvoiceFromClient(this.value)"><option value="">Select an existing client</option></select></div>
+            <div class="mny-two">
+              <div class="field"><label class="field-label" for="invClientName">Client name</label><input type="text" class="input" id="invClientName" required autocomplete="off" placeholder="Or type a name"></div>
+              <div class="field"><label class="field-label" for="invClientEmail">Client email</label><input type="email" class="input" id="invClientEmail" inputmode="email" autocomplete="off" placeholder="Fills from the client"></div>
+            </div>
+            <div class="field"><label class="field-label" for="invEventId">Linked event</label>
+              <select class="input" id="invEventId" onchange="autoFillInvoiceFromEvent(this.value)"><option value="">No event linked</option></select></div>
+          </fieldset>
+          <fieldset class="mny-chunk"><legend class="section-label">Line items</legend>
+            <div id="invQuick" class="mny-quick" hidden></div>
+            <div id="invoiceLines" class="mny-lines"></div>
+            <button type="button" class="btn btn-secondary btn-sm" onclick="addInvoiceLine()">${_mnyIcon('plus', 16)}Add line</button>
+          </fieldset>
+          <fieldset class="mny-chunk"><legend class="section-label">Totals</legend>
+            <div class="field mny-tax"><label class="field-label" for="invTax">Tax percent</label><input type="number" class="input" id="invTax" value="0" min="0" max="30" step="0.5" inputmode="decimal" oninput="updateInvoiceTotal()"></div>
+            <div id="invBreakdown" class="mny-break" aria-live="polite"></div>
+          </fieldset>
+          <fieldset class="mny-chunk"><legend class="section-label">Due date and notes</legend>
+            <div class="field"><label class="field-label" for="invDueDate">Due date</label><input type="date" class="input" id="invDueDate"></div>
+            <div class="field"><label class="field-label" for="invNotes">Notes for the client</label><textarea class="input" id="invNotes" rows="2"></textarea></div>
+          </fieldset>
+          <div class="mny-foot modal-sticky-foot">
+            <div class="mny-foot-total"><span class="mny-flabel">Total</span><span id="invoicePreviewTotal" class="mny-foot-amt num">$0</span></div>
+            <div class="mny-foot-btns">
+              <button type="button" class="btn btn-secondary" id="invSendBtn" onclick="saveAndSendInvoice()">Save and send</button>
+              <button type="submit" class="btn btn-primary" id="invSaveBtn">Save</button>
+            </div>
+          </div>
+        </form>`;
+    }
+
+    function openCreateInvoiceModal() {
+      _mnyEnsureInvoiceModal();
+      const events  = getDB('events')  || [];
+      const clients = getDB('clients') || [];
+
+      // Populate event dropdown
+      const evSel = document.getElementById('invEventId');
+      evSel.innerHTML = '<option value="">No event linked</option>';
+      events.slice().sort((a,b) => new Date(b.date||0) - new Date(a.date||0))
+        .forEach(e => evSel.insertAdjacentHTML('beforeend', `<option value="${esc(e.id)}">${esc(e.name)} · ${esc(e.clientName)} (${esc(e.date || 'no date')})</option>`));
+
+      // Populate client picker
+      const cPicker = document.getElementById('invClientPicker');
+      cPicker.innerHTML = '<option value="">Select an existing client</option>';
+      clients.slice().sort((a,b) => (a.name||'').localeCompare(b.name||''))
+        .forEach(c => cPicker.insertAdjacentHTML('beforeend', `<option value="${esc(c.id)}">${esc(c.name)}${c.email ? ' · ' + esc(c.email) : ''}</option>`));
+
+      document.getElementById('createInvoiceForm').reset();
+      evSel.value    = '';
+      cPicker.value  = '';
+      invoiceLineCount = 0;
+      document.getElementById('invoiceLines').innerHTML = '';
+      const quick = document.getElementById('invQuick');
+      quick.hidden = true; quick.innerHTML = '';
+      addInvoiceLine();
+      addInvoiceLine();
+      updateInvoiceTotal();
+      openModal('createInvoiceModal');
+    }
+
+    // Presets for a linked event, straight from the payment schedule: deposit, balance, full amount.
+    function _mnyPresets(ev) {
+      const s = _mnySchedule(ev, getDB('invoices') || [], _mnyTerms(), new Date());
+      if (!s.ok) return { s, list: [] };
+      const list = [];
+      s.rows.forEach(r => {
+        if (r.paid) return;
+        if (r.key === 'deposit') list.push({ key: 'deposit', chip: 'Deposit ' + _mnyUSD(r.amountC), desc: 'Deposit (' + r.pct + '%)', amountC: r.amountC, due: _mnyISO(new Date()) });
+        else list.push({ key: 'balance', chip: 'Balance ' + _mnyUSD(r.amountC), desc: 'Balance', amountC: r.amountC, due: r.due ? _mnyISO(r.due) : '' });
+      });
+      if (s.remainingC > 0 && s.rows.length > 1 && s.paidC === 0) list.push({ key: 'full', chip: 'Full ' + _mnyUSD(s.remainingC), desc: 'Event services (full amount)', amountC: s.remainingC, due: '' });
+      return { s, list };
+    }
+    function _mnyApplyPreset(eventId, key) {
+      const ev = _mnyEvent(eventId);
+      if (!ev) return;
+      const p = _mnyPresets(ev).list.find(x => x.key === key);
+      if (!p) return;
+      document.getElementById('invoiceLines').innerHTML = '';
+      invoiceLineCount = 0;
+      addInvoiceLine(p.desc, p.amountC / 100);
+      if (p.due) document.getElementById('invDueDate').value = p.due;
+      updateInvoiceTotal();
+      _mnyRenderQuick(eventId, key);
+    }
+    function _mnyRenderQuick(eventId, activeKey) {
+      const host = document.getElementById('invQuick');
+      if (!host) return;
+      const ev = eventId ? _mnyEvent(eventId) : null;
+      const list = ev ? _mnyPresets(ev).list : [];
+      host.hidden = !list.length;
+      host.innerHTML = list.length ? '<span class="mny-quick-label">From the schedule</span>' + list.map(p =>
+        `<button type="button" class="chip${p.key === activeKey ? ' is-selected' : ''}" onclick="_mnyApplyPreset('${esc(eventId)}','${p.key}')">${esc(p.chip)}</button>`).join('') : '';
+    }
+
+    // prefill (all optional): { deposit: true } or { balance: true } picks that schedule row; { amount, label } sets one line by hand.
+    // One-argument calls fill the next unpaid row of the schedule.
+    function openCreateInvoiceFromEvent(eventId, prefill) {
+      const ev = _mnyEvent(eventId);
       openCreateInvoiceModal();
       if (!ev) return;
+      const p = prefill || {};
       document.getElementById('invEventId').value    = eventId;
       document.getElementById('invClientName').value = ev.clientName  || '';
       document.getElementById('invClientEmail').value= ev.clientEmail || '';
-      // Pre-fill from base price if nothing typed yet
+      const match = (getDB('clients') || []).find(c => (c.email || '').toLowerCase() === (ev.clientEmail || '').toLowerCase() && c.email);
+      if (match) document.getElementById('invClientPicker').value = match.id;
+      const pre = _mnyPresets(ev);
+      let key = p.deposit ? 'deposit' : p.balance ? 'balance' : null;
+      if (typeof p.amount === 'number' && p.amount > 0) {
+        document.getElementById('invoiceLines').innerHTML = '';
+        invoiceLineCount = 0;
+        addInvoiceLine(p.label || (key === 'balance' ? 'Balance' : key === 'deposit' ? 'Deposit' : 'Event services'), p.amount);
+        const hit = pre.list.find(x => x.key === key);
+        if (hit && hit.due) document.getElementById('invDueDate').value = hit.due;
+        updateInvoiceTotal();
+        _mnyRenderQuick(eventId, key);
+        return;
+      }
+      if (!key && pre.list.length) key = pre.list[0].key;
+      if (key && pre.list.some(x => x.key === key)) { _mnyApplyPreset(eventId, key); return; }
       if (ev.basePrice && ev.basePrice > 0) {
         document.getElementById('invoiceLines').innerHTML = '';
         invoiceLineCount = 0;
-        addInvoiceLine('Event Services — ' + (ev.name || 'Event'), ev.basePrice);
-        if (ev.depositAmount && ev.depositAmount > 0 && !ev.depositPaid) {
-          addInvoiceLine('Deposit applied', -ev.depositAmount);
-        }
+        addInvoiceLine('Event services for ' + (ev.name || 'the event'), ev.basePrice);
         updateInvoiceTotal();
       }
+      _mnyRenderQuick(eventId, null);
     }
 
     function autoFillInvoiceFromEvent(eventId) {
+      _mnyRenderQuick(eventId || '', null);
       if (!eventId) return;
-      const ev = (getDB('events') || []).find(e => e.id === eventId);
+      const ev = _mnyEvent(eventId);
       if (!ev) return;
       if (ev.clientName)  document.getElementById('invClientName').value  = ev.clientName;
       if (ev.clientEmail) document.getElementById('invClientEmail').value = ev.clientEmail;
@@ -93,6 +573,376 @@
       document.getElementById('invClientEmail').value = client.email || '';
     }
 
+    let invoiceLineCount = 0;
+    function addInvoiceLine(desc='', amount='', qty) {
+      invoiceLineCount++;
+      const n = invoiceLineCount;
+      const div = document.createElement('div');
+      div.className = 'mny-line form-section';
+      div.id = 'invLine' + n;
+      div.innerHTML = `<div class="mny-l-desc"><input type="text" class="input" aria-label="Description" placeholder="Description" value="${esc(desc)}" oninput="updateInvoiceTotal()"></div>
+        <div class="mny-l-nums">
+          <div class="mny-qty"><button type="button" class="btn btn-secondary btn-icon btn-sm" aria-label="One fewer" onclick="_mnyQty(this,-1)">${_mnyIcon('minus', 16)}</button><input type="number" class="input" aria-label="Quantity" inputmode="numeric" min="1" step="1" value="${esc(String(qty || 1))}" oninput="updateInvoiceTotal()"><button type="button" class="btn btn-secondary btn-icon btn-sm" aria-label="One more" onclick="_mnyQty(this,1)">${_mnyIcon('plus', 16)}</button></div>
+          <div class="input-wrap input-money mny-l-unit"><span class="input-prefix" aria-hidden="true">$</span><input type="number" class="input" aria-label="Unit price" placeholder="0.00" inputmode="decimal" step="0.01" value="${esc(String(amount))}" oninput="updateInvoiceTotal()"></div>
+          <div class="mny-l-total num" data-line-total>$0</div>
+          <button type="button" class="btn btn-ghost btn-icon btn-sm" aria-label="Remove line" onclick="this.closest('.mny-line').remove();updateInvoiceTotal()">${_mnyIcon('x', 16)}</button>
+        </div>`;
+      document.getElementById('invoiceLines').appendChild(div);
+    }
+    function _mnyQty(btn, d) {
+      const inp = btn.parentElement.querySelector('input');
+      const v = Math.max(1, (parseInt(inp.value, 10) || 1) + d);
+      inp.value = String(v);
+      updateInvoiceTotal();
+    }
+    // Reads the sheet. Each line is qty x unit price in cents; tax is on the subtotal. Rows with nothing in them are ignored.
+    function _mnyReadInvoice() {
+      const lines = [];
+      let subC = 0;
+      document.querySelectorAll('#invoiceLines .mny-line').forEach(r => {
+        const inputs = r.querySelectorAll('input');
+        const desc = (inputs[0].value || '').trim();
+        const qtyRaw = parseFloat(inputs[1].value);
+        const qty = isFinite(qtyRaw) && qtyRaw > 0 ? qtyRaw : 1;
+        const unit = parseFloat(inputs[2].value) || 0;
+        const amountC = Math.round(qty * unit * 100);
+        const tot = r.querySelector('[data-line-total]');
+        if (tot) tot.textContent = _mnyUSD(amountC);
+        if (!desc && !amountC) return;
+        lines.push({ desc: desc || 'Item', qty, unit, amountC });
+        subC += amountC;
+      });
+      const tax = parseFloat((document.getElementById('invTax') || {}).value) || 0;
+      const taxC = Math.round(subC * tax / 100);
+      return { lines, subC, taxC, totalC: subC + taxC, tax };
+    }
+    function updateInvoiceTotal() {
+      const r = _mnyReadInvoice();
+      const tot = document.getElementById('invoicePreviewTotal');
+      if (tot) tot.textContent = _mnyUSD(r.totalC);
+      const br = document.getElementById('invBreakdown');
+      if (br) br.innerHTML = `<div><span>Subtotal</span><span class="num">${_mnyUSD(r.subC)}</span></div>${r.tax ? `<div><span>Tax (${esc(String(r.tax))}%)</span><span class="num">${_mnyUSD(r.taxC)}</span></div>` : ''}<div class="is-total"><span>Total</span><span class="num">${_mnyUSD(r.totalC)}</span></div>`;
+      const em = document.getElementById('invClientEmail');
+      const sb = document.getElementById('invSendBtn');
+      if (sb) sb.title = em && em.value ? 'Sends to ' + em.value : 'Add a client email to send it';
+    }
+
+    // Stores one invoice. data: { clientName, clientEmail, eventId, lines: [{desc, qty, unit, amountC}], tax, dueDate, notes }.
+    function _mnyStoreInvoice(data) {
+      const linked = _mnyEvent(data.eventId);
+      const invoices = getDB('invoices') || [];
+      const maxNum = invoices.reduce((m, i) => Math.max(m, parseInt(String(i.invoiceNum || '').replace(/\D/g, ''), 10) || 0), 0);
+      const subC = data.lines.reduce((s, l) => s + l.amountC, 0);
+      const taxC = Math.round(subC * (data.tax || 0) / 100);
+      const inv = {
+        id: genId(),
+        invoiceNum: 'INV-' + String(maxNum + 1).padStart(4, '0'),
+        clientName: data.clientName,
+        clientEmail: data.clientEmail,
+        eventId: data.eventId || '', eventName: linked ? (linked.name || '') : '',
+        lines: data.lines.map(l => ({ desc: l.qty > 1 ? l.desc + ' (x' + l.qty + ')' : l.desc, amount: l.amountC / 100 })),
+        subtotal: subC / 100, taxPct: data.tax || 0, total: (subC + taxC) / 100,
+        dueDate: data.dueDate || '',
+        notes: data.notes || '',
+        status: 'unpaid',
+        createdAt: Date.now()
+      };
+      invoices.push(inv);
+      setDB('invoices', invoices);
+      return inv;
+    }
+
+    // Builds and stores the invoice from the sheet. Returns it, or null (with a toast) when the sheet is not ready.
+    function _mnyCreateFromForm() {
+      const form = document.getElementById('createInvoiceForm');
+      if (!form) return null;
+      if (!form.checkValidity()) { form.reportValidity(); return null; }
+      const r = _mnyReadInvoice();
+      if (!r.lines.length || r.totalC <= 0) { showToast('Add a price to at least one line.', 'warning'); return null; }
+      const inv = _mnyStoreInvoice({
+        clientName: document.getElementById('invClientName').value.trim(),
+        clientEmail: document.getElementById('invClientEmail').value.trim(),
+        eventId: document.getElementById('invEventId').value,
+        lines: r.lines, tax: r.tax,
+        dueDate: document.getElementById('invDueDate').value,
+        notes: document.getElementById('invNotes').value
+      });
+      closeModal('createInvoiceModal');
+      _mnyRefreshViews();
+      return inv;
+    }
+
+    // Headless version for other lanes (no sheet opens): createInvoiceFromEvent(eventId, { deposit|balance, amount, label }, { send }) -> Promise<invoice|null>.
+    async function createInvoiceFromEvent(eventId, prefill, opts) {
+      const ev = _mnyEvent(eventId);
+      if (!ev) return null;
+      const p = prefill || {};
+      const pre = _mnyPresets(ev);
+      let key = p.deposit ? 'deposit' : p.balance ? 'balance' : (pre.list[0] && pre.list[0].key) || null;
+      const hit = pre.list.find(x => x.key === key);
+      let amountC = typeof p.amount === 'number' && p.amount > 0 ? _mnyCents(p.amount) : hit ? hit.amountC : _mnyCents(ev.basePrice);
+      if (amountC <= 0) { showToast('This event has no price yet. Add one first.', 'warning'); return null; }
+      const desc = p.label || (hit ? hit.desc : 'Event services for ' + (ev.name || 'the event'));
+      const inv = _mnyStoreInvoice({ clientName: ev.clientName || '', clientEmail: ev.clientEmail || '', eventId, lines: [{ desc, qty: 1, unit: amountC / 100, amountC }], tax: 0, dueDate: hit ? hit.due : '', notes: '' });
+      _mnyRefreshViews();
+      if (opts && opts.send && inv.clientEmail) await sendInvoice(inv.id);
+      return inv;
+    }
+
+    function saveInvoice(e) {
+      if (e && e.preventDefault) e.preventDefault();
+      const inv = _mnyCreateFromForm();
+      if (!inv) return null;
+      showUndoToast('Invoice ' + _mnyNum(inv) + ' saved.', function () {
+        setDB('invoices', (getDB('invoices') || []).filter(i => i.id !== inv.id));
+        _mnyRefreshViews();
+        showToast('Invoice ' + _mnyNum(inv) + ' removed.', 'info');
+      });
+      return inv;
+    }
+
+    function saveAndExportInvoice() {
+      const inv = _mnyCreateFromForm();
+      if (!inv) return;
+      showToast('Invoice ' + _mnyNum(inv) + ' saved.', 'success');
+      exportInvoicePDF(inv.id);
+    }
+
+    async function saveAndSendInvoice() {
+      const btn = document.getElementById('invSendBtn');
+      const form = document.getElementById('createInvoiceForm');
+      if (!form) return;
+      if (!form.checkValidity()) { form.reportValidity(); return; }
+      _mnyMarkBusy(btn, true);
+      const inv = _mnyCreateFromForm();
+      _mnyMarkBusy(btn, false);
+      if (!inv) return;
+      if (inv.clientEmail) await sendInvoice(inv.id);
+      else showToast('Invoice saved. Add a client email to send it.', 'info');
+    }
+
+    async function sendInvoice(invId, opts) {
+      opts = opts || {};
+      const invoices = getDB('invoices') || [];
+      const inv = invoices.find(i => i.id === invId);
+      if (!inv) return;
+      if (!inv.clientEmail) {
+        showToast('No client email on this invoice. Add one on the client record first.', 'warning');
+        return;
+      }
+
+      const lineText = (inv.lines || []).map(l => `  ${l.desc}: $${(l.amount||0).toFixed(2)}`).join('\n');
+      const d = _mnyDate(inv.dueDate);
+      const dueStr   = d ? _mnyLong(d) : 'Upon receipt';
+      const firstName = (inv.clientName || 'there').split(' ')[0];
+      const body = `Hey ${firstName},\n\n${opts.reminder ? 'A quick reminder about your invoice from Baseline Studio.' : 'Your invoice from Baseline Studio is ready.'}\n\nInvoice #: ${inv.invoiceNum}${inv.eventName ? '\nEvent: ' + inv.eventName : ''}\n\n${lineText}\n\nTotal Due: $${(inv.total||0).toFixed(2)}\nDue: ${dueStr}${inv.notes ? '\n\n' + inv.notes : ''}\n\nYou can view your event portal here:\nhttps://www.baselinestudiofl.com/portal-client.html\n\nReach out if you have any questions.\n\nSaul, Baseline Studio\n(786) 302-6056`;
+
+      const result = await BSPortal.sendEmail('invoice', {
+        email: inv.clientEmail,
+        clientName: inv.clientName || 'there',
+        invoiceNum: inv.invoiceNum,
+        eventName: inv.eventName || '',
+        lines: inv.lines || [],
+        subtotal: inv.subtotal || inv.total || 0,
+        taxPct: inv.taxPct || 0,
+        total: inv.total || 0,
+        dueDate: dueStr,
+        notes: inv.notes || ''
+      });
+
+      if (result.ok) {
+        showToast((opts.reminder ? 'Reminder sent to ' : 'Invoice sent to ') + inv.clientEmail + '.', 'success');
+        // Mark as sent
+        inv.sentAt = Date.now();
+        if (opts.reminder) inv.remindedAt = Date.now();
+        setDB('invoices', invoices);
+        _mnyRefreshViews();
+      } else {
+        showEmailFallback(inv.clientEmail, `Invoice ${inv.invoiceNum} - Baseline Studio`, body,
+          'Email is not available right now. Send it yourself:');
+      }
+    }
+
+    // List and schedule buttons come here: a send always asks first, because an email goes to the client.
+    async function sendInvoiceConfirm(id, opts) {
+      opts = opts || {};
+      const inv = (getDB('invoices') || []).find(i => i.id === id);
+      if (!inv) return;
+      if (!inv.clientEmail) { showToast('No client email on this invoice. Add one on the client record first.', 'warning'); return; }
+      const due = _mnyDate(inv.dueDate);
+      const ok = await _mnyConfirm({
+        title: (opts.reminder ? 'Send a reminder to ' : 'Send this invoice to ') + inv.clientEmail + '?',
+        body: 'Invoice ' + _mnyNum(inv) + ' for ' + _mnyUSD(_mnyCents(inv.total)) + (due ? ', due ' + _mnyShort(due) : '') + '. It goes out now.',
+        confirmLabel: opts.reminder ? 'Send reminder' : 'Send invoice'
+      });
+      if (ok) await sendInvoice(id, opts);
+    }
+
+    // Records money received on an invoice. amount in dollars; 0 or missing means "whatever is still owed".
+    // opts: { method, date, note, fromReport, toast (default false), refresh (default true) }.
+    // The payment is appended to inv.payments and a transaction is logged. The invoice becomes paid only when payments reach the total;
+    // until then its status is 'partial'. Deposit/balance flags on the event follow only a full payment. A "client says paid" report on the
+    // same invoice is marked confirmed either way.
+    // Returns { ok, invoice, payment, status, paidC, remainingC, snapshot, undo() } or { ok: false, reason }.
+    // undo() puts the invoice, the event flags, the report and the transaction list back exactly as they were.
+    function recordInvoicePayment(invoiceId, amount, opts) {
+      opts = opts || {};
+      const invoices = getDB('invoices') || [];
+      const inv = invoices.find(i => i.id === invoiceId);
+      if (!inv) return { ok: false, reason: 'not found' };
+      const totalC = _mnyCents(inv.total);
+      const paidBeforeC = _mnyInvPaidC(inv);
+      if (String(inv.status || '').toLowerCase() === 'paid' && paidBeforeC >= totalC) return { ok: false, reason: 'already paid' };
+      let amtC = _mnyCents(amount);
+      if (!(amtC > 0)) amtC = Math.max(0, totalC - paidBeforeC);
+      if (!(amtC > 0)) return { ok: false, reason: 'nothing owed' };
+      const when = (opts.date && _mnyDate(opts.date)) ? _mnyDate(opts.date).getTime() : Date.now();
+      const snapshot = { invoiceId, status: inv.status, hadPaidAt: 'paidAt' in inv, paidAt: inv.paidAt, hadPayments: Array.isArray(inv.payments),
+        payments: Array.isArray(inv.payments) ? inv.payments.slice() : undefined, txId: null, flag: null, flagPrev: undefined, confirmed: false };
+      const method = opts.method || (opts.fromReport ? 'Zelle' : '');
+      const payment = { id: genId(), amount: amtC / 100, method: method || 'Manual', date: when, note: opts.note || '' };
+      inv.payments = (Array.isArray(inv.payments) ? inv.payments : []).concat([payment]);
+      const newPaidC = paidBeforeC + amtC;
+      const full = newPaidC >= totalC;
+      inv.status = full ? 'paid' : 'partial';
+      if (full) inv.paidAt = when;
+      setDB('invoices', invoices);
+      const transactions = getDB('transactions') || [];
+      const tx = { id: genId(), invoiceId: inv.id, invoiceNum: inv.invoiceNum, clientName: inv.clientName, amount: amtC / 100, type: 'Invoice Payment', note: inv.invoiceNum, date: when };
+      if (method) tx.method = method;
+      transactions.push(tx);
+      setDB('transactions', transactions);
+      snapshot.txId = tx.id;
+      const events = getDB('events') || [];
+      const ev = events.find(e => e && e.id === inv.eventId);
+      if (ev) {
+        let touched = false;
+        const kind = _mnyKind(inv);
+        const flag = kind === 'deposit' ? 'depositPaid' : kind === 'balance' ? 'balancePaid' : null;
+        if (full && flag && ev[flag] !== true) { snapshot.flag = flag; snapshot.flagPrev = ev[flag]; ev[flag] = true; touched = true; }
+        const pr = _mnyReport(ev);
+        if (pr && (!pr.invoice || String(pr.invoice) === String(inv.invoiceNum || '') || String(pr.invoice) === String(inv.id))) { pr.confirmedAt = new Date().toISOString(); snapshot.confirmed = true; touched = true; }
+        if (touched) setDB('events', events);
+      }
+      window._mnyUndo = window._mnyUndo || {};
+      window._mnyUndo[invoiceId] = snapshot;
+      if (opts.refresh !== false) _mnyRefreshViews();
+      const res = { ok: true, invoice: inv, payment, status: inv.status, paidC: newPaidC, remainingC: Math.max(0, totalC - newPaidC), snapshot, undo: () => _undoRecordPayment(snapshot) };
+      if (opts.toast) {
+        const who = inv.clientName || 'invoice';
+        showUndoToast(full ? 'Marked paid: ' + who + ', ' + _mnyUSD(amtC) + '.' : 'Recorded ' + _mnyUSD(amtC) + ' from ' + who + '. ' + _mnyUSD(res.remainingC) + ' still due.', res.undo);
+      }
+      return res;
+    }
+    function _undoRecordPayment(snapshot) {
+      if (!snapshot) return;
+      const id = snapshot.invoiceId;
+      if (window._mnyUndo && window._mnyUndo[id] === snapshot) delete window._mnyUndo[id];
+      const invoices = getDB('invoices') || [];
+      const inv = invoices.find(i => i.id === id);
+      if (!inv) return;
+      inv.status = snapshot.status || 'unpaid';
+      if (snapshot.hadPaidAt) inv.paidAt = snapshot.paidAt; else delete inv.paidAt;
+      if (snapshot.hadPayments) inv.payments = snapshot.payments; else delete inv.payments;
+      setDB('invoices', invoices);
+      setDB('transactions', (getDB('transactions') || []).filter(t => t.id !== snapshot.txId));
+      const events = getDB('events') || [];
+      const ev = events.find(e => e && e.id === inv.eventId);
+      if (ev) {
+        if (snapshot.flag) ev[snapshot.flag] = snapshot.flagPrev === undefined ? false : snapshot.flagPrev;
+        const pr = ev.clientNotes && ev.clientNotes.paymentReported;
+        if (snapshot.confirmed && pr) delete pr.confirmedAt;
+        setDB('events', events);
+      }
+      _mnyRefreshViews();
+      showToast('Back to what it was.', 'info');
+    }
+
+    // Optimistic: it is paid the moment you tap (the rest of what is owed), and the toast offers Undo.
+    function markInvoicePaid(id, opts) {
+      recordInvoicePayment(id, 0, Object.assign({}, opts || {}, { toast: true }));
+    }
+    function _undoMarkPaid(id) {
+      const prev = (window._mnyUndo || {})[id];
+      if (!prev) { markInvoiceUnpaid(id); return; }
+      _undoRecordPayment(prev);
+    }
+    // The long way back, for a mistake noticed after the Undo toast is gone.
+    function markInvoiceUnpaid(id) {
+      const invoices = getDB('invoices') || [];
+      const inv = invoices.find(i => i.id === id);
+      if (!inv) return;
+      inv.status = 'unpaid';
+      delete inv.paidAt;
+      delete inv.payments;
+      setDB('invoices', invoices);
+      setDB('transactions', (getDB('transactions') || []).filter(t => !(t.invoiceId === id || (t.type === 'Invoice Payment' && t.note && t.note === inv.invoiceNum))));
+      const events = getDB('events') || [];
+      const ev = events.find(e => e && e.id === inv.eventId);
+      const kind = _mnyKind(inv);
+      if (ev && (kind === 'deposit' || kind === 'balance') && !invoices.some(i => i.id !== id && i.eventId === inv.eventId && _mnyKind(i) === kind && _mnyInvStatus(i, new Date()) === 'paid')) {
+        ev[kind === 'deposit' ? 'depositPaid' : 'balancePaid'] = false;
+        setDB('events', events);
+      }
+      _mnyRefreshViews();
+      showToast('Marked unpaid.', 'info');
+    }
+
+    function deleteInvoice(id) {
+      const invoices = getDB('invoices') || [];
+      const idx = invoices.findIndex(i => i.id === id);
+      if (idx < 0) return;
+      const inv = invoices[idx];
+      setDB('invoices', invoices.filter(i => i.id !== id));
+      _mnyRefreshViews();
+      showUndoToast('Invoice ' + _mnyNum(inv) + ' deleted.', function () {
+        const cur = getDB('invoices') || [];
+        cur.splice(Math.min(idx, cur.length), 0, inv);
+        setDB('invoices', cur);
+        _mnyRefreshViews();
+      });
+    }
+
+    // ── Print popups (paper: white page, near-black text, #0b5f87 accents, #595959 meta) ──
+    function _mnyPaperCss() {
+      return 'html,body{background:#fff;color:#111}body{font-family:Arial,Helvetica,sans-serif;margin:40px;font-size:14px;line-height:1.5}'
+        + 'h1,h2,h3{color:#111;margin:0 0 4px}h1{font-size:26px;letter-spacing:.02em}.acc{color:#0b5f87}.meta{color:#595959}'
+        + '.head{display:flex;justify-content:space-between;gap:24px;margin-bottom:28px}.r{text-align:right}'
+        + 'table{width:100%;border-collapse:collapse}th{background:#f3f3f3;color:#111;padding:8px;text-align:left;font-size:12px}td{padding:8px;border-bottom:1px solid #ddd;color:#111}'
+        + '.tot{margin-top:16px;text-align:right}.tot .big{font-size:22px;font-weight:bold;color:#0b5f87}'
+        + '.stamp{display:inline-block;border:2px solid #0b5f87;color:#0b5f87;font-weight:bold;padding:2px 10px;letter-spacing:.08em}'
+        + '.box{margin-top:20px;padding:12px;background:#f7f7f7;border-radius:4px;color:#111}'
+        + '@media print{body{margin:14mm}}';
+    }
+    function _mnyPaper(title, body) {
+      return `<!DOCTYPE html><html><head><meta charset="utf-8"><title>${esc(title)}</title><style>${_mnyPaperCss()}</style></head><body>${body}</body></html>`;
+    }
+    function exportInvoicePDF(id) {
+      const invoices = getDB('invoices') || [];
+      const inv = invoices.find(i => i.id === id);
+      if (!inv) return;
+      const paid = String(inv.status || '').toLowerCase() === 'paid';
+      const lines = (inv.lines||[]).map(l => `<tr><td>${esc(l.desc)}</td><td class="r">${_mnyUSD(_mnyCents(l.amount))}</td></tr>`).join('');
+      const due = _mnyDate(inv.dueDate);
+      const w = window.open('', '_blank');
+      if (!w) { showToast('Allow pop-ups to open the PDF.', 'warning'); return; }
+      w.document.write(_mnyPaper(inv.invoiceNum || 'Invoice', `
+        <div class="head">
+          <div><h1>${paid ? 'RECEIPT' : 'INVOICE'}</h1><div class="meta">${esc(inv.invoiceNum)}</div>${inv.eventName ? `<div class="meta">${esc(inv.eventName)}</div>` : ''}</div>
+          <div class="r"><strong>Baseline Studio</strong><br>(786) 302-6056<br>Hello@baselinestudiofl.com</div>
+        </div>
+        <div class="head">
+          <div><strong>Bill to</strong><br>${esc(inv.clientName)}<br><span class="meta">${esc(inv.clientEmail || '')}</span></div>
+          <div class="r"><strong>Date</strong> ${esc(_mnyLong(inv.createdAt))}<br><strong>Due</strong> ${due ? esc(_mnyLong(due)) : 'Upon receipt'}${paid ? `<br><span class="stamp">PAID${inv.paidAt ? ' ' + esc(_mnyShort(inv.paidAt)) : ''}</span>` : ''}</div>
+        </div>
+        <table><thead><tr><th>Description</th><th class="r">Amount</th></tr></thead><tbody>${lines}</tbody></table>
+        <div class="tot"><div>Subtotal ${_mnyUSD(_mnyCents(inv.subtotal))}</div>${inv.taxPct ? `<div>Tax (${esc(inv.taxPct)}%) ${_mnyUSD(_mnyCents(inv.total) - _mnyCents(inv.subtotal))}</div>` : ''}<div class="big">${paid ? 'Paid' : 'Total due'} ${_mnyUSD(_mnyCents(inv.total))}</div></div>
+        ${paid ? '' : `<div class="box"><strong>How to pay.</strong> Send ${_mnyUSD(_mnyCents(inv.total))} by Zelle to ${esc(_mnyZelle())}. Put ${esc(inv.invoiceNum)} in the memo.</div>`}
+        ${inv.notes ? `<div class="box"><strong>Notes.</strong> ${esc(inv.notes)}</div>` : ''}`));
+      w.document.close();
+      w.print();
+    }
+
     function toggleDepositPaid(eventId, paid) {
       const events = getDB('events');
       const ev = events.find(e => e.id === eventId);
@@ -101,23 +951,27 @@
       // Auto-advance to confirmed when deposit is received and event is still in booked stage
       if (paid && ev.status === 'booked') {
         ev.status = 'confirmed';
-        showToast('Deposit received — stage advanced to Confirmed.', 'success');
+        showToast('Deposit received. Stage moved to Confirmed.', 'success');
       }
       setDB('events', events);
       if (paid) {
-        // Non-blocking toast with inline "Send Portal Invite" action
+        // Non-blocking card with an inline "Send invite" action
+        const old = document.getElementById('depositInviteCard');
+        if (old) old.remove();
         const toast = document.createElement('div');
-        toast.style.cssText = 'position:fixed;bottom:24px;right:24px;background:#111118;border:1px solid rgba(46,204,113,0.4);color:#fff;padding:14px 18px;border-radius:10px;font-size:13px;z-index:9999;box-shadow:0 8px 32px rgba(0,0,0,0.5);max-width:320px;';
-        toast.innerHTML = `<div style="font-weight:600;color:#2ecc71;margin-bottom:6px;">✓ Deposit received</div>
-          <div style="color:rgba(255,255,255,0.6);font-size:12px;margin-bottom:10px;">Send the client their portal access?</div>
-          <div style="display:flex;gap:8px;">
-            <button onclick="sendPortalInvite('${eventId}');this.closest('div[style]').remove()" style="flex:1;padding:7px;background:#2ecc71;border:none;border-radius:6px;color:#000;font-weight:700;cursor:pointer;font-size:12px;">Send Invite</button>
-            <button onclick="this.closest('div[style]').remove()" style="padding:7px 12px;background:rgba(255,255,255,0.06);border:1px solid var(--border-ui);border-radius:6px;color:rgba(255,255,255,0.5);cursor:pointer;font-size:12px;">Later</button>
+        toast.id = 'depositInviteCard';
+        toast.className = 'mny-invite';
+        toast.setAttribute('role', 'status');
+        toast.innerHTML = `<div class="mny-invite-title">${_mnyIcon('circle-check', 18)}Deposit received</div>
+          <div class="mny-invite-sub">Send the client their portal access?</div>
+          <div class="mny-invite-btns">
+            <button type="button" class="btn btn-secondary" onclick="sendPortalInvite('${esc(eventId)}');this.closest('.mny-invite').remove()">Send invite</button>
+            <button type="button" class="btn btn-ghost" onclick="this.closest('.mny-invite').remove()">Later</button>
           </div>`;
         document.body.appendChild(toast);
         setTimeout(() => toast.remove(), 8000);
       }
-      renderEvents();
+      if (typeof renderEvents === 'function') renderEvents();
     }
 
     function toggleBalancePaid(eventId, paid) {
@@ -126,8 +980,8 @@
       if (!ev) return;
       ev.balancePaid = paid;
       setDB('events', events);
-      showToast(paid ? 'Balance marked as paid — fully collected!' : 'Balance marked unpaid', paid ? 'success' : 'info');
-      renderEvents();
+      showToast(paid ? 'Balance marked paid. Fully collected.' : 'Balance marked unpaid.', paid ? 'success' : 'info');
+      if (typeof renderEvents === 'function') renderEvents();
     }
 
     // ── Reports money (P0.8): Billed and Collected come from invoices and logged payments ──
@@ -212,392 +1066,292 @@
       document.getElementById('statusChart').innerHTML = statusHtml + '</ul>';
     }
 
-    // 
-    //  INVOICES & TRANSACTIONS
-    // 
+    //
+    //  INVOICES PAGE (Money): Invoices, Payments, Quotes
+    //
+    // The page owns #invoices: the shell is written once, then each render fills the parts so the search box keeps focus while you type.
+    function _mnyShell() {
+      const sec = document.getElementById('invoices');
+      if (!sec) return null;
+      if (sec.querySelector('#moneyShell')) return sec;
+      window._mnyState = window._mnyState || { tab: 'invoices', status: 'all' };
+      sec.innerHTML = `<div class="mny" id="moneyShell">
+        <div class="tabs" role="tablist" aria-label="Money" id="moneyTabs">
+          <button type="button" class="tab-btn active" role="tab" aria-selected="true" data-mtab="invoices" onclick="switchMoneyTab('invoices')">Invoices</button>
+          <button type="button" class="tab-btn" role="tab" aria-selected="false" data-mtab="payments" onclick="switchMoneyTab('payments')">Payments</button>
+          <button type="button" class="tab-btn" role="tab" aria-selected="false" data-mtab="quotes" onclick="switchMoneyTab('quotes')">Quotes</button>
+        </div>
+        <div id="moneyReports"></div>
+        <div id="moneyPanelInvoices" role="tabpanel">
+          <div class="mny-stats" id="invoiceTotals"></div>
+          <div class="mny-toolbar">
+            <div class="mny-seg-wrap"><div class="seg" id="invoiceSeg" role="group" aria-label="Filter by status"></div></div>
+            <div class="input-wrap input-search mny-search">${_mnyIcon('search', 16)}<input type="search" class="input" id="invoiceSearch" placeholder="Search invoices" aria-label="Search invoices" autocomplete="off" oninput="renderInvoices()"></div>
+          </div>
+          <div id="invoicesListMount"></div>
+        </div>
+        <div id="moneyPanelPayments" role="tabpanel" hidden></div>
+        <div id="moneyPanelQuotes" role="tabpanel" hidden></div>
+      </div>`;
+      return sec;
+    }
+    function switchMoneyTab(tab) {
+      window._mnyState = window._mnyState || { tab: 'invoices', status: 'all' };
+      window._mnyState.tab = tab;
+      renderInvoices();
+    }
+    function setInvoiceFilter(status) {
+      window._mnyState = window._mnyState || { tab: 'invoices', status: 'all' };
+      window._mnyState.status = status;
+      renderInvoices();
+    }
+    function _mnySearchText() {
+      const raw = (document.getElementById('invoiceSearch') || {}).value || '';
+      if (typeof CRMUI !== 'undefined' && CRMUI.norm && CRMUI.norm.fold) return CRMUI.norm.fold(raw);
+      return raw.toLowerCase();
+    }
+    function _mnyFold(s) {
+      return (typeof CRMUI !== 'undefined' && CRMUI.norm && CRMUI.norm.fold) ? CRMUI.norm.fold(String(s || '')) : String(s || '').toLowerCase();
+    }
+
     function renderInvoices() {
       if (!getDB('invoices') || getDB('invoices').length === 0) setDB('invoices', []);
       if (!getDB('transactions') || getDB('transactions').length === 0) setDB('transactions', []);
-      const invoices = getDB('invoices');
-      const transactions = getDB('transactions');
-      const search = (document.getElementById('invoiceSearch')?.value || '').toLowerCase();
+      const sec = _mnyShell();
+      if (!sec) return;
+      const st = window._mnyState = window._mnyState || { tab: 'invoices', status: 'all' };
+      const now = new Date();
+      const all = getDB('invoices').filter(i => _mnyInvStatus(i, now) !== 'void');
 
-      // Totals
-      const total = invoices.reduce((s, i) => s + (i.total || 0), 0);
-      const paid = invoices.filter(i => i.status === 'paid').reduce((s, i) => s + (i.total || 0), 0);
-      const outstanding = invoices.filter(i => i.status !== 'paid').reduce((s, i) => s + (i.total || 0), 0);
-      const overdue = invoices.filter(i => i.status !== 'paid' && i.dueDate && new Date(i.dueDate) < new Date()).reduce((s, i) => s + (i.total || 0), 0);
-
-      document.getElementById('invoiceTotals').innerHTML = `
-        <div class="invoice-total-card"><div class="invoice-total-label">Total Invoiced</div><div class="invoice-total-value">\$${total.toLocaleString()}</div></div>
-        <div class="invoice-total-card"><div class="invoice-total-label">Collected</div><div class="invoice-total-value green">\$${paid.toLocaleString()}</div></div>
-        <div class="invoice-total-card"><div class="invoice-total-label">Outstanding</div><div class="invoice-total-value yellow">\$${outstanding.toLocaleString()}</div></div>
-        <div class="invoice-total-card"><div class="invoice-total-label">Overdue</div><div class="invoice-total-value red">\$${overdue.toLocaleString()}</div></div>
-      `;
-
-      // Invoices table
-      const filtered = invoices.filter(i => !search || i.clientName.toLowerCase().includes(search) || (i.invoiceNum||'').toLowerCase().includes(search));
-      let rows = '';
-      if (!filtered.length) {
-        rows = '<tr><td colspan="7" class="empty-state">No invoices yet</td></tr>';
-      } else {
-        filtered.sort((a,b) => (b.createdAt||0)-(a.createdAt||0)).forEach(inv => {
-          const due = inv.dueDate ? new Date(inv.dueDate).toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'}) : '—';
-          const isOverdue = inv.status !== 'paid' && inv.dueDate && new Date(inv.dueDate) < new Date();
-          const statusColor = inv.status === 'paid' ? 'var(--success)' : isOverdue ? 'var(--danger)' : 'var(--warning)';
-          rows += `<tr>
-            <td style="font-family:monospace;">${inv.invoiceNum||'INV-???'}</td>
-            <td>${inv.clientName}</td>
-            <td>${inv.eventName || '—'}</td>
-            <td style="font-weight:600;">\$${(inv.total||0).toLocaleString()}</td>
-            <td>${due}</td>
-            <td><span style="color:${statusColor};font-weight:600;">${isOverdue && inv.status!=='paid' ? 'OVERDUE' : inv.status.toUpperCase()}</span></td>
-            <td>
-              <div style="display:flex;gap:4px;flex-wrap:wrap;">
-                <button class="btn btn-primary" style="font-size:12px;padding:4px 10px;background:rgba(31,163,224,0.18);border-color:rgba(31,163,224,0.65);color:var(--cyan);" onclick="sendInvoice('${inv.id}')">✉ Send</button>
-                ${inv.status !== 'paid' ? `<button class="btn btn-secondary" style="font-size:12px;padding:4px 8px;" onclick="markInvoicePaid('${inv.id}')">Paid</button>` : ''}
-                <button class="btn btn-secondary" style="font-size:12px;padding:4px 8px;" onclick="exportInvoicePDF('${inv.id}')">PDF</button>
-                <button class="btn btn-danger" style="font-size:12px;padding:4px 8px;" onclick="deleteInvoice('${inv.id}')">✕</button>
-              </div>
-            </td>
-          </tr>`;
-        });
+      // page actions: the page's one primary, one secondary
+      const pa = document.getElementById('pageActions');
+      if (pa && sec.classList.contains('active')) {
+        pa.innerHTML = `<button type="button" class="btn btn-secondary" onclick="openQuoteBuilderModal()">Quote builder</button><button type="button" class="btn btn-primary" onclick="openCreateInvoiceModal()">${_mnyIcon('plus', 18)}New invoice</button>`;
       }
-      document.getElementById('invoicesTableBody').innerHTML = rows;
 
-      // Transactions
-      let tRows = '';
-      if (!transactions.length) {
-        tRows = '<tr><td colspan="5" class="empty-state">No transactions recorded</td></tr>';
-      } else {
-        transactions.sort((a,b)=>(b.date||0)-(a.date||0)).slice(0,20).forEach(t => {
-          tRows += `<tr>
-            <td>${new Date(t.date).toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'})}</td>
-            <td>${t.clientName}</td>
-            <td style="color:var(--success);font-weight:600;">\$${(t.amount||0).toLocaleString()}</td>
-            <td>${t.type}</td>
-            <td>${t.note||''}</td>
-          </tr>`;
-        });
-      }
-      document.getElementById('transactionsTableBody').innerHTML = tRows;
-    }
-
-    function openCreateInvoiceModal() {
-      const events  = getDB('events')  || [];
-      const clients = getDB('clients') || [];
-
-      // Populate event dropdown
-      const evSel = document.getElementById('invEventId');
-      evSel.innerHTML = '<option value="">No event linked</option>';
-      events.sort((a,b) => new Date(b.date||0) - new Date(a.date||0))
-        .forEach(e => evSel.innerHTML += `<option value="${e.id}">${e.name} — ${e.clientName} (${e.date||'no date'})</option>`);
-
-      // Populate client picker
-      const cPicker = document.getElementById('invClientPicker');
-      cPicker.innerHTML = '<option value="">— Select existing client —</option>';
-      clients.sort((a,b) => (a.name||'').localeCompare(b.name||''))
-        .forEach(c => cPicker.innerHTML += `<option value="${c.id}">${c.name}${c.email ? ' — ' + c.email : ''}</option>`);
-
-      document.getElementById('createInvoiceForm').reset();
-      evSel.value    = '';
-      cPicker.value  = '';
-      invoiceLineCount = 0;
-      document.getElementById('invoiceLines').innerHTML = '';
-      addInvoiceLine();
-      addInvoiceLine();
-      updateInvoiceTotal();
-      openModal('createInvoiceModal');
-    }
-
-    let invoiceLineCount = 0;
-    function addInvoiceLine(desc='', amount='') {
-      invoiceLineCount++;
-      const div = document.createElement('div');
-      div.className = 'quote-service-row';
-      div.id = 'invLine' + invoiceLineCount;
-      div.innerHTML = `<input type="text" class="form-input" placeholder="Description" value="${desc}" style="flex:1;" oninput="updateInvoiceTotal()">
-        <input type="number" class="form-input" placeholder="Amount" value="${amount}" style="width:110px;" oninput="updateInvoiceTotal()">
-        <button type="button" class="btn btn-danger" style="padding:6px 10px;" onclick="this.parentElement.remove();updateInvoiceTotal()">×</button>`;
-      document.getElementById('invoiceLines').appendChild(div);
-    }
-
-    function updateInvoiceTotal() {
-      const rows = document.querySelectorAll('#invoiceLines .quote-service-row');
-      let sub = 0;
-      rows.forEach(r => { const amt = parseFloat(r.querySelectorAll('input')[1].value) || 0; sub += amt; });
-      const tax = parseFloat(document.getElementById('invTax')?.value) || 0;
-      const total = sub * (1 + tax/100);
-      document.getElementById('invoicePreviewTotal').textContent = `Total: \$${total.toFixed(2)}`;
-    }
-
-    function saveInvoice(e) {
-      e.preventDefault();
-      const rows = document.querySelectorAll('#invoiceLines .quote-service-row');
-      const lines = [];
-      let subtotal = 0;
-      rows.forEach(r => {
-        const inputs = r.querySelectorAll('input');
-        const desc = inputs[0].value;
-        const amt = parseFloat(inputs[1].value) || 0;
-        if (desc) { lines.push({ desc, amount: amt }); subtotal += amt; }
+      // tabs
+      sec.querySelectorAll('#moneyTabs .tab-btn').forEach(b => {
+        const on = b.getAttribute('data-mtab') === st.tab;
+        b.classList.toggle('active', on);
+        b.setAttribute('aria-selected', on ? 'true' : 'false');
       });
-      const tax = parseFloat(document.getElementById('invTax').value) || 0;
-      const total = subtotal * (1 + tax/100);
-      const eventId = document.getElementById('invEventId').value;
-      const events = getDB('events');
-      const linkedEvent = events.find(e => e.id === eventId);
-      const invoices = getDB('invoices');
-      const inv = {
-        id: genId(),
-        invoiceNum: 'INV-' + String(Math.max(0, ...invoices.map(i => parseInt((i.invoiceNum || 'INV-0').replace('INV-', '') || '0'))) + 1).padStart(4, '0'),
-        clientName: document.getElementById('invClientName').value,
-        clientEmail: document.getElementById('invClientEmail').value,
-        eventId, eventName: linkedEvent?.name || '',
-        lines, subtotal, taxPct: tax, total,
-        dueDate: document.getElementById('invDueDate').value,
-        notes: document.getElementById('invNotes').value,
-        status: 'unpaid',
-        createdAt: Date.now()
-      };
-      invoices.push(inv);
-      setDB('invoices', invoices);
-      closeModal('createInvoiceModal');
-      renderInvoices();
-      // If this was created from an event modal, refresh that event's invoice tab
-      const tabInvEl = document.getElementById('tabInvoices');
-      if (tabInvEl && window.currentEvent && window.currentEvent.id === eventId) {
-        tabInvEl.innerHTML = renderEventInvoices(window.currentEvent);
-      }
-      showToast('Invoice created', 'success');
-      // Offer to send immediately if we have a client email
-      if (inv.clientEmail) {
-        const t = document.createElement('div');
-        t.style.cssText = 'position:fixed;bottom:24px;right:24px;background:#111118;border:1px solid rgba(31,163,224,0.35);color:#fff;padding:14px 18px;border-radius:10px;font-size:13px;z-index:9999;box-shadow:0 8px 32px rgba(0,0,0,0.5);max-width:300px;';
-        t.innerHTML = `<div style="font-weight:600;color:var(--cyan);margin-bottom:6px;">${inv.invoiceNum} created</div>
-          <div style="color:rgba(255,255,255,0.55);font-size:12px;margin-bottom:10px;">Send it to ${inv.clientEmail}?</div>
-          <div style="display:flex;gap:8px;">
-            <button onclick="sendInvoice('${inv.id}');this.closest('div[style]').remove()" style="flex:1;padding:7px;background:var(--cyan);border:none;border-radius:6px;color:#000;font-weight:700;cursor:pointer;font-size:12px;">Send Now</button>
-            <button onclick="this.closest('div[style]').remove()" style="padding:7px 12px;background:rgba(255,255,255,0.06);border:1px solid var(--border-ui);border-radius:6px;color:rgba(255,255,255,0.5);cursor:pointer;font-size:12px;">Later</button>
-          </div>`;
-        document.body.appendChild(t);
-        setTimeout(() => t.remove(), 9000);
-      }
-    }
+      ['invoices', 'payments', 'quotes'].forEach(k => { const p = document.getElementById('moneyPanel' + k.charAt(0).toUpperCase() + k.slice(1)); if (p) p.hidden = st.tab !== k; });
 
-    function saveAndExportInvoice() {
-      const form = document.getElementById('createInvoiceForm');
-      if (form.checkValidity()) {
-        saveInvoice({ preventDefault: ()=>{} });
-        const invoices = getDB('invoices');
-        if (invoices.length) exportInvoicePDF(invoices[invoices.length - 1].id);
-      } else { form.reportValidity(); }
-    }
+      // client reports waiting for a confirm
+      const reports = (getDB('events') || []).filter(e => _mnyReport(e));
+      const rep = document.getElementById('moneyReports');
+      rep.innerHTML = reports.length ? `<div class="mny-reports">${reports.slice(0, 3).map(e => _mnyReportCard(e)).join('')}${reports.length > 3 ? `<p class="mny-note">And ${reports.length - 3} more waiting on the event Money tabs.</p>` : ''}</div>` : '';
 
-    function saveAndSendInvoice() {
-      const form = document.getElementById('createInvoiceForm');
-      if (!form.checkValidity()) { form.reportValidity(); return; }
-      saveInvoice({ preventDefault: ()=>{} });
-      const invoices = getDB('invoices');
-      if (invoices.length) {
-        const inv = invoices[invoices.length - 1];
-        if (inv.clientEmail) {
-          sendInvoice(inv.id);
-        } else {
-          showToast('Invoice saved — add a client email to send it', 'info');
-        }
-      }
-    }
+      // totals (void is left out everywhere)
+      const sum = list => list.reduce((s, i) => s + _mnyCents(i.total), 0);
+      const owed = list => list.reduce((s, i) => s + Math.max(0, _mnyCents(i.total) - _mnyInvPaidC(i)), 0);
+      const paidL = all.filter(i => _mnyInvStatus(i, now) === 'paid');
+      const openL = all.filter(i => _mnyInvStatus(i, now) !== 'paid');
+      const overL = all.filter(i => _mnyInvStatus(i, now) === 'overdue');
+      const stat = (label, c, cls, sub) => `<div class="mny-stat"><div class="mny-stat-label">${label}</div><div class="mny-stat-val num ${cls}">${_mnyUSD(c)}</div><div class="mny-stat-sub">${sub}</div></div>`;
+      const plural = (n, w) => n + ' ' + w + (n === 1 ? '' : 's');
+      document.getElementById('invoiceTotals').innerHTML =
+        stat('Billed', sum(all), '', plural(all.length, 'invoice')) +
+        stat('Collected', all.reduce((t, i) => t + _mnyInvPaidC(i), 0), 'is-ok', plural(paidL.length, 'invoice') + ' paid') +
+        stat('Outstanding', owed(openL), 'is-warn', plural(openL.length, 'invoice') + ' open') +
+        stat('Overdue', owed(overL), overL.length ? 'is-danger' : '', overL.length ? plural(overL.length, 'invoice') : 'Nothing overdue');
 
-    async function sendInvoice(invId) {
-      const invoices = getDB('invoices') || [];
-      const inv = invoices.find(i => i.id === invId);
-      if (!inv) return;
-      if (!inv.clientEmail) {
-        showToast('No client email on this invoice — add one when creating or edit via the client record', 'warning');
-        return;
-      }
+      // status filter with counts
+      const bucket = i => { const k = _mnyInvStatus(i, now); return k === 'partial' ? 'sent' : k; };
+      const counts = { all: all.length, draft: 0, sent: 0, overdue: 0, paid: 0 };
+      all.forEach(i => { counts[bucket(i)]++; });
+      document.getElementById('invoiceSeg').innerHTML = [['all', 'All'], ['draft', 'Draft'], ['sent', 'Sent'], ['overdue', 'Overdue'], ['paid', 'Paid']].map(([k, l]) =>
+        `<button type="button" class="seg-btn${st.status === k ? ' active' : ''}" aria-pressed="${st.status === k}" onclick="setInvoiceFilter('${k}')">${l} <span class="num">${counts[k]}</span></button>`).join('');
 
-      const lineText = (inv.lines || []).map(l => `  ${l.desc}: $${(l.amount||0).toFixed(2)}`).join('\n');
-      const dueStr   = inv.dueDate ? new Date(inv.dueDate + 'T12:00:00').toLocaleDateString('en-US', { month:'long', day:'numeric', year:'numeric' }) : 'Upon receipt';
-      const firstName = (inv.clientName || 'there').split(' ')[0];
-      const body = `Hey ${firstName},\n\nYour invoice from Baseline Studio is ready.\n\nInvoice #: ${inv.invoiceNum}${inv.eventName ? '\nEvent: ' + inv.eventName : ''}\n\n${lineText}\n\nTotal Due: $${(inv.total||0).toFixed(2)}\nDue: ${dueStr}${inv.notes ? '\n\n' + inv.notes : ''}\n\nYou can view your event portal here:\nhttps://www.baselinestudiofl.com/portal-client.html\n\nReach out if you have any questions.\n\nSaul, Baseline Studio\n(786) 302-6056`;
-
-      const result = await BSPortal.sendEmail('invoice', {
-        email: inv.clientEmail,
-        clientName: inv.clientName || 'there',
-        invoiceNum: inv.invoiceNum,
-        eventName: inv.eventName || '',
-        lines: inv.lines || [],
-        subtotal: inv.subtotal || inv.total || 0,
-        taxPct: inv.taxPct || 0,
-        total: inv.total || 0,
-        dueDate: dueStr,
-        notes: inv.notes || ''
-      });
-
-      if (result.ok) {
-        showToast('Invoice sent to ' + inv.clientEmail, 'success');
-        // Mark as sent
-        inv.sentAt = Date.now();
-        setDB('invoices', invoices);
-        // Refresh invoices tab if open
-        const tabEl = document.getElementById('tabInvoices');
-        if (tabEl && window.currentEvent) tabEl.innerHTML = renderEventInvoices(window.currentEvent);
-        renderInvoices();
+      // list
+      const q = _mnySearchText().replace(/^inv-?/, '');
+      const filtered = all.filter(i => (st.status === 'all' || bucket(i) === st.status) &&
+        (!q || _mnyFold(i.clientName).includes(q) || _mnyFold(i.eventName).includes(q) || String(i.invoiceNum || '').toLowerCase().replace(/^inv-?/, '').includes(q)));
+      const mount = document.getElementById('invoicesListMount');
+      if (!all.length) {
+        mount.innerHTML = `<div class="empty">${_mnyIcon('receipt', 32)}<h3 class="empty-title">No invoices yet</h3><p class="empty-text">Create one here, or from an event so the client and amount fill in for you.</p><button type="button" class="btn btn-secondary" onclick="openCreateInvoiceModal()">Create invoice</button></div>`;
+      } else if (!filtered.length) {
+        mount.innerHTML = `<div class="empty">${_mnyIcon('search', 32)}<h3 class="empty-title">No invoices match</h3><p class="empty-text">Try another word, or look at all invoices.</p><button type="button" class="btn btn-secondary" onclick="document.getElementById('invoiceSearch').value='';setInvoiceFilter('all')">Show all</button></div>`;
       } else {
-        showEmailFallback(inv.clientEmail, `Invoice ${inv.invoiceNum} — Baseline Studio`, body,
-          'Edge function unavailable — send it manually:');
+        mount.innerHTML = _mnyInvList(filtered, { client: true });
       }
+
+      document.getElementById('moneyPanelPayments').innerHTML = _mnyLedgerHtml();
+      document.getElementById('moneyPanelQuotes').innerHTML = _mnyQuotesHtml();
     }
 
-    function markInvoicePaid(id) {
-      const invoices = getDB('invoices');
-      const inv = invoices.find(i => i.id === id);
-      if (!inv) return;
-      inv.status = 'paid';
-      inv.paidAt = Date.now();
-      setDB('invoices', invoices);
-      // Log transaction
-      const transactions = getDB('transactions');
-      transactions.push({ id: genId(), clientName: inv.clientName, amount: inv.total, type: 'Invoice Payment', note: inv.invoiceNum, date: Date.now() });
-      setDB('transactions', transactions);
-      renderInvoices();
-      showToast('Invoice marked as paid', 'success');
+    function _mnyLedgerHtml() {
+      const txs = (getDB('transactions') || []).slice().sort((a, b) => ((_mnyDate(b.date) || new Date(0)).getTime()) - ((_mnyDate(a.date) || new Date(0)).getTime()));
+      if (!txs.length) return `<div class="empty">${_mnyIcon('wallet', 32)}<h3 class="empty-title">No payments logged yet.</h3><p class="empty-text">When you mark an invoice paid, the payment shows up here.</p></div>`;
+      const total = txs.reduce((s, t) => s + _mnyCents(t.amount), 0);
+      const now = new Date();
+      const rows = txs.map(t => {
+        const applied = t.invoiceNum ? 'Invoice ' + _mnyNum({ invoiceNum: t.invoiceNum }) : (t.type || t.note || '');
+        return `<tr><td>${esc(_mnyShort(t.date, now))}</td><td data-user-content>${esc(t.clientName || '')}</td><td class="num mny-pos">${_mnyUSD(_mnyCents(t.amount))}</td><td>${esc(t.method || 'Manual')}</td><td>${esc(applied)}</td></tr>`;
+      }).join('');
+      return `<p class="mny-ledger-sum"><span class="num">${txs.length}</span> ${txs.length === 1 ? 'payment' : 'payments'}, <span class="num mny-pos">${_mnyUSD(total)}</span> collected</p>
+        <div class="tbl-wrap tbl-scroll"><table class="tbl tbl-ledger"><thead><tr><th>Date</th><th>Client</th><th class="num">Amount</th><th>Method</th><th>Applied to</th></tr></thead><tbody id="transactionsTableBody">${rows}</tbody></table></div>`;
     }
 
-    function deleteInvoice(id) {
-      confirmDestructive('Delete Invoice', 'Delete this invoice? This cannot be undone.', function() {
-        setDB('invoices', getDB('invoices').filter(i => i.id !== id));
-        renderInvoices();
-        showToast('Invoice deleted', 'info');
+    function _mnyQuotesHtml() {
+      const list = [];
+      (getDB('events') || []).forEach(ev => (ev.quotes || []).forEach(q => list.push({ q, ev })));
+      list.sort((a, b) => (b.q.createdAt || 0) - (a.q.createdAt || 0));
+      if (!list.length) return `<div class="empty">${_mnyIcon('file-text', 32)}<h3 class="empty-title">No saved quotes yet</h3><p class="empty-text">Build a quote from an event or an inquiry and it lands here.</p><button type="button" class="btn btn-secondary" onclick="openQuoteBuilderModal()">Quote builder</button></div>`;
+      const now = new Date();
+      const acts = ({ q, ev }) => `<button type="button" class="btn btn-secondary btn-sm" onclick="sendSavedQuote('${esc(q.id)}','${esc(ev.id)}')">${q.sentAt ? 'Resend' : 'Send'}</button><button type="button" class="btn btn-ghost btn-sm" onclick="exportSavedQuotePDF('${esc(q.id)}','${esc(ev.id)}')">PDF</button>`;
+      const pill = q => q.sentAt ? `<span class="pill pill-info" data-ui="pill">Sent ${esc(_mnyShort(q.sentAt, now))}</span>` : `<span class="pill pill-neutral" data-ui="pill">Saved</span>`;
+      const rows = list.map(x => `<tr><td><div class="mny-cell-main" data-user-content>${esc(x.q.clientName || x.ev.clientName || '')}</div><div class="mny-cell-sub" data-user-content>${esc(x.ev.name || '')}</div></td>
+        <td class="num">${_mnyUSD(_mnyCents(x.q.total))}</td><td class="num">${_mnyUSD(_mnyCents(x.q.deposit))}</td><td>${pill(x.q)}</td><td class="mny-acts">${acts(x)}</td></tr>`).join('');
+      const cards = list.map(x => `<div class="row mny-row"><div class="mny-row-top"><span class="row-title" data-user-content>${esc(x.q.clientName || x.ev.clientName || '')}</span><span class="mny-amt num">${_mnyUSD(_mnyCents(x.q.total))}</span></div>
+        <div class="row-sub" data-user-content>${esc(x.ev.name || '')}</div>
+        <div class="mny-row-bot"><span class="mny-row-state">${pill(x.q)}<span class="mny-due">Deposit ${_mnyUSD(_mnyCents(x.q.deposit))}</span></span><span class="mny-row-act">${acts(x)}</span></div></div>`).join('');
+      return `<div class="tbl-wrap"><table class="tbl"><thead><tr><th>Client and event</th><th class="num">Total</th><th class="num">Deposit</th><th>Status</th><th><span class="sr-only">Actions</span></th></tr></thead><tbody>${rows}</tbody></table></div><div class="row-list">${cards}</div>`;
+    }
+
+    // ── Quote builder ─────────────────────────────────────────────────────────
+    // The sheet's markup is built here. Desktop: lines on the left, live preview on the right. Phone: Edit and Preview panes, sticky total bar.
+    function _mnyEnsureQuoteModal() {
+      const m = document.querySelector('#quoteBuilderModal .modal');
+      if (!m || m.dataset.mny === '1') return;
+      m.dataset.mny = '1';
+      m.style.setProperty('--mw', '980px');
+      m.innerHTML = `
+        <button type="button" class="modal-close btn btn-ghost btn-icon" onclick="closeModal('quoteBuilderModal')" aria-label="Close">${_mnyIcon('x', 20)}</button>
+        <div class="modal-title" id="quoteTitle">New quote</div>
+        <div id="quoteSheet" class="mny-q" data-pane="edit">
+          <div class="seg mny-q-seg" role="group" aria-label="Quote view">
+            <button type="button" class="seg-btn active" data-qpane="edit" onclick="_mnyQuotePane('edit')">Edit</button>
+            <button type="button" class="seg-btn" data-qpane="preview" onclick="_mnyQuotePane('preview')">Preview</button>
+          </div>
+          <div class="mny-q-grid">
+            <div class="mny-q-edit">
+              <fieldset class="mny-chunk"><legend class="section-label">Client and event</legend>
+                <div class="mny-two">
+                  <div class="field"><label class="field-label" for="quoteClient">Client name</label><input type="text" class="input" id="quoteClient" autocomplete="off" oninput="updateQuoteSummary()"></div>
+                  <div class="field"><label class="field-label" for="quoteEmail">Client email</label><input type="email" class="input" id="quoteEmail" inputmode="email" autocomplete="off" oninput="updateQuoteSummary()"></div>
+                </div>
+                <div class="mny-two">
+                  <div class="field"><label class="field-label" for="quoteDate">Event date</label><input type="date" class="input" id="quoteDate" oninput="updateQuoteSummary()"></div>
+                  <div class="field"><label class="field-label" for="quoteEventType">Event type</label>
+                    <select class="input" id="quoteEventType" onchange="updateQuoteDefaults()">
+                      <option value="">Select a type</option>
+                      <option value="wedding">Wedding</option>
+                      <option value="quince">Quince</option>
+                      <option value="sweet16">Sweet 16</option>
+                      <option value="mitzvah">Bar or Bat Mitzvah</option>
+                      <option value="corporate">Corporate event</option>
+                      <option value="gala">Gala or fundraiser</option>
+                      <option value="birthday">Birthday or private party</option>
+                      <option value="concert">Concert or festival</option>
+                    </select></div>
+                </div>
+              </fieldset>
+              <fieldset class="mny-chunk"><legend class="section-label">Services and pricing</legend>
+                <div id="quoteServicesList" class="mny-lines"></div>
+                <div class="field"><label class="field-label sr-only" for="catalogPicker">Add a service</label>
+                  <select id="catalogPicker" class="input" onchange="addCatalogLine(this)"><option value="">Add service from catalog</option></select></div>
+              </fieldset>
+            </div>
+            <aside class="mny-q-prev" aria-label="Quote preview"><div class="mny-qcard"><div class="section-label">Quote preview</div><div id="quoteSummary"></div></div></aside>
+          </div>
+          <div class="mny-foot modal-sticky-foot">
+            <div class="mny-foot-total"><span class="mny-flabel">Total</span><span id="quoteFootTotal" class="mny-foot-amt num">$0</span></div>
+            <div class="mny-foot-btns">
+              <button type="button" class="btn btn-ghost btn-icon" id="quoteMore" aria-label="More quote actions" onclick="_mnyQuoteMenu(this)">${_mnyIcon('ellipsis-vertical', 20)}</button>
+              <button type="button" class="btn btn-secondary mny-q-previewbtn" id="quotePreviewBtn" onclick="_mnyQuotePane()">Preview</button>
+              <button type="button" class="btn btn-primary" id="sendQuoteBtn" onclick="sendQuoteEmail()">Send quote</button>
+            </div>
+          </div>
+        </div>`;
+    }
+    function _mnyQuotePane(which) {
+      const sheet = document.getElementById('quoteSheet');
+      if (!sheet) return;
+      const next = which || (sheet.getAttribute('data-pane') === 'edit' ? 'preview' : 'edit');
+      sheet.setAttribute('data-pane', next);
+      sheet.querySelectorAll('[data-qpane]').forEach(b => b.classList.toggle('active', b.getAttribute('data-qpane') === next));
+      const pb = document.getElementById('quotePreviewBtn');
+      if (pb) pb.textContent = next === 'edit' ? 'Preview' : 'Edit';
+    }
+    function _mnyQuoteMenu(btn) {
+      if (typeof CRMUI === 'undefined') return;
+      CRMUI.menu(btn, [
+        { label: 'Save quote', icon: 'file-text', onSelect: () => saveQuoteOnly() },
+        { label: 'Export PDF', icon: 'printer', onSelect: () => exportQuotePDF() },
+        { label: 'Convert to invoice', icon: 'receipt', onSelect: () => convertQuoteToInvoice() }
+      ], { label: 'Quote actions', align: 'right' });
+    }
+
+    // Words an inquiry uses for what it wants, matched to catalog labels.
+    const MNY_SERVICE_WORDS = [
+      [/\bdj\b|disc jockey/i, 'DJ Services'], [/\bmc\b|emcee|host/i, 'MC Services'], [/sound|speaker|\bpa\b|audio/i, 'Sound System'],
+      [/uplight|up-light|lighting/i, 'LED Uplighting'], [/co2|co₂|jet/i, 'CO₂ Jets'], [/spark/i, 'Cold Spark Towers'], [/cloud/i, 'Dancing on Clouds'],
+      [/photo ?booth/i, 'Photo Booth'], [/gobo|monogram/i, 'Gobo Projection'], [/led wall|video wall|\bled\b/i, 'LED Video Wall'],
+      [/moving head/i, 'Moving Head Lights'], [/fog|haze/i, 'Fog / Haze Machine'], [/projection|projector/i, 'Event Projection'],
+      [/stage light/i, 'Stage Lighting Package'], [/full production|everything|full package/i, 'Full Production Package']
+    ];
+    function _mnyServiceLines(text) {
+      const out = [];
+      const seen = new Set();
+      String(text || '').split(/,|;|\band\b|&|\n/i).map(s => s.trim()).filter(Boolean).forEach(tok => {
+        const hit = MNY_SERVICE_WORDS.find(([re]) => re.test(tok));
+        if (!hit || seen.has(hit[1])) return;
+        const item = SERVICE_CATALOG.find(s => s.label === hit[1]);
+        if (item) { seen.add(hit[1]); out.push(item); }
       });
+      return out;
     }
 
-    function exportInvoicePDF(id) {
-      const invoices = getDB('invoices');
-      const inv = invoices.find(i => i.id === id);
-      if (!inv) return;
-      const lines = (inv.lines||[]).map(l => `<tr><td style="padding:8px;border-bottom:1px solid #eee;">${l.desc}</td><td style="padding:8px;border-bottom:1px solid #eee;text-align:right;">\$${l.amount.toFixed(2)}</td></tr>`).join('');
-      const w = window.open('', '_blank');
-      w.document.write(`<html><head><title>${inv.invoiceNum}</title><style>body{font-family:Arial,sans-serif;margin:40px;color:#111;background:#fff;}h1{color:#1585b8;}table{width:100%;border-collapse:collapse;}th{background:#f5f5f5;padding:8px;text-align:left;}</style>
-</head>
-      <body>
-        <div style="display:flex;justify-content:space-between;margin-bottom:30px;">
-          <div><h1>INVOICE</h1><div style="color:#6b7078;">${inv.invoiceNum}</div></div>
-          <div style="text-align:right;"><strong>Baseline Studio</strong><br>(786) 302-6056<br>Hello@baselinestudiofl.com</div>
-        </div>
-        <div style="display:flex;justify-content:space-between;margin-bottom:24px;">
-          <div><strong>Bill To:</strong><br>${inv.clientName}<br>${inv.clientEmail||''}</div>
-          <div style="text-align:right;"><strong>Date:</strong> ${new Date(inv.createdAt).toLocaleDateString()}<br><strong>Due:</strong> ${inv.dueDate ? new Date(inv.dueDate).toLocaleDateString() : 'Upon receipt'}</div>
-        </div>
-        <table><thead><tr><th>Description</th><th style="text-align:right;">Amount</th></tr></thead><tbody>${lines}</tbody></table>
-        <div style="text-align:right;margin-top:16px;"><div>Subtotal: \$${(inv.subtotal||0).toFixed(2)}</div>${inv.taxPct ? `<div>Tax (${inv.taxPct}%): \$${((inv.subtotal||0)*inv.taxPct/100).toFixed(2)}</div>` : ''}<div style="font-size:22px;font-weight:bold;color:#1585b8;">Total: \$${(inv.total||0).toFixed(2)}</div></div>
-        ${inv.notes ? `<div style="margin-top:20px;padding:12px;background:#f9f9f9;border-radius:4px;"><strong>Notes:</strong> ${inv.notes}</div>` : ''}
-      </body></html>`);
-      w.document.close();
-      w.print();
-    }
-
-    // 
-    //  QUOTE BUILDER
-    // 
-    // eventId is optional — if passed, quote is linked to that event
-    function openQuoteBuilderModal(eventId) {
+    // eventId: link the quote to an event (or null). opts: { inquiry } prefills from an inquiry row; { fromEvent: true } is the same as passing an event id.
+    function openQuoteBuilderModal(eventId, opts) {
+      opts = opts || {};
+      _mnyEnsureQuoteModal();
+      const inq = opts.inquiry || null;
       window._quoteEventId = eventId || null;
+      window._quoteInquiry = inq;
       document.getElementById('quoteServicesList').innerHTML = '';
       populateCatalogPicker();
-      // Pre-fill from event if provided
-      if (eventId) {
-        const ev = (getDB('events') || []).find(e => e.id === eventId);
-        if (ev) {
-          document.getElementById('quoteClient').value = ev.clientName || '';
-          document.getElementById('quoteDate').value = ev.date || '';
-          const typeEl = document.getElementById('quoteEventType');
-          if (ev.type && typeEl) { typeEl.value = ev.type; updateQuoteDefaults(); }
-          document.getElementById('sendQuoteBtn').textContent = `✉ Send Quote to ${ev.clientEmail || 'Client'}`;
-          document.getElementById('sendQuoteBtn').style.display = ev.clientEmail ? 'inline-flex' : 'none';
+      const set = (id, v) => { const el = document.getElementById(id); if (el) el.value = v || ''; };
+      set('quoteClient', ''); set('quoteEmail', ''); set('quoteDate', ''); set('quoteEventType', '');
+      let title = 'New quote';
+      const ev = eventId ? _mnyEvent(eventId) : null;
+      if (ev) {
+        title = 'Quote for ' + (ev.name || ev.clientName || 'this event');
+        set('quoteClient', ev.clientName); set('quoteEmail', ev.clientEmail); set('quoteDate', ev.date);
+        const typeEl = document.getElementById('quoteEventType');
+        if (ev.type && typeEl) { typeEl.value = ev.type; updateQuoteDefaults(); }
+        if (!document.querySelector('#quoteServicesList .mny-qline') && Number(ev.basePrice) > 0) addQuoteLine('Event services', ev.basePrice);
+      } else if (inq) {
+        title = 'Quote for ' + (inq.name || 'this inquiry');
+        set('quoteClient', inq.name); set('quoteEmail', inq.email); set('quoteDate', inq.event_date);
+        const kind = (typeof BSContracts !== 'undefined' && BSContracts.eventTypeFromText) ? BSContracts.eventTypeFromText(inq.event_type) : '';
+        const typeEl = document.getElementById('quoteEventType');
+        if (kind && typeEl && [...typeEl.options].some(o => o.value === kind)) { typeEl.value = kind; updateQuoteDefaults(); }
+        const asked = _mnyServiceLines(inq.services);
+        if (asked.length) {
+          document.getElementById('quoteServicesList').innerHTML = '';
+          asked.forEach(s => addQuoteLine(s.label, s.price));
         }
+        if (!document.querySelector('#quoteServicesList .mny-qline')) { addQuoteLine('DJ Services', 2500); addQuoteLine('Sound System', 800); }
       } else {
-        document.getElementById('quoteClient').value = '';
-        document.getElementById('quoteDate').value = '';
         addQuoteLine('DJ Services', 2500);
         addQuoteLine('Sound System', 800);
-        document.getElementById('sendQuoteBtn').style.display = 'none'; // no client email context
       }
+      document.getElementById('quoteTitle').textContent = title;
+      _mnyQuotePane('edit');
       updateQuoteSummary();
       openModal('quoteBuilderModal');
-    }
-
-    async function sendQuoteEmail() {
-      const eventId = window._quoteEventId;
-      const events = getDB('events') || [];
-      const ev = eventId ? events.find(e => e.id === eventId) : null;
-      const clientEmail = ev?.clientEmail || '';
-      if (!clientEmail) { showToast('No client email on this event — add one in event details first.', 'warning'); return; }
-
-      const rows = document.querySelectorAll('#quoteServicesList .quote-service-row');
-      const lines = [];
-      let total = 0;
-      rows.forEach(r => {
-        const inputs = r.querySelectorAll('input');
-        const desc = inputs[0].value || 'Service';
-        const price = parseFloat(inputs[1].value) || 0;
-        lines.push({ desc, price });
-        total += price;
-      });
-      const deposit = Math.round(total * 0.5);
-      const eventDate = ev?.date ? new Date(ev.date).toLocaleDateString('en-US',{weekday:'long',year:'numeric',month:'long',day:'numeric'}) : '';
-
-      const btn = document.getElementById('sendQuoteBtn');
-      btn.disabled = true; btn.textContent = 'Sending…';
-
-      // portalUrl sent in payload so the Edge Function can use it in the email button.
-      // IMPORTANT: also update the Edge Function template in Supabase Dashboard (send-email fn)
-      // to use {{portalUrl}} in the "Accept & Get Started" button href — not the hardcoded contact.html.
-      const result = await BSPortal.sendEmail('quote', {
-        email: clientEmail,
-        clientName: ev.clientName || 'there',
-        eventDate,
-        eventType: ev.type || '',
-        lines, total, deposit,
-        notes: '',
-        portalUrl: 'https://www.baselinestudiofl.com/portal-client.html'
-      });
-
-      if (result.ok) {
-        // Save quote snapshot to event (marks sentAt so Documents tab reflects it was sent)
-        _saveQuoteToEvent(eventId, lines, total, Date.now());
-        // Auto-advance pipeline stage to "proposal" (quote sent)
-        if (ev && ev.status === 'lead') {
-          ev.status = 'proposal';
-          setDB('events', events);
-          showToast('Quote sent — stage updated to Proposal.', 'success');
-        } else {
-          showToast('Quote sent to ' + clientEmail, 'success');
-        }
-        closeModal('quoteBuilderModal');
-      } else {
-        btn.disabled = false; btn.textContent = '✉ Send Quote to Client';
-        // Build a plain-text fallback so Saul can send via email app
-        // NOTE: The Supabase Edge Function email template also has an "Accept & Get Started"
-        // button — update it in the Supabase dashboard to point to portal-client.html (not contact.html)
-        const portalUrl = `https://www.baselinestudiofl.com/portal-client.html`;
-        const quoteLines = lines.map(l => `${l.desc}: $${l.price.toLocaleString()}`).join('\n');
-        const quoteText = `Hi ${ev?.clientName || 'there'},\n\nHere's your quote from Baseline Studio.\n\nEvent Date: ${eventDate}\n\n${quoteLines}\n\nTotal: $${total.toLocaleString()}\nRequired Deposit to Book (50%): $${deposit.toLocaleString()}\n\nReady to move forward? You can access your client portal here:\n${portalUrl}\n\nOr just reply to this email or give us a call at (786) 302-6056 — we'll get you sorted.\n\nSaul\nBaseline Studio\nbaselinestudiofl.com | (786) 302-6056`;
-        showEmailFallback(clientEmail, `Your Event Quote — Baseline Studio`, quoteText,
-          `Could not send — check Resend setup. Use the fallback below:`);
-      }
     }
 
     let quoteLineCount = 0;
     function addQuoteLine(desc='', price='') {
       quoteLineCount++;
       const div = document.createElement('div');
-      div.className = 'quote-service-row';
-      div.innerHTML = `<input type="text" class="form-input" placeholder="Service / Description" value="${desc}" style="flex:1;" oninput="updateQuoteSummary()">
-        <input type="number" class="form-input" placeholder="Price" value="${price}" style="width:110px;" oninput="updateQuoteSummary()">
-        <button type="button" class="btn btn-danger" style="padding:6px 10px;" onclick="this.parentElement.remove();updateQuoteSummary()">×</button>`;
+      div.className = 'mny-qline form-section';
+      div.innerHTML = `<div class="mny-ql-desc"><input type="text" class="input" aria-label="Service or description" placeholder="Service or description" value="${esc(desc)}" oninput="updateQuoteSummary()"></div>
+        <div class="mny-ql-row"><div class="input-wrap input-money mny-ql-price"><span class="input-prefix" aria-hidden="true">$</span><input type="number" class="input" aria-label="Price" placeholder="0" inputmode="decimal" step="0.01" value="${esc(String(price))}" oninput="updateQuoteSummary()"></div>
+        <button type="button" class="btn btn-ghost btn-icon btn-sm" aria-label="Remove service" onclick="this.closest('.mny-qline').remove();updateQuoteSummary()">${_mnyIcon('x', 16)}</button></div>`;
       document.getElementById('quoteServicesList').appendChild(div);
     }
 
@@ -614,87 +1368,193 @@
       if (defaults[type]) {
         document.getElementById('quoteServicesList').innerHTML = '';
         defaults[type].forEach(([desc, price]) => addQuoteLine(desc, price));
-        updateQuoteSummary();
       }
+      updateQuoteSummary();
+    }
+
+    // Reads the sheet. Prices are summed in cents.
+    function _mnyReadQuote() {
+      const val = id => ((document.getElementById(id) || {}).value || '').trim();
+      const lines = [];
+      let totalC = 0;
+      document.querySelectorAll('#quoteServicesList .mny-qline').forEach(r => {
+        const inputs = r.querySelectorAll('input');
+        const desc = (inputs[0].value || '').trim();
+        const priceC = _mnyCents(parseFloat(inputs[1].value) || 0);
+        if (!desc && !priceC) return;
+        lines.push({ desc: desc || 'Service', price: priceC / 100 });
+        totalC += priceC;
+      });
+      const typeEl = document.getElementById('quoteEventType');
+      return { client: val('quoteClient'), email: val('quoteEmail'), date: val('quoteDate'), type: typeEl ? typeEl.value : '',
+        typeLabel: typeEl && typeEl.value ? typeEl.options[typeEl.selectedIndex].text : '', lines, totalC, total: totalC / 100 };
     }
 
     function updateQuoteSummary() {
-      const rows = document.querySelectorAll('#quoteServicesList .quote-service-row');
-      let lines = '', total = 0;
-      rows.forEach(r => {
-        const inputs = r.querySelectorAll('input');
-        const desc = inputs[0].value || 'Service';
-        const amt = parseFloat(inputs[1].value) || 0;
-        total += amt;
-        lines += `<div class="quote-line"><span>${desc}</span><span>\$${amt.toLocaleString()}</span></div>`;
+      const q = _mnyReadQuote();
+      const terms = _mnyTerms();
+      const depC = Math.round(q.totalC * (Number(terms.depositPercent) || 50) / 100);
+      const rows = q.lines.map(l => `<div class="mny-ql"><span data-user-content>${esc(l.desc)}</span><span class="num">${_mnyUSD(_mnyCents(l.price))}</span></div>`).join('');
+      const who = q.client ? `<div class="mny-qwho">Prepared for <strong data-user-content>${esc(q.client)}</strong>${q.date ? ' · ' + esc(_mnyShort(q.date)) : ''}</div>` : '';
+      document.getElementById('quoteSummary').innerHTML = who +
+        (rows || '<p class="mny-note">Add a service to see the quote.</p>') +
+        `<div class="mny-qtotal"><span>Total</span><span class="num">${_mnyUSD(q.totalC)}</span></div>
+         <div class="mny-qdep"><span>Deposit to book (${esc(String(terms.depositPercent))}%)</span><span class="num">${_mnyUSD(depC)}</span></div>
+         <p class="mny-note">The balance is due ${esc(String(terms.balanceDueDays))} days before the event. This quote is good for 30 days.</p>`;
+      window._quoteTotal = q.total;
+      const ft = document.getElementById('quoteFootTotal');
+      if (ft) ft.textContent = _mnyUSD(q.totalC);
+      const sb = document.getElementById('sendQuoteBtn');
+      if (sb) {
+        const okMail = /^\S+@\S+\.\S+$/.test(q.email);
+        sb.title = okMail ? 'Sends to ' + q.email : 'Add a client email to send it';
+      }
+    }
+
+    // Creates the lead event a quote needs when it was started from an inquiry or from a blank builder.
+    function _mnyDraftEvent(q, inq) {
+      const events = getDB('events') || [];
+      const clients = getDB('clients') || [];
+      const email = q.email.toLowerCase();
+      let client = clients.find(c => (c.email || '').toLowerCase() === email);
+      if (!client) {
+        client = { id: genId(), name: q.client, email: q.email, phone: inq ? (inq.phone || '') : '', type: 'private', notes: '' };
+        clients.push(client);
+        setDB('clients', clients);
+      }
+      const existingPw = events.filter(e => e.clientId === client.id && e.portalPassword).map(e => e.portalPassword)[0] || null;
+      const password = existingPw || (typeof genPortalPassword === 'function' ? genPortalPassword() : '');
+      const kind = q.type || ((typeof BSContracts !== 'undefined' && inq) ? BSContracts.eventTypeFromText(inq.event_type) : '') || 'event';
+      const ev = {
+        id: genId(),
+        name: q.client + '\'s Event',
+        type: kind,
+        date: q.date || '',
+        startTime: '', endTime: '',
+        clientId: client.id,
+        clientName: q.client,
+        clientEmail: q.email,
+        clientPhone: client.phone || '',
+        venueName: inq ? (inq.venue || '') : '', venueAddress: '', venueContact: '', venuePhone: '',
+        status: 'lead',
+        basePrice: q.total,
+        depositAmount: _mnyDeposit(q.total),
+        depositPaid: false, balancePaid: false,
+        services: [], staff: [],
+        portalEmail: q.email, portalPassword: password, portalDisabled: false,
+        timeline: [], vendors: [], music: [], documents: [],
+        notes: inq ? (inq.message || '') : '',
+        checklist: { soundCheck: false, timelineSent: false, depositReceived: false, equipmentLoaded: false }
+      };
+      events.push(ev);
+      setDB('events', events);
+      if (password && typeof setClientCredentials === 'function') setClientCredentials(q.email, q.email, password);
+      if (inq) {
+        inq.status = 'converted';
+        if (typeof saveInquiryStatus_silent === 'function') saveInquiryStatus_silent(inq.id, 'converted');
+      }
+      return ev;
+    }
+
+    // Sends a quote email for an event and records it. Shared by the builder and "Send" on the Quotes tab.
+    async function _mnySendQuoteMail(ev, email, lines, total) {
+      const deposit = _mnyDeposit(total);
+      const terms = _mnyTerms();
+      const evDate = _mnyDate(ev.date);
+      const eventDate = evDate ? evDate.toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' }) : '';
+      // portalUrl is sent in the payload so the Edge Function can use it in the email button.
+      const result = await BSPortal.sendEmail('quote', {
+        email,
+        clientName: ev.clientName || 'there',
+        eventDate,
+        eventType: ev.type || '',
+        lines, total, deposit,
+        notes: '',
+        portalUrl: 'https://www.baselinestudiofl.com/portal-client.html'
       });
-      lines += `<div class="quote-total"><span>TOTAL ESTIMATE</span><span>\$${total.toLocaleString()}</span></div>`;
-      const deposit = Math.round(total * 0.5);
-      lines += `<div style="font-size:12px;color:var(--cyan);text-align:right;margin-top:4px;font-weight:600;">&#128274; Required Deposit to Book (50%): \$${deposit.toLocaleString()}</div>`;
-      document.getElementById('quoteSummary').innerHTML = lines;
-      window._quoteTotal = total;
-      window._quoteLines = rows;
+      if (result.ok) return true;
+      const portalUrl = 'https://www.baselinestudiofl.com/portal-client.html';
+      const quoteLines = lines.map(l => `${l.desc}: $${l.price.toLocaleString()}`).join('\n');
+      const quoteText = `Hi ${ev.clientName || 'there'},\n\nHere's your quote from Baseline Studio.\n\nEvent Date: ${eventDate}\n\n${quoteLines}\n\nTotal: $${total.toLocaleString()}\nDeposit to book (${terms.depositPercent}%): $${deposit.toLocaleString()}\n\nReady to move forward? You can access your client portal here:\n${portalUrl}\n\nOr just reply to this email or call us at (786) 302-6056. We will get you sorted.\n\nSaul\nBaseline Studio\nbaselinestudiofl.com | (786) 302-6056`;
+      showEmailFallback(email, 'Your Event Quote - Baseline Studio', quoteText, 'Email is not available right now. Send it yourself:');
+      return false;
+    }
+
+    async function sendQuoteEmail() {
+      const q = _mnyReadQuote();
+      const btn = document.getElementById('sendQuoteBtn');
+      if (!/^\S+@\S+\.\S+$/.test(q.email)) { showToast('Add the client email to send the quote.', 'warning'); const el = document.getElementById('quoteEmail'); if (el) el.focus(); _mnyQuotePane('edit'); return; }
+      if (!q.lines.length || q.totalC <= 0) { showToast('Add a price to at least one service.', 'warning'); return; }
+      let ev = window._quoteEventId ? _mnyEvent(window._quoteEventId) : null;
+      const needsEvent = !ev;
+      if (needsEvent && !q.client) { showToast('Add the client name first.', 'warning'); _mnyQuotePane('edit'); return; }
+      const ok = await _mnyConfirm({
+        title: 'Send this quote to ' + q.email + '?',
+        body: needsEvent ? 'It goes out now. This also adds ' + q.client + ' to Pipeline as a lead.' : 'It goes out now. You can still edit the event after.',
+        confirmLabel: 'Send quote'
+      });
+      if (!ok) return;
+      _mnyMarkBusy(btn, true);
+      if (needsEvent) { ev = _mnyDraftEvent(q, window._quoteInquiry); window._quoteEventId = ev.id; }
+      const sent = await _mnySendQuoteMail(ev, q.email, q.lines, q.total);
+      _mnyMarkBusy(btn, false);
+      if (!sent) return;
+      // Save the quote snapshot to the event (marks sentAt so the Documents tab shows it went out)
+      _saveQuoteToEvent(ev.id, q.lines, q.total, Date.now());
+      // Auto-advance pipeline stage to "proposal" (quote sent)
+      const events = getDB('events') || [];
+      const live = events.find(e => e.id === ev.id) || ev;
+      if (live.status === 'lead') {
+        live.status = 'proposal';
+        setDB('events', events);
+        showToast('Quote sent. Moved to Proposal.', 'success');
+      } else {
+        showToast('Quote sent to ' + q.email + '.', 'success');
+      }
+      closeModal('quoteBuilderModal');
+      _mnyRefreshViews();
+      if (needsEvent && typeof renderPipeline === 'function') { try { renderPipeline(); } catch (e) { /* pipeline owns its errors */ } }
+    }
+
+    function _mnyQuotePaper(o) {
+      const rows = o.lines.map(l => `<tr><td>${esc(l.desc)}</td><td class="r">${_mnyUSD(_mnyCents(l.price))}</td></tr>`).join('');
+      const terms = _mnyTerms();
+      return _mnyPaper('Quote for ' + o.client, `
+        <div class="head">
+          <div><h1>EVENT QUOTE</h1><div>Prepared for <strong>${esc(o.client)}</strong></div>${o.type ? `<div class="meta">Event type: ${esc(o.type)}</div>` : ''}${o.dateStr ? `<div class="meta">Event date: ${esc(o.dateStr)}</div>` : ''}</div>
+          <div class="r"><strong>Baseline Studio</strong><br>(786) 302-6056<br>Hello@baselinestudiofl.com<br>baselinestudiofl.com</div>
+        </div>
+        <table><thead><tr><th>Service</th><th class="r">Price</th></tr></thead><tbody>${rows}</tbody></table>
+        <div class="tot"><div class="big">Total ${_mnyUSD(_mnyCents(o.total))}</div><div class="meta">${terms.depositPercent}% deposit to book: ${_mnyUSD(_mnyCents(o.deposit))}. The balance is due ${terms.balanceDueDays} days before the event.</div></div>
+        <p class="meta" style="margin-top:30px;font-size:12px;">This quote is good for 30 days. Pricing depends on the final event details.</p>`);
     }
 
     function exportQuotePDF() {
-      const client = document.getElementById('quoteClient').value || 'Client';
-      const date = document.getElementById('quoteDate').value;
-      const type = document.getElementById('quoteEventType').options[document.getElementById('quoteEventType').selectedIndex]?.text || '';
-      const rows = document.querySelectorAll('#quoteServicesList .quote-service-row');
-      let lineHtml = '', total = 0;
-      rows.forEach(r => {
-        const inputs = r.querySelectorAll('input');
-        const desc = inputs[0].value || 'Service';
-        const amt = parseFloat(inputs[1].value) || 0;
-        total += amt;
-        lineHtml += `<tr><td style="padding:8px;border-bottom:1px solid #eee;">${desc}</td><td style="padding:8px;border-bottom:1px solid #eee;text-align:right;">\$${amt.toLocaleString()}</td></tr>`;
-      });
+      const q = _mnyReadQuote();
       const w = window.open('', '_blank');
-      w.document.write(`<html><head><title>Quote — ${client}</title><style>body{font-family:Arial,sans-serif;margin:40px;color:#111;background:#fff;}h1{color:#1585b8;}table{width:100%;border-collapse:collapse;}th{background:#f5f5f5;padding:8px;}</style>
-</head>
-      <body>
-        <div style="display:flex;justify-content:space-between;margin-bottom:30px;">
-          <div><h1>EVENT QUOTE</h1><div>Prepared for: <strong>${client}</strong></div>${type ? '<div>Event Type: '+type+'</div>' : ''}${date ? '<div>Event Date: '+new Date(date).toLocaleDateString('en-US',{month:'long',day:'numeric',year:'numeric'})+'</div>' : ''}</div>
-          <div style="text-align:right;"><strong>Baseline Studio</strong><br>(786) 302-6056<br>Hello@baselinestudiofl.com<br>baselinestudiofl.com</div>
-        </div>
-        <table><thead><tr><th>Service</th><th style="text-align:right;">Price</th></tr></thead><tbody>${lineHtml}</tbody></table>
-        <div style="text-align:right;margin-top:16px;font-size:24px;font-weight:bold;color:#1585b8;">Total: \$${total.toLocaleString()}</div>
-        <div style="text-align:right;color:#6b7078;margin-top:4px;">50% Deposit Required: \$${Math.round(total*0.5).toLocaleString()}</div>
-        <div style="margin-top:30px;color:#6b7078;font-size:12px;">This quote is valid for 30 days. Pricing subject to change based on final event details.</div>
-      </body></html>`);
+      if (!w) { showToast('Allow pop-ups to open the PDF.', 'warning'); return; }
+      w.document.write(_mnyQuotePaper({ client: q.client || 'Client', type: q.typeLabel, dateStr: q.date ? _mnyLong(q.date) : '', lines: q.lines, total: q.total, deposit: _mnyDeposit(q.total) }));
       w.document.close(); w.print();
     }
 
     function convertQuoteToInvoice() {
-      const client  = document.getElementById('quoteClient').value || '';
+      const q = _mnyReadQuote();
       const eventId = window._quoteEventId || '';
-      const rows    = document.querySelectorAll('#quoteServicesList .quote-service-row');
-      // Capture line items BEFORE opening new modal
-      const lineItems = [];
-      let quoteTotal = 0;
-      rows.forEach(r => {
-        const inputs = r.querySelectorAll('input');
-        const desc = inputs[0].value || 'Service';
-        const price = parseFloat(inputs[1].value) || 0;
-        lineItems.push({ desc, amount: inputs[1].value });
-        quoteTotal += price;
-      });
       // Save quote snapshot to event before converting
-      if (eventId) {
-        const quoteLines = lineItems.map(l => ({ desc: l.desc, price: parseFloat(l.amount) || 0 }));
-        _saveQuoteToEvent(eventId, quoteLines, quoteTotal, null);
-      }
+      if (eventId && q.lines.length) _saveQuoteToEvent(eventId, q.lines, q.total, null);
       closeModal('quoteBuilderModal');
       openCreateInvoiceModal();
       // Restore line items (openCreateInvoiceModal resets the form)
       document.getElementById('invoiceLines').innerHTML = '';
       invoiceLineCount = 0;
-      lineItems.forEach(l => addInvoiceLine(l.desc, l.amount));
-      // Fill client + event
-      document.getElementById('invClientName').value = client;
+      q.lines.forEach(l => addInvoiceLine(l.desc, l.price));
+      if (!q.lines.length) addInvoiceLine();
+      document.getElementById('invClientName').value = q.client;
+      document.getElementById('invClientEmail').value = q.email;
       if (eventId) {
         document.getElementById('invEventId').value = eventId;
         autoFillInvoiceFromEvent(eventId);
+        if (q.email) document.getElementById('invClientEmail').value = q.email;
       }
       updateInvoiceTotal();
     }
@@ -712,7 +1572,7 @@
         id: genId(),
         lines,          // [{ desc, price }]
         total,
-        deposit: Math.round(total * 0.5),
+        deposit: _mnyDeposit(total),
         clientName: ev.clientName || '',
         clientEmail: ev.clientEmail || '',
         eventDate: ev.date || '',
@@ -731,19 +1591,12 @@
 
     function saveQuoteOnly() {
       const eventId = window._quoteEventId;
-      if (!eventId) { showToast('Open a quote from within an event to save it', 'warning'); return; }
-      const rows = document.querySelectorAll('#quoteServicesList .quote-service-row');
-      const lines = [];
-      let total = 0;
-      rows.forEach(r => {
-        const inputs = r.querySelectorAll('input');
-        const desc = inputs[0].value || 'Service';
-        const price = parseFloat(inputs[1].value) || 0;
-        lines.push({ desc, price });
-        total += price;
-      });
-      _saveQuoteToEvent(eventId, lines, total, null);
-      showToast('Quote saved to Documents tab', 'success');
+      if (!eventId) { showToast('Open the quote from an event to save it to Documents.', 'warning'); return; }
+      const q = _mnyReadQuote();
+      if (!q.lines.length) { showToast('Add a service before saving.', 'warning'); return; }
+      _saveQuoteToEvent(eventId, q.lines, q.total, null);
+      showToast('Quote saved to the Documents tab.', 'success');
+      _mnyRefreshViews();
     }
 
     function exportSavedQuotePDF(quoteId, eventId) {
@@ -752,24 +1605,29 @@
       if (!ev || !ev.quotes) return;
       const q = ev.quotes.find(x => x.id === quoteId);
       if (!q) return;
-      const lineHtml = (q.lines || []).map(l =>
-        `<tr><td style="padding:8px;border-bottom:1px solid #eee;">${l.desc}</td><td style="padding:8px;border-bottom:1px solid #eee;text-align:right;">$${(l.price||0).toLocaleString()}</td></tr>`
-      ).join('');
-      const dateStr = q.eventDate ? new Date(q.eventDate + 'T12:00:00').toLocaleDateString('en-US',{month:'long',day:'numeric',year:'numeric'}) : '';
       const w = window.open('', '_blank');
-      if (!w) { showToast('Allow pop-ups to export PDF', 'warning'); return; }
-      w.document.write(`<html><head><title>Quote — ${q.clientName}</title><style>body{font-family:Arial,sans-serif;margin:40px;color:#111;}h1{color:#1585b8;}table{width:100%;border-collapse:collapse;}th{background:#f5f5f5;padding:8px;text-align:left;}</style></head>
-      <body>
-        <div style="display:flex;justify-content:space-between;margin-bottom:30px;">
-          <div><h1>EVENT QUOTE</h1><div>Prepared for: <strong>${q.clientName}</strong></div>${q.eventType ? '<div>Event Type: '+q.eventType+'</div>' : ''}${dateStr ? '<div>Event Date: '+dateStr+'</div>' : ''}</div>
-          <div style="text-align:right;"><strong>Baseline Studio</strong><br>(786) 302-6056<br>Hello@baselinestudiofl.com<br>baselinestudiofl.com</div>
-        </div>
-        <table><thead><tr><th>Service</th><th style="text-align:right;">Price</th></tr></thead><tbody>${lineHtml}</tbody></table>
-        <div style="text-align:right;margin-top:16px;font-size:24px;font-weight:bold;color:#1585b8;">Total: $${(q.total||0).toLocaleString()}</div>
-        <div style="text-align:right;color:#6b7078;margin-top:4px;">50% Deposit Required: $${(q.deposit||0).toLocaleString()}</div>
-        <div style="margin-top:30px;color:#6b7078;font-size:12px;">This quote is valid for 30 days. Pricing subject to change based on final event details.</div>
-      </body></html>`);
+      if (!w) { showToast('Allow pop-ups to open the PDF.', 'warning'); return; }
+      w.document.write(_mnyQuotePaper({ client: q.clientName || '', type: q.eventType || '', dateStr: q.eventDate ? _mnyLong(q.eventDate) : '', lines: q.lines || [], total: q.total || 0, deposit: q.deposit || 0 }));
       w.document.close(); w.print();
+    }
+
+    // Send (or resend) a saved quote from the Quotes tab. Asks first: an email goes to the client.
+    async function sendSavedQuote(quoteId, eventId) {
+      const events = getDB('events') || [];
+      const ev = events.find(e => e.id === eventId);
+      const q = ev && (ev.quotes || []).find(x => x.id === quoteId);
+      if (!ev || !q) return;
+      const email = q.clientEmail || ev.clientEmail || '';
+      if (!email) { showToast('No client email on this event. Add one in the event first.', 'warning'); return; }
+      const ok = await _mnyConfirm({ title: (q.sentAt ? 'Send this quote again to ' : 'Send this quote to ') + email + '?', body: 'It goes out now.', confirmLabel: 'Send quote' });
+      if (!ok) return;
+      const sent = await _mnySendQuoteMail(ev, email, q.lines || [], q.total || 0);
+      if (!sent) return;
+      q.sentAt = Date.now();
+      if (ev.status === 'lead') ev.status = 'proposal';
+      setDB('events', events);
+      showToast('Quote sent to ' + email + '.', 'success');
+      _mnyRefreshViews();
     }
 
     // ─────────────────────────────────────────────────────────────────
@@ -797,12 +1655,12 @@
     function populateCatalogPicker() {
       const el = document.getElementById('catalogPicker');
       if (!el) return;
-      el.innerHTML = '<option value="">📦 Add service from catalog…</option>';
+      el.innerHTML = '<option value="">Add service from catalog</option>';
       SERVICE_CATALOG.forEach((s, i) => {
         if (s.label === null) {
-          el.innerHTML += `<option value="__custom__" style="font-style:italic;">✏ Custom Service (free form)</option>`;
+          el.innerHTML += `<option value="__custom__">Custom service (type your own)</option>`;
         } else {
-          el.innerHTML += `<option value="${i}">${s.label} — $${s.price.toLocaleString()}</option>`;
+          el.innerHTML += `<option value="${i}">${esc(s.label)} · $${s.price.toLocaleString()}</option>`;
         }
       });
     }
@@ -820,7 +1678,7 @@
       updateQuoteSummary();
       // Focus the last input for convenience
       setTimeout(() => {
-        const rows = document.querySelectorAll('#quoteServicesList .quote-service-row');
+        const rows = document.querySelectorAll('#quoteServicesList .mny-qline');
         if (rows.length) {
           const inp = rows[rows.length-1].querySelector('input');
           if (inp) inp.focus();

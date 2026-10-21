@@ -1,0 +1,112 @@
+/* ============================================================================
+   portal-provider/css/35-documents.css  (lane P4)
+   Event Documents tab, Send for signature, Sent and tracking, provider sign sheet.
+   Tokens only (crm-tokens.css). Loaded after crm-ui.css and the page <style>.
+   ========================================================================== */
+
+/* ── Event detail / Documents ───────────────────────────────────────────── */
+.evdoc { display: flex; flex-direction: column; gap: var(--sp-6); min-width: 0; }
+.evdoc-sec { min-width: 0; }
+.evdoc-sec-head { display: flex; align-items: center; gap: var(--sp-2); margin: 0 0 var(--sp-3); font: 600 var(--fs-11)/1.2 var(--font-body); letter-spacing: 0.04em; text-transform: uppercase; color: var(--text-3); }
+.evdoc-sec-head svg.i { color: var(--text-3); }
+.card > .evdoc-sec-head { margin-bottom: var(--sp-3); }
+
+.evdoc-row { box-sizing: border-box; display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: var(--sp-3) var(--sp-4); padding: var(--sp-3) var(--sp-4); margin-bottom: var(--sp-2); background: var(--surface-1); border: 1px solid var(--border); border-radius: var(--r-lg); }
+.evdoc-row:last-child { margin-bottom: 0; }
+.evdoc-row-doc { align-items: start; }
+.evdoc-main { min-width: 0; display: flex; flex-direction: column; gap: 6px; }
+.evdoc-title { display: flex; align-items: center; flex-wrap: wrap; gap: var(--sp-2); min-width: 0; }
+.evdoc-name { font: 600 var(--fs-15)/1.3 var(--font-body); color: var(--text-1); overflow-wrap: anywhere; }
+.evdoc-meta { display: flex; align-items: center; flex-wrap: wrap; gap: var(--sp-2); font-size: var(--fs-13); line-height: 1.35; color: var(--text-3); }
+.evdoc-actions { display: flex; align-items: center; justify-content: flex-end; flex-wrap: wrap; gap: var(--sp-2); }
+.evdoc-actions .btn svg.i { flex: none; }
+.evdoc-row-doc .evdoc-actions { align-self: start; }
+
+/* Four-dot stepper: Draft, Shared, (Viewed), Signed. The word is always there; color only adds to it. */
+.evdoc-steps { display: flex; align-items: center; flex-wrap: wrap; gap: var(--sp-1) var(--sp-4); margin: 0; padding: 0; list-style: none; }
+.evdoc-steps li { display: inline-flex; align-items: center; gap: 6px; font: 500 var(--fs-12)/1.2 var(--font-body); color: var(--text-3); }
+.evdoc-dot { box-sizing: border-box; flex: none; width: 10px; height: 10px; border-radius: 50%; border: 1px solid var(--border-ui); background: transparent; }
+.evdoc-steps li.is-done { color: var(--text-2); }
+.evdoc-steps li.is-done .evdoc-dot { background: var(--ok); border-color: var(--ok); }
+.evdoc-steps li.is-current { color: var(--text-1); }
+.evdoc-steps li.is-current .evdoc-dot { border-color: var(--cyan); background: var(--cyan-tint); }
+
+/* Client signature on a document row */
+.evdoc-sig { grid-column: 1 / -1; display: flex; align-items: center; gap: var(--sp-4); padding-top: var(--sp-3); border-top: 1px solid var(--border); }
+.evdoc-sig-img { flex: none; background: var(--paper); border-radius: var(--r-sm); padding: 6px 10px; }
+.evdoc-sig-img img { display: block; }
+.evdoc-sig-meta { min-width: 0; font-size: var(--fs-12); line-height: 1.4; }
+.evdoc-sig-name { font-weight: 600; font-size: var(--fs-13); color: var(--text-1); overflow-wrap: anywhere; }
+.evdoc-sig-when { margin-top: 2px; color: var(--text-2); }
+.evdoc-sig-note { margin-top: 2px; color: var(--text-3); }
+
+.evdoc-empty { border: 1px dashed var(--border-ui); border-radius: var(--r-lg); padding: var(--sp-8) var(--sp-4); }
+
+/* Create from template card */
+.evdoc-create { padding: var(--sp-4); }
+.evdoc-create .field:last-child { margin-bottom: 0; }
+.evdoc-create-line { display: flex; gap: var(--sp-2); align-items: stretch; }
+.evdoc-create-line > select, .evdoc-create-line > input { flex: 1 1 auto; min-width: 0; margin: 0; }
+.evdoc-create-line > .btn { flex: none; white-space: nowrap; }
+
+/* ── Send for signature / Sent and tracking ─────────────────────────────── */
+.docsend { max-width: 1040px; }
+.docsend-title { margin: 0 0 var(--sp-1); font: 600 var(--fs-18)/1.3 var(--font-body); color: var(--text-1); }
+.docsend-sub { margin: 0 0 var(--sp-6); font-size: var(--fs-14); line-height: 1.45; color: var(--text-2); max-width: var(--reading-max); }
+.docsend-grid { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: var(--sp-8); align-items: start; }
+.docsend-form { min-width: 0; }
+.docsend-chunk { margin-bottom: var(--sp-6); }
+.docsend-chunk .field:last-child { margin-bottom: 0; }
+.docsend-radios { display: flex; flex-wrap: wrap; gap: var(--sp-2) var(--sp-4); margin-bottom: var(--sp-3); }
+.docsend-send { width: 100%; }
+.docsend-side { min-width: 0; }
+.docsend-preview { background: var(--surface-1); border: 1px solid var(--border); border-radius: var(--r-lg); padding: var(--sp-4); min-height: 320px; max-height: 600px; overflow-y: auto; }
+.docsend-preview-empty { padding: var(--sp-10) var(--sp-4); text-align: center; font-size: var(--fs-14); color: var(--text-3); }
+.docsend-paper { background: #fff; color: #111; border-radius: var(--r-sm); padding: 28px 32px; font: 13px/1.7 Georgia, 'Times New Roman', serif; overflow-wrap: anywhere; }
+.docsend-paper * { color: inherit !important; }
+.docsend-paper a { color: #0b57d0 !important; }
+.docsend-paper img { max-width: 100%; height: auto; }
+.docsend-paper table { max-width: 100%; border-collapse: collapse; }
+
+.track-tbl td { height: auto; padding-top: var(--sp-3); padding-bottom: var(--sp-3); }
+.track-tbl .track-doc { font-weight: 600; max-width: 240px; overflow-wrap: anywhere; }
+.track-tbl .track-act { text-align: right; white-space: nowrap; }
+.track-tbl .track-act .btn + .btn { margin-left: var(--sp-2); }
+.track-card { align-items: flex-start; }
+.track-card .row-title, .track-card .row-sub { white-space: normal; overflow: visible; text-overflow: clip; }
+.track-card .row-main { gap: 6px; }
+.track-card .row-trail { align-self: flex-start; }
+
+/* ── Provider sign sheet and signature viewer ───────────────────────────── */
+#signatureCanvas { touch-action: none; }
+
+/* ── Tablet and phone ───────────────────────────────────────────────────── */
+@media (max-width: 1023.98px) {
+  .docsend-grid { grid-template-columns: minmax(0, 1fr); gap: var(--sp-4); }
+  .docsend-preview { min-height: 200px; }
+}
+@media (max-width: 767.98px) {
+  .evdoc { gap: var(--sp-5); }
+  .evdoc-row { grid-template-columns: minmax(0, 1fr); gap: var(--sp-3); padding: var(--sp-3); }
+  .evdoc-actions { justify-content: flex-start; flex-wrap: nowrap; }
+  .evdoc-actions .btn:not(.btn-icon) { flex: 1 1 0; min-width: 0; justify-content: center; white-space: nowrap; }
+  .evdoc-actions .evdoc-kebab { flex: none; }
+  .evdoc-sig { align-items: flex-start; }
+  .evdoc-create-line { flex-direction: column; }
+  .evdoc-create-line > .btn { width: 100%; justify-content: center; }
+  .docsend-paper { padding: 20px 16px; }
+  .track-card .row-trail { flex-wrap: wrap; justify-content: flex-end; max-width: 160px; }
+  .docsend-send { min-height: 52px; }
+  .track-card .evdoc-steps { gap: var(--sp-1) var(--sp-3); }
+  /* sign sheet: room to draw, big buttons */
+  #signatureCanvas { height: 160px !important; }
+  #signatureModal .modal .btn { min-height: 52px; }
+  #sigViewModal .modal .btn { min-height: 52px; }
+}
+
+/* very narrow phones (360 and under): actions wrap to two lines instead of clipping labels */
+@media (max-width: 379.98px) {
+  .evdoc-actions { flex-wrap: wrap; }
+  .evdoc-actions .btn:not(.btn-icon) { flex: 1 1 auto; min-width: 70px; padding-left: 6px; padding-right: 6px; }
+  .evdoc-actions .evdoc-kebab { margin-left: auto; }
+}

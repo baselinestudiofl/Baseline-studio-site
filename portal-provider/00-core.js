@@ -67,17 +67,68 @@
       }
     }
 
-    function switchSection(sectionId) {
-      // Close mobile sidebar when navigating
-      closeMobileSidebar();
-      document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
-      document.getElementById(sectionId).classList.add('active');
-      document.querySelectorAll('.nav-link').forEach(l => l.classList.remove('active'));
-      // Use attribute selector so programmatic calls (no click event) also work
-      document.querySelector(`.nav-link[onclick*="${sectionId}"]`)?.classList.add('active');
+    // Titles for the page head and the phone app bar. Labels follow UI-PLAN 2.1.
+    function _sectionTitle(id) {
+      const t = { dashboard: 'Home', pipeline: 'Pipeline', events: 'Events', clients: 'Clients', vendors: 'Vendors & Venues', documents: 'Documents', equipment: 'Inventory', invoices: 'Invoices', marketing: 'Marketing', accounts: 'Team', reports: 'Reports', automations: 'Automations', settings: 'Settings' };
+      return t[id] || id;
+    }
 
-      const titles = { dashboard: 'Dashboard', pipeline: 'Pipeline', events: 'Events', clients: 'Clients', vendors: 'Vendors & Venues', documents: 'Documents', equipment: 'Equipment', invoices: 'Invoices', marketing: 'Marketing', accounts: 'Accounts', reports: 'Reports', automations: 'Automations', settings: 'Settings' };
-      document.getElementById('pageTitle').textContent = titles[sectionId] || sectionId;
+    // Marks the active rail item, More sheet item and bottom bar item, and sets the titles.
+    // opts.parent: the section a full-page detail view belongs to. opts.detail: true while a detail page is showing.
+    function _syncNav(sectionId, opts) {
+      opts = opts || {};
+      const navId = opts.parent || sectionId;
+      document.querySelectorAll('.rail-item, .more-item').forEach(el => {
+        const on = el.getAttribute('data-section') === navId;
+        el.classList.toggle('active', on);
+        if (on) el.setAttribute('aria-current', 'page'); else el.removeAttribute('aria-current');
+      });
+      if (window.CRMUI && CRMUI.bottomBar) CRMUI.bottomBar.setActive(navId);
+      const title = _sectionTitle(navId);
+      const pt = document.getElementById('pageTitle'); if (pt) pt.textContent = title;
+      const at = document.getElementById('appbarTitle'); if (at) at.textContent = title;
+      if (document.body && document.body.classList) document.body.classList.toggle('is-detail', !!opts.detail);
+      // Any route change drops the detail top bar; a detail screen turns it back on with setTopbarDetail().
+      if (!opts.detail && typeof clearTopbarDetail === 'function') clearTopbarDetail();
+    }
+
+    // Phone top bar for pushed (detail) screens (UI-PLAN 1.10): back chevron left, record title centered, optional kebab right.
+    // setTopbarDetail(title, backFn, menuItems): title string (empty keeps the current text), backFn defaults to goBack(),
+    // menuItems is an optional CRMUI.menu item array that shows the kebab. clearTopbarDetail() undoes it and _syncNav calls it
+    // on every non-detail route. On desktop the bar is unchanged (CSS only shows these on phone).
+    function setTopbarDetail(title, backFn, menuItems) {
+      window._topbarBack = typeof backFn === 'function' ? backFn : null;
+      window._topbarMenu = Array.isArray(menuItems) && menuItems.length ? menuItems : null;
+      const at = document.getElementById('appbarTitle');
+      if (at && title) at.textContent = title;
+      const kb = document.getElementById('appbarKebab');
+      if (kb) kb.hidden = !window._topbarMenu;
+      if (document.body) document.body.classList.add('has-topbar-detail');
+    }
+    function clearTopbarDetail() {
+      window._topbarBack = null; window._topbarMenu = null;
+      const kb = document.getElementById('appbarKebab'); if (kb) kb.hidden = true;
+      if (document.body) document.body.classList.remove('has-topbar-detail');
+    }
+    function topbarBack() {
+      if (typeof window._topbarBack === 'function') window._topbarBack();
+      else if (typeof goBack === 'function') goBack();
+    }
+    function topbarKebab(anchor) {
+      if (window._topbarMenu && window.CRMUI && CRMUI.menu) CRMUI.menu(anchor, window._topbarMenu, { label: 'Actions', align: 'right' });
+    }
+
+    function switchSection(sectionId) {
+      // Close the More sheet when navigating
+      closeMobileSidebar();
+      const sec = document.getElementById(sectionId);
+      if (!sec) return;
+      document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
+      sec.classList.add('active');
+      if (typeof _syncNav === 'function') _syncNav(sectionId);
+      // Screens put their page-level buttons in #pageActions when they render; start clean on every section change.
+      const pa = document.getElementById('pageActions');
+      if (pa) pa.innerHTML = '';
 
       if (sectionId === 'dashboard') renderDashboard();
       if (sectionId === 'pipeline') { renderPipeline(); loadInquiries(); }
@@ -99,10 +150,67 @@
       _routeWrite({ type: 'section', id: sectionId }, 'push');
     }
 
-    function openModal(modalId) { document.getElementById(modalId).classList.add('active'); }
-    function closeModal(modalId) { document.getElementById(modalId).classList.remove('active'); _routeModalClosed(modalId); }
+    // Modals keep their ids and the .modal-backdrop.active markup; CRMUI gives them focus handling, Esc, and the "Discard changes?" guard.
+    function openModal(modalId) {
+      const el = document.getElementById(modalId);
+      if (!(window.CRMUI && CRMUI.open)) { el.classList.add('active'); return; }
+      el.dataset.touched = '';
+      if (!el._bsDirtyBound) {
+        el._bsDirtyBound = true;
+        el.addEventListener('input', function() { el.dataset.touched = '1'; });
+        el.addEventListener('change', function() { el.dataset.touched = '1'; });
+      }
+      CRMUI.open(el, {
+        dirty: () => el.dataset.touched === '1',
+        onClose: () => { if (!el._bsClosing) _routeModalClosed(modalId); }
+      });
+      try { liftModalFooter(el); } catch (e) { console.warn('[modal footer]', e); }
+    }
+
+    // Phone sheets: keep the form's primary action row in view (UI-PLAN 1.10). Runs on every openModal, on phone only.
+    // If the primary sits in a row of buttons (up to 3) that row becomes the sticky footer; a lone primary is wrapped in one.
+    // The CSS for .modal-sticky-foot is in portal-provider.html. Idempotent; modals that build their buttons after opening are left alone.
+    function liftModalFooter(backdrop) {
+      if (!window.matchMedia || !window.matchMedia('(max-width: 767.98px)').matches) return;
+      const modal = backdrop.querySelector('.modal');
+      if (!modal || modal.querySelector('.modal-sticky-foot')) return;
+      const prims = Array.prototype.filter.call(modal.querySelectorAll('.btn-primary'), b => !b.hidden && b.offsetParent !== null);
+      if (!prims.length) return;
+      const btn = prims[prims.length - 1];
+      const row = btn.parentElement;
+      if (!row) return;
+      // A lane that built its own sticky footer (position sticky or fixed on the row or an ancestor inside the modal) keeps it.
+      for (let n = row; n && n !== modal.parentElement; n = n.parentElement) { const ps = getComputedStyle(n).position; if (ps === 'sticky' || ps === 'fixed') return; }
+      const btnRow = row !== modal && row.tagName !== 'FORM' && Array.prototype.every.call(row.children, c => c.tagName === 'BUTTON' || c.tagName === 'A');
+      let foot = null, wrap = null;
+      if (btnRow) {
+        if (row.children.length > 3) return;
+        foot = row;
+        foot.classList.add('modal-sticky-foot');
+      } else {
+        wrap = foot = document.createElement('div');
+        wrap.className = 'modal-sticky-foot';
+        row.insertBefore(wrap, btn);
+        wrap.appendChild(btn);
+      }
+      // A footer that wraps onto a second row would eat too much of the sheet: undo it and leave the form as it was.
+      if (foot.offsetHeight > 96) {
+        if (wrap) { wrap.parentNode.insertBefore(btn, wrap); wrap.remove(); }
+        else foot.classList.remove('modal-sticky-foot');
+      }
+    }
+    function closeModal(modalId) {
+      const el = document.getElementById(modalId);
+      if (window.CRMUI && CRMUI.close) {
+        el._bsClosing = true;
+        try { CRMUI.close(el, { force: true }); } finally { el._bsClosing = false; }
+      }
+      el.classList.remove('active');
+      _routeModalClosed(modalId);
+    }
 
     function showToast(message, type = 'info') {
+      if (window.CRMUI && CRMUI.toast) return CRMUI.toast(message, type);
       const container = document.getElementById('toastContainer');
       const toast = document.createElement('div');
       toast.className = `toast ${type}`;
@@ -113,6 +221,7 @@
 
     // Frequent, cheap deletes stay one click and get an Undo instead of a dialog.
     function showUndoToast(message, onUndo) {
+      if (window.CRMUI && CRMUI.undoToast) return CRMUI.undoToast(message, onUndo);
       const container = document.getElementById('toastContainer');
       const toast = document.createElement('div');
       toast.className = 'toast info';
@@ -126,7 +235,7 @@
 
     // ── Relative timestamps ───────────────────────────────────────────────
     function timeAgo(iso) {
-      if (!iso) return '—';
+      if (!iso) return '-';
       const secs = Math.floor((Date.now() - new Date(iso)) / 1000);
       if (secs < 60)   return 'just now';
       if (secs < 3600) return Math.floor(secs/60)+'m ago';
@@ -161,71 +270,72 @@
     }
 
     // ── Global search ─────────────────────────────────────────────────────
+    // Rows for the command palette (Cmd/Ctrl+K, "/", or the search button). Accent-blind and case-blind (CRMUI.norm.fold).
+    // Each row is { group, label, meta, run }. No DOM work here.
+    function _searchRows(q) {
+      const fold = (window.CRMUI && CRMUI.norm && CRMUI.norm.fold) ? CRMUI.norm.fold : (s => String(s == null ? '' : s).toLowerCase());
+      const n = fold(q);
+      const user = BSPortal.getCurrentUser ? BSPortal.getCurrentUser() : null;
+      const role = (user && user.role) || 'master';
+      const fmtDate = d => (window.CRMUI && CRMUI.fmt && d) ? CRMUI.fmt.date(d, 'list') : (d || '');
+      const hit = (...vals) => vals.some(v => v && fold(v).includes(n));
+      const rows = [];
+      if (n) {
+        (getDB('events') || []).filter(e => (role !== 'dj' || (e.staff || []).includes(user.id)) && hit(e.name, e.clientName, e.clientEmail, e.venueName)).slice(0, 5)
+          .forEach(e => rows.push({ group: 'Events', label: e.name || 'Event', meta: [fmtDate(e.date), e.clientName].filter(Boolean).join(', '), run: () => openEventDetail(e.id) }));
+        if (role !== 'dj') {
+          (getDB('clients') || []).filter(c => hit(c.name, c.email, c.company)).slice(0, 5)
+            .forEach(c => rows.push({ group: 'Clients', label: c.name || 'Client', meta: c.email || '', run: () => openClientDetail(c.id) }));
+          (window._inquiries || []).filter(i => hit(i.name, i.email, i.venue)).slice(0, 5)
+            .forEach(i => rows.push({ group: 'Inquiries', label: i.name || 'Inquiry', meta: i.email || '', run: () => { showSection('pipeline'); setTimeout(() => openInquiry(i.id), 300); } }));
+          (getDB('invoices') || []).filter(v => hit(v.invoiceNum, v.clientName, v.eventName)).slice(0, 5)
+            .forEach(v => rows.push({ group: 'Invoices', label: (v.invoiceNum || 'Invoice') + (v.clientName ? ' ' + v.clientName : ''), meta: v.total != null ? ((window.CRMUI && CRMUI.fmt) ? CRMUI.fmt.money(v.total) : '$' + v.total) : '', run: () => _openInvoiceRecord(v) }));
+          (getDB('vendors') || []).filter(v => hit(v.name, v.category)).slice(0, 5)
+            .forEach(v => rows.push({ group: 'Vendors', label: v.name || 'Vendor', meta: v.category || '', run: () => { if (typeof openVendorDetail === 'function') { showSection('vendors'); openVendorDetail(v.id); } else showSection('vendors'); } }));
+        }
+      }
+      const actions = [];
+      if (role !== 'dj') actions.push({ label: 'New event', run: () => openNewEventModal() }, { label: 'New quote', run: () => openQuoteBuilderModal() }, { label: 'New invoice', run: () => openCreateInvoiceModal() });
+      actions.push({ label: 'Add inventory item', run: () => openAddEquipmentModal() });
+      actions.filter(a => !n || hit(a.label)).forEach(a => rows.push({ group: 'Actions', label: a.label, meta: '', run: a.run }));
+      return rows;
+    }
+
+    // Palette invoice row. Opens the invoice record when a lane provides an opener; otherwise lands on the list filtered to that invoice number.
+    function _openInvoiceRecord(inv) {
+      const openers = ['openInvoiceDetail', 'openInvoice', 'viewInvoice'];
+      for (let i = 0; i < openers.length; i++) {
+        if (typeof window[openers[i]] === 'function') { window[openers[i]](inv.id); return; }
+      }
+      switchSection('invoices');
+      const box = document.getElementById('invoiceSearch');
+      if (box) {
+        box.value = inv.invoiceNum || '';
+        if (typeof renderInvoices === 'function') renderInvoices();
+        else box.dispatchEvent(new Event('input', { bubbles: true }));
+      }
+    }
+
+    // Registers the palette provider once. Called from the boot code after the data has loaded.
+    function _registerPalette() {
+      if (window._palRegistered || !(window.CRMUI && CRMUI.palette)) return;
+      window._palRegistered = true;
+      CRMUI.palette.register(_searchRows);
+    }
+
+    // Kept for older callers: the dropdown is gone, the palette does the job.
     function runGlobalSearch(q) {
-      const box = document.getElementById('globalSearchResults');
-      if (!q || q.length < 2) { box.classList.remove('active'); return; }
-      const ql = q.toLowerCase();
-      const events  = (getDB('events') || []).filter(e => e.name?.toLowerCase().includes(ql) || e.clientName?.toLowerCase().includes(ql) || e.clientEmail?.toLowerCase().includes(ql) || e.venueName?.toLowerCase().includes(ql));
-      const clients = (getDB('clients') || []).filter(c => c.name?.toLowerCase().includes(ql) || c.email?.toLowerCase().includes(ql));
-      const vendors = (getDB('vendors') || []).filter(v => v.name?.toLowerCase().includes(ql) || v.category?.toLowerCase().includes(ql));
-      const inqs    = (window._inquiries || []).filter(i => i.name?.toLowerCase().includes(ql) || i.email?.toLowerCase().includes(ql) || i.venue?.toLowerCase().includes(ql));
-      if (!events.length && !clients.length && !vendors.length && !inqs.length) {
-        box.innerHTML = '<div style="padding:16px;color:var(--gray);font-size:13px;">Nothing found.</div>';
-        box.classList.add('active');
-        return;
-      }
-      let html = '';
-      if (inqs.length) {
-        html += `<div class="sr-group"><div class="sr-group-label">Inquiries</div>${inqs.slice(0,4).map(i=>`<div class="sr-item" role="button" tabindex="0" onclick="hideSearchResults();showSection('pipeline');setTimeout(()=>openInquiry('${i.id}'),300)"><span>📩</span><span>${i.name||'—'}</span><span class="sr-item-sub">${i.email||''}</span><span class="sr-arrow">→</span></div>`).join('')}</div>`;
-      }
-      if (events.length) {
-        html += `<div class="sr-group"><div class="sr-group-label">Events</div>${events.slice(0,4).map(e=>`<div class="sr-item" role="button" tabindex="0" onclick="hideSearchResults();showSection('events');setTimeout(()=>openEventDetail('${e.id}'),300)"><span>🎵</span><span>${e.name}</span><span class="sr-item-sub">${e.clientName}</span><span class="sr-arrow">→</span></div>`).join('')}</div>`;
-      }
-      if (clients.length) {
-        html += `<div class="sr-group"><div class="sr-group-label">Clients</div>${clients.slice(0,4).map(c=>`<div class="sr-item" role="button" tabindex="0" onclick="hideSearchResults();showSection('clients');setTimeout(()=>openClientDetail('${c.id}'),300)"><span>👤</span><span>${c.name}</span><span class="sr-item-sub">${c.email||''}</span><span class="sr-arrow">→</span></div>`).join('')}</div>`;
-      }
-      if (vendors.length) {
-        html += `<div class="sr-group"><div class="sr-group-label">Vendors</div>${vendors.slice(0,4).map(v=>`<div class="sr-item" role="button" tabindex="0" onclick="hideSearchResults();showSection('vendors')"><span>🏢</span><span>${v.name}</span><span class="sr-item-sub">${v.category}</span><span class="sr-arrow">→</span></div>`).join('')}</div>`;
-      }
-      box.innerHTML = html;
-      box.classList.add('active');
+      if (window.CRMUI && CRMUI.palette) CRMUI.palette.open();
     }
 
-    function hideSearchResults() {
-      const box = document.getElementById('globalSearchResults');
-      if (box) box.classList.remove('active');
-      const inp = document.getElementById('globalSearch');
-      if (inp) inp.value = '';
-    }
-
-    // Navigate by section ID from stat cards or other non-nav triggers
+    // Both of these used to duplicate switchSection with a shorter title list. One path now.
     function switchSectionById(sectionId) {
-      document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
-      document.getElementById(sectionId)?.classList.add('active');
-      document.querySelectorAll('.nav-link').forEach(l => l.classList.remove('active'));
-      document.querySelector(`.nav-link[onclick*="${sectionId}"]`)?.classList.add('active');
-      const titles = { dashboard:'Dashboard', pipeline:'Pipeline', events:'Events', clients:'Clients', vendors:'Vendors & Venues', documents:'Documents' };
-      document.getElementById('pageTitle').textContent = titles[sectionId] || sectionId;
-      if (sectionId === 'pipeline')  { renderPipeline(); loadInquiries(); }
-      if (sectionId === 'events')    renderEvents();
-      if (sectionId === 'clients')   renderClients();
-      if (sectionId === 'vendors')   renderVendors();
-      _routeWrite({ type: 'section', id: sectionId }, 'push');
+      switchSection(sectionId);
     }
 
     // Navigate to a section programmatically (used by search)
     function showSection(sectionId) {
-      document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
-      document.getElementById(sectionId)?.classList.add('active');
-      document.querySelectorAll('.nav-link').forEach(l => l.classList.remove('active'));
-      document.querySelector(`.nav-link[onclick*="${sectionId}"]`)?.classList.add('active');
-      const titles = { dashboard:'Dashboard', pipeline:'Pipeline', events:'Events', clients:'Clients', vendors:'Vendors & Venues', documents:'Documents' };
-      document.getElementById('pageTitle').textContent = titles[sectionId] || sectionId;
-      if (sectionId === 'pipeline')  { renderPipeline(); loadInquiries(); }
-      if (sectionId === 'events')    renderEvents();
-      if (sectionId === 'clients')   renderClients();
-      if (sectionId === 'vendors')   renderVendors();
-      _routeWrite({ type: 'section', id: sectionId }, 'push');
+      switchSection(sectionId);
     }
 
     // ── K: Readable portal password generator ────────────────────────────────
@@ -265,32 +375,62 @@
     }
 
     function displayUserAvatar(user) {
-      const avatar = document.getElementById('userAvatar');
-      if (user.profilePic) {
-        avatar.innerHTML = `<img src="${user.profilePic}" alt="${user.name}">`;
-      } else {
-        avatar.textContent = user.name.charAt(0);
-      }
+      const letter = String(safeName(user)).charAt(0);
+      document.querySelectorAll('#userAvatar, .js-avatar').forEach(av => {
+        if (user.profilePic) av.innerHTML = `<img src="${esc(user.profilePic)}" alt="">`;
+        else av.textContent = letter;
+      });
     }
 
+    // Name, role and avatar in the rail, the app bar and the More sheet.
+    function renderUserChrome(user) {
+      document.querySelectorAll('.js-user-name').forEach(el => { el.textContent = safeName(user); });
+      document.querySelectorAll('.js-user-role').forEach(el => { el.textContent = safeRole(user); });
+      try { displayUserAvatar(user); } catch (e) { console.warn('[avatar]', e); }
+    }
+
+    // Menus in the app bar. Both use CRMUI.menu (max 6 items).
+    function openNewMenu(anchor) {
+      if (!(window.CRMUI && CRMUI.menu)) { openNewEventModal(); return; }
+      CRMUI.menu(anchor, [
+        { label: 'New inquiry', icon: 'inbox', onSelect: () => { if (typeof openNewInquiry === 'function') openNewInquiry(); else switchSection('pipeline'); } },
+        { label: 'New event', icon: 'calendar-days', onSelect: () => openNewEventModal() },
+        { label: 'New quote', icon: 'file-text', onSelect: () => openQuoteBuilderModal() },
+        { label: 'New invoice', icon: 'receipt', onSelect: () => openCreateInvoiceModal() },
+        { label: 'Add inventory item', icon: 'boxes', onSelect: () => openAddEquipmentModal() }
+      ], { label: 'Create', align: 'right' });
+    }
+
+    function openAvatarMenu(anchor) {
+      if (!(window.CRMUI && CRMUI.menu)) return;
+      CRMUI.menu(anchor, [
+        { label: 'Profile photo', icon: 'camera', onSelect: () => triggerPhotoUpload() },
+        { label: 'Settings', icon: 'settings', onSelect: () => switchSection('settings') },
+        { label: 'Log out', icon: 'log-out', onSelect: () => logout() }
+      ], { label: 'Account', align: 'right' });
+    }
+
+    // Role rules live in the markup: data-hide-role="dj" hides for that role, data-show-role="dj" shows only for it,
+    // data-admin-only shows for master and admin. Rail groups with nothing visible are hidden too.
     function applyRoleBasedAccess() {
       const currentUser = BSPortal.getCurrentUser();
       if (!currentUser) return;
       const role = currentUser.role || 'master';
-
-      document.getElementById('pipelineNav').classList.toggle('hidden', role === 'dj');
-      document.getElementById('clientsNav').classList.toggle('hidden', role === 'dj');
-      document.getElementById('vendorsNav').classList.toggle('hidden', role === 'dj');
+      const admin = ['master', 'admin'].includes(role);
+      document.querySelectorAll('[data-hide-role]').forEach(el => { el.hidden = el.getAttribute('data-hide-role').split(' ').includes(role); });
+      document.querySelectorAll('[data-show-role]').forEach(el => { el.hidden = !el.getAttribute('data-show-role').split(' ').includes(role); });
+      document.querySelectorAll('[data-admin-only]').forEach(el => { el.hidden = !admin; });
+      document.querySelectorAll('.rail-group').forEach(g => { g.hidden = !g.querySelector('.rail-item:not([hidden])'); });
+      // More sheet: when the visible items are odd in number, the last one spans both columns so it does not sit alone.
+      const mi = Array.prototype.filter.call(document.querySelectorAll('.more-grid .more-item'), x => !x.hidden);
+      mi.forEach(x => x.classList.remove('more-item-wide'));
+      if (mi.length % 2 === 1) mi[mi.length - 1].classList.add('more-item-wide');
+      // Apple keyboards show the Command key.
+      const kbd = document.getElementById('searchKbd');
+      if (kbd && /Mac|iPhone|iPad/.test(navigator.platform || '')) kbd.textContent = '\u2318K';
       const el = id => document.getElementById(id);
-      el('reportsNav')?.classList.toggle('hidden', !['master', 'admin'].includes(role));
-      if (el('accountsNav')) el('accountsNav').style.display = ['master', 'admin'].includes(role) ? 'flex' : 'none';
-      if (el('automationsNav')) el('automationsNav').style.display = ['master', 'admin'].includes(role) ? 'flex' : 'none';
-      if (el('marketingNav')) el('marketingNav').style.display = ['master', 'admin'].includes(role) ? 'flex' : 'none';
-    if (el('growthNavGroup')) el('growthNavGroup').style.display = ['master', 'admin'].includes(role) ? 'contents' : 'none';
-      if (el('invoicesNav')) el('invoicesNav').style.display = role === 'dj' ? 'none' : 'flex';
-      if (el('equipmentNav')) el('equipmentNav').style.display = 'flex';
-      if (el('newEventBtn')) el('newEventBtn').style.display = role === 'dj' ? 'none' : 'block';
-      if (el('addVendorBtn')) el('addVendorBtn').style.display = role === 'dj' ? 'none' : 'block';
+      if (el('newEventBtn')) el('newEventBtn').hidden = role === 'dj';
+      if (el('addVendorBtn')) el('addVendorBtn').hidden = role === 'dj';
     }
 
     function copyToClipboard(text) { navigator.clipboard.writeText(text); showToast('Copied', 'success'); }
@@ -320,23 +460,20 @@
       return 'master';
     }
 
-    // ─── Mobile sidebar toggle ────────────────────────────────────────────────
+    // ─── More sheet (phone). The old slide-in sidebar is gone; these keep their names for the router and the harness. ───
     function toggleMobileSidebar() {
-      const sidebar = document.getElementById('sidebar');
-      const overlay = document.getElementById('sidebarOverlay');
-      const isOpen = sidebar.classList.contains('mobile-open');
-      if (isOpen) closeMobileSidebar();
-      else {
-        sidebar.classList.add('mobile-open');
-        overlay.classList.add('active');
-        document.body.style.overflow = 'hidden';
-      }
+      const sheet = document.getElementById('moreSheet');
+      if (!sheet) return;
+      if (sheet.open) { closeMobileSidebar(); return; }
+      if (window.CRMUI && CRMUI.open) CRMUI.open(sheet);
+      else if (sheet.showModal) sheet.showModal();
+      const mb = document.getElementById('moreNavBtn'); if (mb) mb.setAttribute('aria-expanded', 'true');
+      if (!sheet._bsExpandBound) { sheet._bsExpandBound = true; sheet.addEventListener('close', () => { const b = document.getElementById('moreNavBtn'); if (b) b.setAttribute('aria-expanded', 'false'); }); }
     }
 
     function closeMobileSidebar() {
-      const sidebar = document.getElementById('sidebar');
-      const overlay = document.getElementById('sidebarOverlay');
-      if (sidebar) sidebar.classList.remove('mobile-open');
-      if (overlay) overlay.classList.remove('active');
-      document.body.style.overflow = '';
+      const sheet = document.getElementById('moreSheet');
+      if (!sheet || !sheet.open) return;
+      if (window.CRMUI && CRMUI.close) CRMUI.close(sheet, { force: true });
+      else if (sheet.close) sheet.close();
     }

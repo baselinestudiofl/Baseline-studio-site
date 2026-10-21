@@ -7,41 +7,146 @@
     //
     //  MARKETING / CAMPAIGNS
     //
+    // Marketing section shell. Written once; renderMarketing fills #campaignsList.
+    function _mktShell() {
+      const sec = document.getElementById('marketing');
+      if (!sec || sec.getAttribute('data-p7') === '1') return;
+      sec.setAttribute('data-p7', '1');
+      sec.innerHTML = `
+        <div class="mk-wrap">
+          <div id="campaignsList" class="mk-list"></div>
+          <section class="mk-import" aria-labelledby="mkImportH">
+            <h3 class="mk-h" id="mkImportH">WeddingWire and The Knot import</h3>
+            <p class="t-meta" style="margin-bottom:var(--sp-3);">Paste the lead notification email below and press Import to add the lead to your Pipeline.</p>
+            <div class="field">
+              <label class="field-label" for="knotiImportText">Lead notification text</label>
+              <textarea class="form-textarea import-paste-area" id="knotiImportText" rows="5" placeholder="Paste the lead notification here"></textarea>
+            </div>
+            <button type="button" class="btn btn-secondary" onclick="importKnotLead()">Import lead</button>
+          </section>
+        </div>`;
+    }
+
+    // CAN-SPAM: no campaign goes out without the business mailing address, and every email ends with it plus an opt-out line.
+    function _mktBiz() { const st = getDB('settings') || {}; return Object.assign({ name: '', address: '' }, st.business || {}); }
+    function _mktBlocked() { return !String(_mktBiz().address || '').trim(); }
+    function _mktFooter() {
+      const b = _mktBiz();
+      return '\n\n--\n' + (String(b.name || '').trim() ? String(b.name).trim() + '\n' : '') + String(b.address || '').trim() + '\nTo stop getting these emails, reply with the word UNSUBSCRIBE and we will remove you.';
+    }
+    function _mktOpenBusiness() {
+      _p7CloseSheet('campaignSheet');
+      switchSection('settings');
+      if (typeof settingsGo === 'function') settingsGo('business');
+    }
+
+    function _mktAudienceLabel(a) {
+      return { all: 'All clients', leads: 'Leads only', booked: 'Booked events', completed: 'Past clients', weddings: 'Wedding clients', corporate: 'Corporate clients' }[a] || String(a || '');
+    }
+
+    // How many people an audience reaches right now (pure; same rules as sending).
+    function _mktAudienceCount(audience) {
+      try {
+        const found = _campaignRecipientsFrom({ clients: getDB('clients') || [], events: getDB('events') || [], inquiries: audience === 'leads' ? (window._inquiries || []) : [] }, audience);
+        return found.list.length;
+      } catch (e) { return null; }
+    }
+
     function renderMarketing() {
       if (!getDB('campaigns') || getDB('campaigns').length === 0) setDB('campaigns', []);
       const campaigns = getDB('campaigns');
+      const blocked = typeof _mktBlocked === 'function' && _mktBlocked();
+      if (typeof _mktShell === 'function') _mktShell();
 
       let html = '';
       if (!campaigns.length) {
-        html = '<div class="empty-state" style="padding:30px;">No campaigns yet. Create one on the right.</div>';
+        html = '<div class="empty"><h3 class="empty-title">No campaigns yet</h3><p class="empty-text">Write one email, pick who gets it, and send it when you are ready.</p></div>';
       } else {
-        campaigns.sort((a,b)=>(b.createdAt||0)-(a.createdAt||0)).forEach(c => {
+        campaigns.slice().sort((a,b)=>(b.createdAt||0)-(a.createdAt||0)).forEach(c => {
           // Campaigns marked "sent" before sending was real have no sentCount: nothing was ever emailed for them.
           const legacySent = c.status === 'sent' && c.sentCount === undefined;
-          const statusClass = c.status === 'sent' && !legacySent ? 'campaign-sent' : c.status === 'scheduled' ? 'campaign-scheduled' : 'campaign-draft';
+          const statusClass = legacySent ? 'pill-warn' : c.status === 'sent' ? 'pill-ok' : c.status === 'scheduled' ? 'pill-info' : 'pill-neutral';
           const statusText = legacySent ? 'NOT EMAILED' : String(c.status || 'draft').toUpperCase();
           const sentDate = c.sentAt ? new Date(c.sentAt).toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'}) : null;
           const failed = Array.isArray(c.failures) ? c.failures : [];
           const sendInfo = (c.status === 'sent' && !legacySent)
             ? ` · Sent ${sentDate || ''} · ${c.sentCount} delivered${c.failedCount ? ', ' + c.failedCount + ' failed' : ''}`
             : (legacySent ? ' · Marked sent earlier, but nothing was emailed' : '');
-          html += `<div class="campaign-card">
-            <div class="campaign-card-info">
-              <div class="campaign-card-title">${esc(c.name)}</div>
-              <div class="campaign-card-meta">${esc(String(c.type || '').toUpperCase())} · Audience: ${esc(c.audience)}${sendInfo}</div>
-              <div class="campaign-card-meta" style="margin-top:4px;font-style:italic;">${esc(c.subject||'')}</div>
-              ${failed.length ? `<div class="campaign-card-meta" style="margin-top:4px;">Did not send to: ${esc(failed.slice(0, 5).map(f => f.email).join(', '))}${failed.length > 5 ? ' and ' + (failed.length - 5) + ' more' : ''}</div>` : ''}
-              ${(c.status !== 'sent' && c.lastSendError) ? `<div class="campaign-card-meta" style="margin-top:4px;color:var(--danger);">Last attempt: ${esc(c.lastSendError)}</div>` : ''}
+          const count = (c.status !== 'sent' || legacySent) && typeof _mktAudienceCount === 'function' ? _mktAudienceCount(c.audience) : null;
+          const countText = count === null ? '' : ` · ${count} ${count === 1 ? 'person' : 'people'}`;
+          html += `<article class="mk-card">
+            <div class="mk-card-main">
+              <div class="mk-card-head">
+                <h3 class="mk-card-title" data-user-content>${esc(c.name)}</h3>
+                <span class="pill ${statusClass} pill-sm" data-ui="pill">${statusText}</span>
+              </div>
+              <div class="mk-card-meta">${esc(String(c.type || '').toUpperCase())} · Audience: ${esc(typeof _mktAudienceLabel === 'function' ? _mktAudienceLabel(c.audience) : c.audience)}${countText}${sendInfo}</div>
+              ${c.subject ? `<div class="mk-card-subject" data-user-content>${esc(c.subject)}</div>` : ''}
+              ${failed.length ? `<div class="mk-card-meta">Did not send to: <span data-user-content>${esc(failed.slice(0, 5).map(f => f.email).join(', '))}${failed.length > 5 ? ' and ' + (failed.length - 5) + ' more' : ''}</span></div>` : ''}
+              ${blocked && (c.status !== 'sent' || legacySent) ? `<div class="mk-card-meta mk-card-err">Sending is off until your business mailing address is saved. <button type="button" class="link" onclick="_mktOpenBusiness()">Open Settings, Business</button></div>` : ''}
+              ${(c.status !== 'sent' && c.lastSendError) ? `<div class="mk-card-meta mk-card-err">Last attempt: ${esc(c.lastSendError)}</div>` : ''}
             </div>
-            <div style="display:flex;flex-direction:column;gap:6px;align-items:flex-end;">
-              <span class="campaign-status ${statusClass}">${statusText}</span>
-              ${(c.status !== 'sent' || legacySent) ? `<button class="btn btn-primary" style="font-size:12px;padding:4px 10px;" onclick="sendCampaign('${esc(c.id)}')">Send Now</button>` : ''}
-              <button class="btn btn-danger" style="font-size:12px;padding:4px 8px;" onclick="deleteCampaign('${esc(c.id)}')">Delete</button>
+            <div class="mk-card-actions">
+              ${(c.status !== 'sent' || legacySent) ? `<button type="button" class="btn btn-secondary" ${blocked ? 'disabled aria-disabled="true"' : ''} onclick="sendCampaign('${esc(c.id)}')">Send Now</button>` : ''}
+              <button type="button" class="btn btn-ghost" onclick="deleteCampaign('${esc(c.id)}')" aria-label="Delete ${esc(c.name)}">Delete</button>
             </div>
-          </div>`;
+          </article>`;
         });
       }
       document.getElementById('campaignsList').innerHTML = html;
+      if (typeof _p7Actions === 'function') _p7Actions('marketing', `<button type="button" class="btn btn-primary" onclick="openCampaignComposer()">${_p7Icon('plus', 18)} New campaign</button>`);
+    }
+
+    // Composer: a drawer on desktop, a full sheet on phone. Four chunks: Basics, Who, Message, When.
+    function openCampaignComposer() {
+      _p7CloseSheet('campaignSheet');
+      const html = `<form id="campaignForm" onsubmit="saveCampaign(event)">
+        <div class="banner banner-warn" id="campaignCanSpam">${_p7Icon('triangle-alert', 20)}<div class="banner-body"><div class="banner-title">Required before marketing use</div>Sending needs your business mailing address saved in Settings. We add it, plus an unsubscribe line, to the bottom of every email. Sending is limited to ${CAMPAIGN_MAX_RECIPIENTS} people at a time.</div></div>
+        <fieldset class="mk-fs"><legend>Basics</legend>
+          <div class="field"><label class="field-label" for="campaignName">Campaign name</label><input type="text" class="form-input" id="campaignName" required placeholder="e.g. Spring promo"></div>
+          <div class="field"><label class="field-label" for="campaignType">Type</label>
+            <select class="form-select" id="campaignType">
+              <option value="email">Email blast</option>
+              <option value="sms">Text message (not connected yet)</option>
+              <option value="drip">Drip sequence (not connected yet)</option>
+            </select></div>
+        </fieldset>
+        <fieldset class="mk-fs"><legend>Who gets it</legend>
+          <div class="field"><label class="field-label" for="campaignAudience">Audience</label>
+            <select class="form-select" id="campaignAudience" onchange="_mktShowCount()">
+              <option value="all">All clients</option>
+              <option value="leads">Leads only</option>
+              <option value="booked">Booked events</option>
+              <option value="completed">Past clients</option>
+              <option value="weddings">Wedding clients</option>
+              <option value="corporate">Corporate clients</option>
+            </select>
+            <span class="field-hint" id="campaignAudienceCount" aria-live="polite"></span></div>
+        </fieldset>
+        <fieldset class="mk-fs"><legend>Message</legend>
+          <div class="field"><label class="field-label" for="campaignSubject">Subject</label><input type="text" class="form-input" id="campaignSubject" placeholder="Subject line or text opener"></div>
+          <div class="field"><label class="field-label" for="campaignMessage">Message</label><textarea class="form-textarea" id="campaignMessage" rows="7" placeholder="Write your message here"></textarea>
+            <span class="field-hint">Use {{client_name}} and {{event_date}} to fill in each person's details.</span></div>
+        </fieldset>
+        <fieldset class="mk-fs"><legend>When</legend>
+          <div class="field"><label class="field-label" for="campaignSchedule">Send</label>
+            <select class="form-select" id="campaignSchedule">
+              <option value="draft">Save as draft</option>
+              <option value="now"${_mktBlocked() ? ' disabled' : ''}>Send now (email it)</option>
+            </select>${_mktBlocked() ? '<span class="field-hint">Sending is off until your business mailing address is saved. <button type="button" class="link" onclick="_mktOpenBusiness()">Open Settings, Business</button></span>' : ''}</div>
+        </fieldset>
+      </form>`;
+      CRMUI.sheet({ id: 'campaignSheet', drawer: true, title: 'New campaign', html,
+        dirty: () => { const n = document.getElementById('campaignName'), m = document.getElementById('campaignMessage'); return !!((n && n.value) || (m && m.value)); },
+        primary: { label: 'Save campaign', onClick: _p7Submit }, secondary: { label: 'Cancel' } });
+      _mktShowCount();
+    }
+
+    function _mktShowCount() {
+      const sel = document.getElementById('campaignAudience'), out = document.getElementById('campaignAudienceCount');
+      if (!sel || !out) return;
+      const n = _mktAudienceCount(sel.value);
+      out.textContent = n === null ? '' : 'Reaches ' + n + (n === 1 ? ' person' : ' people') + ' right now.' + (sel.value === 'leads' ? ' Website inquiries are counted when you send.' : '');
     }
 
     function saveCampaign(e) {
@@ -63,6 +168,7 @@
       campaigns.push(c);
       setDB('campaigns', campaigns);
       document.getElementById('campaignForm').reset();
+      if (typeof _p7CloseSheet === 'function') _p7CloseSheet('campaignSheet');
       renderMarketing();
       if (schedule === 'now') sendCampaign(c.id);
       else showToast('Campaign saved as draft', 'success');
@@ -132,6 +238,7 @@
       send = send || ((t, p) => BSPortal.sendEmail(t, p));
       const gap = (gapMs === undefined) ? CAMPAIGN_CHUNK_GAP_MS : gapMs;
       const sent = [], failed = [];
+      let dry = 0;
       for (let i = 0; i < recipients.length; i += CAMPAIGN_CHUNK) {
         const chunk = recipients.slice(i, i + CAMPAIGN_CHUNK);
         const results = await Promise.all(chunk.map(async r => {
@@ -140,17 +247,17 @@
               email: r.email,
               clientName: r.name || '',
               subject: _campaignFill(c.subject, r),
-              body: _campaignFill(c.message, r)
+              body: _campaignFill(c.message, r) + (typeof _mktFooter === 'function' ? _mktFooter() : '')
             });
           } catch (err) { return { ok: false, error: String(err && err.message || err) }; }
         }));
         results.forEach((res, k) => {
-          if (res && res.ok) sent.push(chunk[k]);
+          if (res && res.ok) { sent.push(chunk[k]); if (res.dryRun) dry++; }
           else failed.push({ email: chunk[k].email, name: chunk[k].name, error: (res && res.error) || 'unknown error' });
         });
         if (gap && i + CAMPAIGN_CHUNK < recipients.length) await new Promise(r => setTimeout(r, gap));
       }
-      return { sent, failed };
+      return { sent, failed, dry };
     }
 
     // Records the outcome on the campaign. Only marks it sent when at least one email went out.
@@ -177,6 +284,7 @@
       const campaigns = getDB('campaigns') || [];
       const c = campaigns.find(x => x.id === id);
       if (!c) return;
+      if (typeof _mktBlocked === 'function' && _mktBlocked()) { showToast('Add your business mailing address in Settings, Business, before sending.', 'warning'); return; }
       if (c.type !== 'email') { showToast('Only email campaigns can be sent from here. SMS and drip are not connected yet.', 'warning'); return; }
       if (!String(c.subject || '').trim() || !String(c.message || '').trim()) { showToast('Add a subject and a message before sending.', 'warning'); return; }
       let inquiries = [], note = '';
@@ -191,17 +299,18 @@
         return;
       }
       _campaignPending = { id, recipients: found.list };
-      const shown = found.list.slice(0, 8).map(r => `<li>${esc(r.name || r.email)} <span style="color:var(--text-3);">${esc(r.email)}</span></li>`).join('');
+      const shown = found.list.slice(0, 8).map(r => `<li><span data-user-content>${esc(r.name || r.email)}</span> <span class="t-meta" data-user-content>${esc(r.email)}</span></li>`).join('');
       document.getElementById('campaignSendTitle').textContent = 'Send campaign';
       document.getElementById('campaignSendBody').innerHTML = `
-        <p style="margin-bottom:10px;"><strong>${esc(c.name)}</strong><br><span style="color:var(--text-2);">Subject: ${esc(c.subject)}</span></p>
-        <p style="margin-bottom:10px;">This sends a real email to <strong>${found.list.length}</strong> ${found.list.length === 1 ? 'person' : 'people'} right now. It cannot be undone.</p>
-        <ul style="margin:0 0 10px 18px;font-size:13px;color:var(--text-2);">${shown}${found.list.length > 8 ? `<li>and ${found.list.length - 8} more</li>` : ''}</ul>
-        ${found.noEmail ? `<p style="font-size:12px;color:var(--text-3);">${found.noEmail} matching ${found.noEmail === 1 ? 'record has' : 'records have'} no valid email and ${found.noEmail === 1 ? 'is' : 'are'} skipped.</p>` : ''}
-        ${note ? `<p style="font-size:12px;color:var(--text-3);">${esc(note)}</p>` : ''}`;
+        <p class="mk-send-p"><strong data-user-content>${esc(c.name)}</strong><br><span class="t-meta">Subject: <span data-user-content>${esc(c.subject)}</span></span></p>
+        <p class="mk-send-p">This sends a real email to <strong>${found.list.length}</strong> ${found.list.length === 1 ? 'person' : 'people'} right now. It cannot be undone.</p>
+        ${typeof _mktBiz === 'function' ? `<p class="t-meta">Every email ends with your business address and an unsubscribe line: <span data-user-content>${esc(String(_mktBiz().address || '').replace(/\s+/g, ' '))}</span></p>` : ''}
+        <ul class="mk-send-list">${shown}${found.list.length > 8 ? `<li>and ${found.list.length - 8} more</li>` : ''}</ul>
+        ${found.noEmail ? `<p class="t-meta">${found.noEmail} matching ${found.noEmail === 1 ? 'record has' : 'records have'} no valid email and ${found.noEmail === 1 ? 'is' : 'are'} skipped.</p>` : ''}
+        ${note ? `<p class="t-meta">${esc(note)}</p>` : ''}`;
       document.getElementById('campaignSendActions').innerHTML = `
-        <button class="btn btn-secondary" id="campaignSendCancel" onclick="closeModal('campaignSendModal')">Cancel</button>
-        <button class="btn btn-primary" id="campaignSendGo" onclick="confirmCampaignSend()">Send to ${found.list.length}</button>`;
+        <button type="button" class="btn btn-secondary" id="campaignSendCancel" onclick="closeModal('campaignSendModal')">Cancel</button>
+        <button type="button" class="btn btn-primary" id="campaignSendGo" onclick="confirmCampaignSend()">Send to ${found.list.length}</button>`;
       openModal('campaignSendModal');
     }
 
@@ -219,13 +328,14 @@
       finally { _campaignBusy = false; _campaignPending = null; }
       const marked = _campaignRecord(id, outcome);
       const n = recipients.length;
-      const failList = outcome.failed.map(f => `<li>${esc(f.email)} <span style="color:var(--text-3);">${esc(f.error)}</span></li>`).join('');
+      const failList = outcome.failed.map(f => `<li><span data-user-content>${esc(f.email)}</span> <span class="t-meta">${esc(f.error)}</span></li>`).join('');
       document.getElementById('campaignSendTitle').textContent = marked ? 'Campaign sent' : 'Campaign not sent';
       document.getElementById('campaignSendBody').innerHTML = `
-        <p style="margin-bottom:10px;"><strong>${outcome.sent.length}</strong> of ${n} sent${outcome.failed.length ? `, <strong style="color:var(--danger);">${outcome.failed.length} failed</strong>` : ''}.</p>
-        ${outcome.failed.length ? `<div style="font-size:12px;color:var(--text-2);margin-bottom:6px;">Did not send to:</div><ul style="margin:0 0 10px 18px;font-size:13px;max-height:180px;overflow:auto;">${failList}</ul>` : ''}
-        ${marked ? '' : '<p style="font-size:12px;color:var(--text-3);">Nothing went out, so the campaign is still a draft. You can try again.</p>'}`;
-      document.getElementById('campaignSendActions').innerHTML = `<button class="btn btn-secondary" onclick="closeModal('campaignSendModal')">Close</button>`;
+        <p class="mk-send-p"><strong>${outcome.sent.length}</strong> of ${n} sent${outcome.failed.length ? `, <strong class="mk-send-bad">${outcome.failed.length} failed</strong>` : ''}.</p>
+        ${outcome.dry ? '<p class="mk-send-p"><span class="pill pill-warn pill-sm" data-ui="pill">Dry run</span> <span class="t-meta">Email is in test mode, so nothing was delivered.</span></p>' : ''}
+        ${outcome.failed.length ? `<div class="t-meta">Did not send to:</div><ul class="mk-send-list mk-send-fails">${failList}</ul>` : ''}
+        ${marked ? '' : '<p class="t-meta">Nothing went out, so the campaign is still a draft. You can try again.</p>'}`;
+      document.getElementById('campaignSendActions').innerHTML = `<button type="button" class="btn btn-secondary" onclick="closeModal('campaignSendModal')">Close</button>`;
       renderMarketing();
       if (marked && !outcome.failed.length) showToast('Campaign sent to ' + outcome.sent.length, 'success');
       else if (marked) showToast('Campaign sent to ' + outcome.sent.length + ', ' + outcome.failed.length + ' failed', 'warning');

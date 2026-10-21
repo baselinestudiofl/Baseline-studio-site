@@ -32,7 +32,7 @@
       setDB('events', events);
       window.currentEvent = ev;
       document.getElementById('tabDocuments').innerHTML = renderEventDocuments(ev);
-      showToast(shared ? 'Shared — client can now see this document' : 'Removed from client view', shared ? 'success' : 'info');
+      showToast(shared ? 'Shared. The client can now see this document.' : 'Removed from client view', shared ? 'success' : 'info');
     }
 
     function toggleDocRequiresSignature(eventId, docId, requires) {
@@ -72,14 +72,28 @@
       if (!_docClientSigned(doc)) return '';
       const src = _sigSrc(doc.clientSignature);
       const when = doc.clientSignedAt ? _sigWhen(doc.clientSignedAt) : '';
-      return `<div style="display:flex;align-items:center;gap:16px;margin-top:10px;padding-top:10px;border-top:1px solid rgba(255,255,255,0.05);">
-              ${src ? `<div style="background:#fff;border-radius:4px;padding:6px 10px;flex-shrink:0;"><img src="${esc(src)}" alt="Client signature" onload="_sigDetectInk(this)" style="display:block;max-height:56px;max-width:200px;filter:invert(1);"></div>` : ''}
-              <div style="font-size:12px;min-width:0;">
-                <div style="font-weight:600;color:var(--text-1);font-size:13px;">${esc(doc.clientSignedName || 'Client')}</div>
-                ${when ? `<div style="color:var(--text-2);margin-top:2px;">Signed ${esc(when)}</div>` : ''}
-                <div style="color:var(--text-3);margin-top:2px;">Signed electronically</div>
+      return `<div class="evdoc-sig">
+              ${src ? `<div class="evdoc-sig-img"><img src="${esc(src)}" alt="Client signature" onload="_sigDetectInk(this)" style="display:block;max-height:56px;max-width:200px;filter:invert(1);"></div>` : ''}
+              <div class="evdoc-sig-meta">
+                <div class="evdoc-sig-name">${esc(doc.clientSignedName || 'Client')}</div>
+                ${when ? `<div class="evdoc-sig-when">Signed ${esc(when)}</div>` : ''}
+                <div class="evdoc-sig-note">Signed electronically</div>
               </div>
             </div>`;
+    }
+
+    // Row menu for one event document (the kebab). Opens a CRMUI menu; each item calls the same global function the old buttons called.
+    function openEventDocMenu(anchor, eventId, docId) {
+      const ev = (getDB('events') || []).find(e => e.id === eventId);
+      const doc = ev && ev.docs && ev.docs.find(d => d.id === docId);
+      if (!doc) return;
+      if (typeof CRMUI === 'undefined' || !CRMUI.menu) { showToast('Reload the page to use document actions.', 'warning'); return; }
+      const signed = !!(doc.signedAt || _docClientSigned(doc));
+      const items = [];
+      items.push({ label: doc.sharedWithClient ? 'Stop sharing with client' : 'Share with client', icon: doc.sharedWithClient ? 'ban' : 'send', onSelect: () => toggleEventDocShare(eventId, docId, !doc.sharedWithClient) });
+      if (!signed) items.push({ label: doc.requiresSignature ? 'Signature not required' : 'Require client signature', icon: 'file-signature', onSelect: () => toggleDocRequiresSignature(eventId, docId, !doc.requiresSignature) });
+      items.push({ label: 'Remove document', icon: 'trash-2', danger: true, onSelect: () => deleteEventDoc(eventId, docId) });
+      CRMUI.menu(anchor, items, { label: 'Document actions', align: 'right' });
     }
 
     function renderEventDocuments(event) {
@@ -88,97 +102,90 @@
       const eid = event.id;
       const allInvoices = (getDB('invoices') || []).filter(i => i.eventId === eid);
       const allQuotes   = event.quotes || [];
+      const ic = (n, s) => (typeof CRMUI !== 'undefined' && CRMUI.icon) ? CRMUI.icon(n, s || 16) : '';
+      const dShort = ts => { const d = new Date(ts); return isNaN(d.getTime()) ? '' : d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }); };
+      const money = n => (typeof CRMUI !== 'undefined' && CRMUI.fmt) ? CRMUI.fmt.money(n || 0) : '$' + Number(n || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+      const secHead = (icon, label) => `<h4 class="evdoc-sec-head">${ic(icon, 16)}<span>${label}</span></h4>`;
 
       // ── INVOICES ──────────────────────────────────────────────────
       let invoiceHtml = '';
       if (allInvoices.length) {
-        invoiceHtml = `<div style="margin-bottom:20px;">
-          <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--gray);margin-bottom:10px;">💳 Invoices</div>`;
+        invoiceHtml = `<section class="evdoc-sec">${secHead('credit-card', 'Invoices')}`;
         allInvoices.forEach(inv => {
           const isPaid = inv.status === 'paid';
-          const statusColor = isPaid ? 'var(--success)' : 'var(--warning)';
-          const statusLabel = (inv.status || 'pending').toUpperCase();
-          invoiceHtml += `<div style="padding:12px 16px;background:var(--black-4);border:1px solid var(--border);border-radius:6px;margin-bottom:8px;display:flex;align-items:center;gap:12px;">
-            <div style="flex:1;min-width:0;">
-              <div style="font-weight:600;font-size:13px;">${inv.invoiceNum || 'Invoice'}</div>
-              <div style="font-size:12px;color:var(--gray);margin-top:3px;">${inv.clientName || ''} &middot; $${(inv.total||0).toFixed(2)} &middot; <span style="color:${statusColor};font-weight:700;">${statusLabel}</span></div>
+          const statusLabel = String(inv.status || 'pending').replace(/^./, c => c.toUpperCase());
+          invoiceHtml += `<div class="evdoc-row">
+            <div class="evdoc-main">
+              <div class="evdoc-title"><span class="evdoc-name">${esc(inv.invoiceNum || 'Invoice')}</span><span class="pill ${isPaid ? 'pill-ok' : 'pill-warn'}" data-ui="pill">${esc(statusLabel)}</span></div>
+              <div class="evdoc-meta">${esc(inv.clientName || '')}${inv.clientName ? ' &middot; ' : ''}${money(inv.total)}</div>
             </div>
-            <div style="display:flex;gap:6px;flex-shrink:0;">
-              <button class="btn btn-secondary" style="padding:5px 10px;font-size:12px;" onclick="exportInvoicePDF('${inv.id}')">⬇ PDF</button>
-              <button class="btn btn-secondary" style="padding:5px 10px;font-size:12px;" onclick="sendInvoice('${inv.id}')">✉ Send</button>
+            <div class="evdoc-actions">
+              <button type="button" class="btn btn-secondary btn-sm" onclick="exportInvoicePDF('${inv.id}')">${ic('download', 16)} PDF</button>
+              <button type="button" class="btn btn-secondary btn-sm" onclick="sendInvoice('${inv.id}')">${ic('mail', 16)} Send</button>
             </div>
           </div>`;
         });
-        invoiceHtml += `</div>`;
+        invoiceHtml += `</section>`;
       }
 
       // ── QUOTES ────────────────────────────────────────────────────
       let quotesHtml = '';
       if (allQuotes.length) {
-        quotesHtml = `<div style="margin-bottom:20px;">
-          <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--gray);margin-bottom:10px;">📋 Saved Quotes</div>`;
+        quotesHtml = `<section class="evdoc-sec">${secHead('file-text', 'Saved quotes')}`;
         allQuotes.forEach(q => {
           const sentBadge = q.sentAt
-            ? `<span style="color:var(--cyan);font-weight:700;font-size:12px;">SENT ${new Date(q.sentAt).toLocaleDateString()}</span>`
-            : `<span style="color:var(--gray);font-size:12px;">Draft</span>`;
-          quotesHtml += `<div style="padding:12px 16px;background:var(--black-4);border:1px solid var(--border);border-radius:6px;margin-bottom:8px;display:flex;align-items:center;gap:12px;">
-            <div style="flex:1;min-width:0;">
-              <div style="font-weight:600;font-size:13px;">Quote — ${q.clientName || event.clientName || 'Client'}</div>
-              <div style="font-size:12px;color:var(--gray);margin-top:3px;">$${(q.total||0).toLocaleString()} &middot; ${new Date(q.createdAt).toLocaleDateString()} &middot; ${sentBadge}</div>
+            ? `<span class="pill pill-info" data-ui="pill">Sent ${dShort(q.sentAt)}</span>`
+            : `<span class="pill pill-neutral" data-ui="pill">Draft</span>`;
+          quotesHtml += `<div class="evdoc-row">
+            <div class="evdoc-main">
+              <div class="evdoc-title"><span class="evdoc-name">Quote for ${esc(q.clientName || event.clientName || 'Client')}</span>${sentBadge}</div>
+              <div class="evdoc-meta">${money(q.total)} &middot; ${dShort(q.createdAt)}</div>
             </div>
-            <div style="display:flex;gap:6px;flex-shrink:0;">
-              <button class="btn btn-secondary" style="padding:5px 10px;font-size:12px;" onclick="exportSavedQuotePDF('${q.id}','${eid}')">⬇ PDF</button>
+            <div class="evdoc-actions">
+              <button type="button" class="btn btn-secondary btn-sm" onclick="exportSavedQuotePDF('${q.id}','${eid}')">${ic('download', 16)} PDF</button>
             </div>
           </div>`;
         });
-        quotesHtml += `</div>`;
+        quotesHtml += `</section>`;
       }
 
       // ── CONTRACTS ─────────────────────────────────────────────────
       let docListHtml = '';
       if (event.docs.length) {
-        docListHtml = `<div style="margin-bottom:20px;">
-          <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--gray);margin-bottom:10px;">📄 Contracts & Agreements</div>`;
+        docListHtml = `<section class="evdoc-sec">${secHead('file-signature', 'Contracts and agreements')}`;
         event.docs.forEach(doc => {
           const clientSigned = _docClientSigned(doc);
           const isSigned = !!(doc.signedAt || clientSigned);
           const signedOn = doc.signedAt || doc.clientSignedAt;
           const signedBadge = isSigned
-            ? `<span style="background:var(--success);color:#07070d;padding:2px 8px;border-radius:3px;font-size:12px;font-weight:700;letter-spacing:.04em;">SIGNED ${new Date(signedOn).toLocaleDateString()}</span>`
-            : `<span style="background:var(--warning);color:#000;padding:2px 8px;border-radius:3px;font-size:12px;font-weight:700;letter-spacing:.04em;">UNSIGNED</span>`;
+            ? `<span class="pill pill-ok" data-ui="pill">SIGNED${dShort(signedOn) ? ' ' + dShort(signedOn) : ''}</span>`
+            : `<span class="pill pill-warn" data-ui="pill">UNSIGNED</span>`;
           const clientShared = doc.sharedWithClient;
           const requiresSig  = doc.requiresSignature;
+          // Four-dot stepper: Draft, Shared, Viewed (only when the client's first view is recorded), Signed.
+          const steps = [['Draft', true], ['Shared', !!clientShared]];
+          if (doc.clientViewedAt) steps.push(['Viewed', true]);
+          steps.push(['Signed', isSigned]);
+          const curIdx = steps.findIndex(s => !s[1]);
+          const stepsHtml = steps.map((s, i) => `<li class="${s[1] ? 'is-done' : (i === curIdx ? 'is-current' : '')}"><span class="evdoc-dot" aria-hidden="true"></span>${s[0]}</li>`).join('');
+          const stateWord = (steps.filter(s => s[1]).pop() || steps[0])[0];
           docListHtml += `
-          <div style="padding:14px 16px;background:var(--black-4);border:1px solid ${clientShared ? 'rgba(31,163,224,0.3)' : 'var(--border)'};border-radius:6px;margin-bottom:8px;">
-            <div style="display:flex;align-items:center;gap:12px;">
-              <div style="flex:1;min-width:0;">
-                <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:5px;">
-                  <span style="font-weight:600;font-size:13px;">${esc(doc.name)}</span>
-                  ${clientShared ? `<span style="background:rgba(31,163,224,0.2);color:var(--cyan);padding:1px 7px;border-radius:3px;font-size:12px;font-weight:700;letter-spacing:.04em;">VISIBLE TO CLIENT</span>` : ''}
-                </div>
-                <div style="display:flex;align-items:center;gap:8px;">${signedBadge}<span style="font-size:12px;color:var(--gray);">Created ${new Date(doc.createdAt).toLocaleDateString()}</span></div>
-              </div>
-              <div style="display:flex;gap:6px;flex-shrink:0;">
-                ${doc.contentHTML ? `<button class="btn btn-secondary" style="padding:6px 10px;font-size:12px;" onclick="viewEventDoc('${eid}','${doc.id}')">View</button>` : ''}
-                ${doc.contentHTML && isSigned ? `<button class="btn btn-secondary" style="padding:6px 10px;font-size:12px;" onclick="downloadEventDoc('${eid}','${doc.id}')">Download</button>` : ''}
-                ${!isSigned ? `<button class="btn btn-primary" style="padding:6px 10px;font-size:12px;" onclick="openSignatureModal('${eid}','${doc.id}')">✎ Sign</button>` : `<button class="btn btn-secondary" style="padding:6px 10px;font-size:12px;" onclick="viewEventDocSignature('${eid}','${doc.id}')">View Sig</button>`}
-                <button class="btn btn-danger" style="padding:6px 10px;font-size:12px;" onclick="deleteEventDoc('${eid}','${doc.id}')">✕</button>
-              </div>
+          <div class="evdoc-row evdoc-row-doc${clientShared ? ' is-shared' : ''}">
+            <div class="evdoc-main">
+              <div class="evdoc-title"><span class="evdoc-name">${esc(doc.name)}</span>${signedBadge}</div>
+              <div class="evdoc-meta">Created ${dShort(doc.createdAt)}${requiresSig && !isSigned ? ' &middot; <span class="pill pill-info pill-sm" data-ui="pill">Signature required</span>' : ''}</div>
+              <ol class="evdoc-steps" aria-label="Status: ${stateWord}">${stepsHtml}</ol>
+            </div>
+            <div class="evdoc-actions">
+              ${doc.contentHTML ? `<button type="button" class="btn btn-secondary btn-sm" onclick="viewEventDoc('${eid}','${doc.id}')">View</button>` : ''}
+              ${doc.contentHTML && isSigned ? `<button type="button" class="btn btn-secondary btn-sm" onclick="downloadEventDoc('${eid}','${doc.id}')">Download</button>` : ''}
+              ${!isSigned ? `<button type="button" class="btn btn-secondary btn-sm" onclick="openSignatureModal('${eid}','${doc.id}')">Sign</button>` : `<button type="button" class="btn btn-secondary btn-sm" onclick="viewEventDocSignature('${eid}','${doc.id}')">View Sig</button>`}
+              <button type="button" class="btn btn-ghost btn-icon btn-sm evdoc-kebab" aria-label="More actions for ${esc(doc.name)}" aria-haspopup="menu" onclick="openEventDocMenu(this,'${eid}','${doc.id}')">${ic('ellipsis', 20)}</button>
             </div>
             ${_clientSigBlock(doc)}
-            <div style="display:flex;gap:20px;margin-top:10px;padding-top:10px;border-top:1px solid rgba(255,255,255,0.05);">
-              <label style="display:flex;align-items:center;gap:7px;cursor:pointer;font-size:12px;color:rgba(255,255,255,0.6);">
-                <input type="checkbox" ${clientShared ? 'checked' : ''} onchange="toggleEventDocShare('${eid}','${doc.id}',this.checked)" style="width:14px;height:14px;accent-color:var(--cyan);">
-                Share with client
-              </label>
-              <label style="display:flex;align-items:center;gap:7px;cursor:pointer;font-size:12px;color:rgba(255,255,255,0.6);">
-                <input type="checkbox" ${requiresSig ? 'checked' : ''} onchange="toggleDocRequiresSignature('${eid}','${doc.id}',this.checked)" style="width:14px;height:14px;accent-color:var(--cyan);">
-                Require client signature
-              </label>
-            </div>
           </div>`;
         });
-        docListHtml += `</div>`;
+        docListHtml += `</section>`;
       }
 
       const isEmpty = !allInvoices.length && !allQuotes.length && !event.docs.length;
@@ -189,19 +196,27 @@
         : 'Selected for this event: ' + esc(_pick.template.name) + '. Pick another from the list if you need a different one.';
 
       return `
-        ${isEmpty ? '<div style="padding:20px;text-align:center;color:var(--gray);font-size:13px;border:1px dashed var(--border);border-radius:6px;margin-bottom:16px;">No documents yet — invoices, quotes, and contracts will appear here automatically</div>' : ''}
+        <div class="evdoc">
+        ${isEmpty ? `<div class="empty evdoc-empty">${ic('file-text', 32)}<p class="empty-title">No documents yet</p><p class="empty-text">Invoices, quotes and contracts show up here as you create them.</p></div>` : ''}
         ${invoiceHtml}${quotesHtml}${docListHtml}
-        <div style="background:var(--black-4);border:1px solid var(--border);border-radius:6px;padding:16px;margin-top:${isEmpty ? '0' : '8px'};">
-          <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--gray);margin-bottom:12px;">Add Contract / Agreement</div>
-          <div style="display:flex;gap:8px;margin-bottom:10px;">
-            <select class="form-select" id="evtDocTemplate_${eid}" style="flex:1;margin:0;font-size:12px;"><option value="">From template…</option>${templateOptions}</select>
-            <button class="btn btn-primary" style="white-space:nowrap;" onclick="createEventDocFromTemplate('${eid}')">+ From Template</button>
+        <section class="card evdoc-create">
+          <h4 class="evdoc-sec-head"><span>Create from template</span></h4>
+          <div class="field">
+            <label class="field-label" for="evtDocTemplate_${eid}">Template</label>
+            <div class="evdoc-create-line">
+              <select class="form-select" id="evtDocTemplate_${eid}"><option value="">From template…</option>${templateOptions}</select>
+              <button type="button" class="btn btn-secondary" onclick="createEventDocFromTemplate('${eid}')">${ic('plus', 16)} Create</button>
+            </div>
+            ${_pickHint ? `<div class="field-hint">${_pickHint}</div>` : ''}
           </div>
-          ${_pickHint ? `<div style="font-size:12px;color:var(--text-2);margin:-2px 0 10px;">${_pickHint}</div>` : ''}
-          <div style="display:flex;gap:8px;">
-            <input type="text" class="form-input" id="evtDocBlankName_${eid}" placeholder="Blank document name…" style="flex:1;margin:0;font-size:12px;">
-            <button class="btn btn-secondary" style="white-space:nowrap;" onclick="createBlankEventDoc('${eid}')">+ Blank</button>
+          <div class="field">
+            <label class="field-label" for="evtDocBlankName_${eid}">Blank document</label>
+            <div class="evdoc-create-line">
+              <input type="text" class="form-input" id="evtDocBlankName_${eid}" placeholder="Document name">
+              <button type="button" class="btn btn-secondary" onclick="createBlankEventDoc('${eid}')">${ic('plus', 16)} Add blank</button>
+            </div>
           </div>
+        </section>
         </div>`;
     }
 
@@ -507,7 +522,7 @@ body{margin:0;background:#e6e8eb;color:#111;font-family:Georgia,'Times New Roman
 .bar{position:sticky;top:0;z-index:5;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px 16px;padding:10px 20px;background:#14161a;color:#f4f6f8;font:14px/1.4 system-ui,-apple-system,'Segoe UI',Arial,sans-serif}
 .bar-title{font-weight:600;min-width:0;flex:1 1 240px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .bar-hint{color:#c3c8d0;font-size:13px}
-.bar button{font:inherit;font-weight:600;padding:8px 16px;border:0;border-radius:6px;background:#1fa3e0;color:#04121a;cursor:pointer}
+.bar button{font:inherit;font-weight:600;min-height:44px;padding:8px 18px;border:0;border-radius:6px;background:#1fa3e0;color:#04121a;cursor:pointer}
 .bar button:hover{background:#6fd0ff}
 .sheet{padding:28px 16px 64px}
 .paper{background:#fff;color:#111;max-width:800px;margin:0 auto;padding:56px 64px;font-size:16px;line-height:1.6;box-shadow:0 2px 14px rgba(0,0,0,.18);border-radius:2px;overflow-wrap:anywhere}
@@ -583,7 +598,9 @@ body{margin:0;background:#e6e8eb;color:#111;font-family:Georgia,'Times New Roman
       const nonce = _docNonce();
       const sigs = _docSignatures(doc, ev);
       const title = _docFileTitle(doc, ev);
-      const body = _sanitizeDocHtml(doc.contentHTML || doc.content || '') || '<p>(Empty document)</p>';
+      let body = _sanitizeDocHtml(doc.contentHTML || doc.content || '') || '<p>(Empty document)</p>';
+      // A signed document carries the real signature block below, so the template's blank signature lines are dropped.
+      if (sigs.length) body = body.replace(/<table\b[\s\S]*?<\/table>/gi, t => (/signature/i.test(t) && /(?:Date|Printed Name):\s*_{3,}/i.test(t)) ? '' : t);
       const heading = /^\s*(?:<[^>]+>\s*)*<h1\b/i.test(body) ? '' : `<h1>${esc(doc.name || 'Document')}</h1>`;
       const csp = `default-src 'none'; img-src data: https:; style-src 'unsafe-inline'; script-src 'nonce-${nonce}'; font-src data:; base-uri 'none'; form-action 'none'`;
       const script = `(function(){
@@ -632,7 +649,7 @@ body{margin:0;background:#e6e8eb;color:#111;font-family:Georgia,'Times New Roman
       img.style.filter = s.ink === 'light' ? 'invert(1)' : 'none';
       img.src = s.src || '';
       _sigDetectInk(img);
-      document.getElementById('sigViewMeta').textContent = 'Signed' + (s.at ? ' ' + _sigWhen(s.at) : '') + ' by ' + s.name;
+      document.getElementById('sigViewMeta').textContent = sigs.map(x => 'Signed' + (x.at ? ' ' + _sigWhen(x.at) : '') + ' by ' + x.name).join('. ');
       openModal('sigViewModal');
     }
 
@@ -702,7 +719,7 @@ body{margin:0;background:#e6e8eb;color:#111;font-family:Georgia,'Times New Roman
       closeModal('signatureModal');
       window.currentEvent = ev;
       document.getElementById('tabDocuments').innerHTML = renderEventDocuments(ev);
-      showToast('Document signed and saved!', 'success');
+      showToast('Document signed and saved.', 'success');
 
       // If this is a contract AND client has an email, create their portal account + send invite
       if (isContract && ev && ev.clientEmail) {
@@ -720,7 +737,7 @@ body{margin:0;background:#e6e8eb;color:#111;font-family:Georgia,'Times New Roman
         const pass = ev.portalPassword;
         const eventDate = ev.date ? new Date(ev.date).toLocaleDateString('en-US',{weekday:'long',year:'numeric',month:'long',day:'numeric'}) : 'your event date';
 
-        showToast('Contract signed — creating client portal…', 'info');
+        showToast('Contract signed. Creating the client portal.', 'info');
 
         // Create Supabase auth user for client via Edge Function (client_invite handles this)
         const r = await BSPortal.sendEmail('client_invite', {
@@ -740,42 +757,42 @@ body{margin:0;background:#e6e8eb;color:#111;font-family:Georgia,'Times New Roman
     // ─────────────────────────────────────────────────────────────────
     const ADDENDUM_LIBRARY = [
       { keywords: ['cold spark'],
-        title: 'Cold Spark Towers — Safety & Liability Addendum',
+        title: 'Cold Spark Towers: Safety & Liability Addendum',
         content: `<p>This addendum governs the use of Cold Spark Towers ("pyrotechnic-style cold spark devices") at the Event.</p>
 <p><strong>1. Venue Approval.</strong> Client is solely responsible for obtaining written venue approval for cold spark effects prior to the event date. If approval is not obtained, Baseline Studio reserves the right to omit this effect without issuing a refund for its line item.</p>
 <p><strong>2. Safety Clearance.</strong> Cold spark towers require a minimum clearance of 6 feet on all sides and 12 feet of vertical clearance. Client and venue are responsible for ensuring these conditions are met.</p>
 <p><strong>3. Fire Safety.</strong> A fire extinguisher must be accessible within 15 feet of each device during operation. Baseline Studio is not responsible for venue compliance with local fire codes.</p>
 <p><strong>4. Liability.</strong> Client assumes all liability for any injury or property damage resulting from failure to maintain required clearances or from unauthorized guest contact with operating devices.</p>` },
       { keywords: ['co₂ jets', 'co2 jets', 'co₂ jet', 'co2 jet'],
-        title: 'CO₂ Jets — Safety & Operations Addendum',
+        title: 'CO₂ Jets: Safety & Operations Addendum',
         content: `<p>This addendum governs the use of CO₂ Jets at the Event.</p>
 <p><strong>1. Indoor Use.</strong> CO₂ jet effects require adequate venue ventilation. Use in sealed or poorly ventilated spaces may be restricted or prohibited at Baseline Studio's discretion.</p>
 <p><strong>2. Safe Zone.</strong> A minimum 8-foot guest-free safety perimeter must be maintained around active CO₂ jet devices during operation. Venue and Client are jointly responsible for crowd management in this zone.</p>
 <p><strong>3. Supply.</strong> CO₂ canisters are provided for the contracted duration only. Additional activations beyond the quoted scope may not be available on-site.</p>
 <p><strong>4. Liability.</strong> Client assumes responsibility for ensuring no guests approach active equipment during operation. Baseline Studio is not liable for injury resulting from unauthorized contact with CO₂ jet devices.</p>` },
       { keywords: ['co₂ cannon', 'co2 cannon', 'co₂ cannons', 'co2 cannons'],
-        title: 'CO₂ Cannons — Safety & Operations Addendum',
+        title: 'CO₂ Cannons: Safety & Operations Addendum',
         content: `<p>This addendum governs the use of CO₂ Cannons ("handheld or mounted cryo cannons") at the Event.</p>
 <p><strong>1. Operator Control.</strong> CO₂ cannons are operated exclusively by Baseline Studio personnel. No guest or venue staff shall operate the equipment under any circumstance.</p>
 <p><strong>2. Direction of Effect.</strong> CO₂ cannon blasts shall not be directed at any individual's face at close range. A minimum stand-off distance of 4 feet is required for any directed guest interaction.</p>
 <p><strong>3. Venue Consent.</strong> Client is responsible for confirming venue consent to CO₂ cannon use. Condensation and CO₂ gas may affect certain surfaces and HVAC systems.</p>
 <p><strong>4. Liability.</strong> Baseline Studio is not liable for injury or property damage caused by guests attempting to operate or interfere with CO₂ cannon equipment.</p>` },
       { keywords: ['dancing on cloud', 'dancing on clouds'],
-        title: 'Dancing on Clouds / Low-Lying Fog — Safety Addendum',
+        title: 'Dancing on Clouds / Low-Lying Fog: Safety Addendum',
         content: `<p>This addendum governs the use of the Dancing on Clouds low-lying fog effect at the Event.</p>
 <p><strong>1. Effect Description.</strong> The Dancing on Clouds effect uses a low-lying fog machine to create a ground-level cloud layer, typically for the first dance or a designated ceremony moment.</p>
 <p><strong>2. Slip Hazard.</strong> Low-lying fog may reduce visibility of the floor surface. Client and venue are responsible for ensuring the dance floor is dry and free of trip hazards prior to activation.</p>
 <p><strong>3. Duration.</strong> The effect is designed for a single designated moment (typically 3–5 minutes per activation). Extended continuous use is not included unless separately quoted.</p>
 <p><strong>4. Ventilation.</strong> Adequate venue ventilation is required. Baseline Studio reserves the right to halt the effect if CO₂ levels or visibility impairment present a safety concern.</p>` },
       { keywords: ['led video wall', 'video wall'],
-        title: 'LED Video Wall — Setup & Power Requirements Addendum',
+        title: 'LED Video Wall: Setup & Power Requirements Addendum',
         content: `<p>This addendum governs the installation and operation of an LED Video Wall at the Event.</p>
 <p><strong>1. Power Requirements.</strong> The LED Video Wall requires dedicated 20-amp circuits. Client is responsible for confirming power availability with the venue prior to the event date.</p>
 <p><strong>2. Setup Time.</strong> Installation requires a minimum of 2 hours of unobstructed venue access before guest arrival. Any reduction of this window due to venue scheduling is not the liability of Baseline Studio.</p>
 <p><strong>3. Content.</strong> Standard motion background content is included. Custom graphics, logos, or video must be delivered to Baseline Studio no later than 72 hours before the event date.</p>
 <p><strong>4. Structural Safety.</strong> The LED Video Wall will be ground-supported or rigged per the venue's approved plan. No modification to the panel arrangement shall be made without written consent from Baseline Studio.</p>` },
       { keywords: ['fog', 'haze', 'fog / haze', 'fog/haze'],
-        title: 'Fog / Haze Machine — Operations Addendum',
+        title: 'Fog / Haze Machine: Operations Addendum',
         content: `<p>This addendum governs the use of fog or haze machines at the Event.</p>
 <p><strong>1. Fire Alarm Systems.</strong> Fog and haze effects may trigger venue smoke detectors. Client and venue are solely responsible for coordinating with venue management to disable or cover applicable detectors prior to use. Baseline Studio is not liable for any false alarms or associated costs.</p>
 <p><strong>2. Effect Type.</strong> Haze machines produce a fine atmospheric haze to enhance lighting. Standard fog machines produce denser, more visible clouds. The contracted equipment type determines which is deployed.</p>
@@ -805,7 +822,7 @@ body{margin:0;background:#e6e8eb;color:#111;font-family:Georgia,'Times New Roman
       });
       if (!matched.length) return docHTML;
       let addendaHTML = `<div style="page-break-before:always;margin-top:48px;padding-top:32px;border-top:3px solid #1FA3E0;">
-        <h2 style="font-size:14px;text-transform:uppercase;letter-spacing:0.1em;color:#111;margin-bottom:24px;font-family:Arial,sans-serif;">Addenda — Service-Specific Terms</h2>`;
+        <h2 style="font-size:14px;text-transform:uppercase;letter-spacing:0.1em;color:#111;margin-bottom:24px;font-family:Arial,sans-serif;">Addenda: Service-Specific Terms</h2>`;
       matched.forEach((a, idx) => {
         addendaHTML += `<div style="margin-bottom:32px;${idx > 0 ? 'padding-top:24px;border-top:1px solid #ddd;' : ''}">
           <h3 style="font-size:13px;text-transform:uppercase;letter-spacing:0.06em;color:#111;border-bottom:1px solid #eee;padding-bottom:6px;margin-bottom:12px;font-family:Arial,sans-serif;">${a.title}</h3>
@@ -838,7 +855,7 @@ body{margin:0;background:#e6e8eb;color:#111;font-family:Georgia,'Times New Roman
     function previewCurrentDocument() {
       const editor = document.getElementById('docEditor');
       if (!editor) { showToast('Open a document first', 'warning'); return; }
-      const rawHtml = editor.innerHTML;
+      const rawHtml = (typeof _sanitizeDocHtml === 'function') ? _sanitizeDocHtml(editor.innerHTML) : editor.innerHTML;
       if (!rawHtml.trim()) { showToast('Document is empty', 'warning'); return; }
 
       // Get event context (from event detail view or from currentEvent)
@@ -853,35 +870,37 @@ body{margin:0;background:#e6e8eb;color:#111;font-family:Georgia,'Times New Roman
       })();
 
       const contextNote = ev
-        ? `<div style="background:#fffbe6;border:1px solid #ffd966;color:#7a5c00;padding:8px 16px;font-size:12px;border-radius:4px;margin-bottom:20px;">Filled with data from event: <strong>${ev.name}</strong> — ${ev.clientName}</div>`
-        : `<div style="background:#f5f5f5;border:1px solid #ddd;color:#666;padding:8px 16px;font-size:12px;border-radius:4px;margin-bottom:20px;">No event context — open a document from inside an event for real data. Showing placeholder labels.</div>`;
+        ? `<div style="background:#fffbe6;border:1px solid #c9a227;color:#6b4f00;padding:8px 16px;font-size:13px;border-radius:4px;margin-bottom:20px;">Filled with data from event: <strong>${esc(ev.name)}</strong>, ${esc(ev.clientName)}</div>`
+        : `<div style="background:#f5f5f5;border:1px solid #bbb;color:#555;padding:8px 16px;font-size:13px;border-radius:4px;margin-bottom:20px;">No event context. Open a document from inside an event for real data. Showing placeholder labels.</div>`;
 
       const w = window.open('', '_blank', 'width=920,height=800,menubar=yes');
+      if (!w) { showToast('Allow pop-ups to preview documents', 'warning'); return; }
       w.document.write(`<!DOCTYPE html><html><head>
         <meta charset="utf-8">
-        <title>Preview — ${templateName}</title>
+        <title>Preview: ${esc(templateName)}</title>
         <style>
           * { box-sizing: border-box; margin: 0; padding: 0; }
-          body { font-family: Georgia, 'Times New Roman', serif; background: #eceae6; }
+          html, body { background: #eceae6; color: #111; }
+          body { font-family: Georgia, 'Times New Roman', serif; }
           .page-wrap { padding: 40px 20px; max-width: 820px; margin: 0 auto; }
-          .doc-header { text-align:center; border-bottom: 3px solid #1FA3E0; padding-bottom:20px; margin-bottom:28px; }
-          .doc-header .brand { font-size:22px; font-weight:900; letter-spacing:.08em; color:#1FA3E0; font-family:Arial,sans-serif; }
-          .doc-header .tagline { font-size:12px; color:#666; margin-top:4px; font-family:Arial,sans-serif; letter-spacing:.05em; }
+          .doc-header { text-align:center; border-bottom: 3px solid #0b5f87; padding-bottom:20px; margin-bottom:28px; }
+          .doc-header .brand { font-size:22px; font-weight:900; letter-spacing:.08em; color:#0b5f87; font-family:Arial,sans-serif; }
+          .doc-header .tagline { font-size:12px; color:#555; margin-top:4px; font-family:Arial,sans-serif; letter-spacing:.05em; }
           .doc-page { background:#fff; padding:72px 80px 100px; box-shadow:0 4px 40px rgba(0,0,0,.12); min-height:1000px; }
           .doc-page h1 { font-size:2em; margin:0 0 .5em; }
           .doc-page h2 { font-size:1.5em; margin:1em 0 .4em; }
           .doc-page h3 { font-size:1.2em; margin:1em 0 .3em; }
           .doc-page p  { margin-bottom:.9em; line-height:1.7; }
           .doc-page ul, .doc-page ol { margin:0 0 .9em 1.5em; line-height:1.7; }
-          .doc-footer { text-align:center; font-size:12px; color:#666; font-family:Arial,sans-serif; border-top:1px solid #eee; padding-top:18px; margin-top:32px; }
+          .doc-footer { text-align:center; font-size:12px; color:#555; font-family:Arial,sans-serif; border-top:1px solid #eee; padding-top:18px; margin-top:32px; }
           .print-bar { background:#111118; color:#fff; padding:12px 24px; display:flex; align-items:center; justify-content:space-between; font-family:Arial,sans-serif; font-size:13px; }
           .print-bar button { background:#1FA3E0; color:#07070d; border:none; padding:7px 18px; border-radius:5px; cursor:pointer; font-weight:600; font-size:13px; }
           @media print { .print-bar { display:none!important; } }
         </style>
       </head><body>
         <div class="print-bar">
-          <span>👁 Preview — <strong>${templateName}</strong></span>
-          <button onclick="window.print()">🖨 Print / Save PDF</button>
+          <span>Preview: <strong>${esc(templateName)}</strong></span>
+          <button type="button" onclick="window.print()">Print or save PDF</button>
         </div>
         <div class="page-wrap">
           ${contextNote}
@@ -940,10 +959,10 @@ body{margin:0;background:#e6e8eb;color:#111;font-family:Georgia,'Times New Roman
         { id: genId(), name: 'Cancellation Agreement', category: 'client', contentHTML: `<h1>Event Cancellation Agreement</h1><p>Date: <strong>{{current_date}}</strong></p><p>This agreement is between <strong>Baseline Studio</strong> and <strong>{{client_name}}</strong> regarding the event originally scheduled for <strong>{{event_date}}</strong> at <strong>{{venue_name}}</strong>.</p><h2>Cancellation Terms</h2><p>The parties agree that the DJ Services Agreement for the above event is hereby cancelled effective today.</p><h2>Financial Settlement</h2><ul><li>Original contract total: {{total_price}}</li><li>Deposit previously paid: {{deposit_amount}}</li><li>Additional amount owed by Client: $____________</li><li>Refund to be issued by Baseline Studio: $____________</li></ul><h2>Release</h2><p>Upon settlement of any amounts owed, both parties release each other from all claims arising from the original agreement.</p><br><table style="width:100%;border-collapse:collapse;"><tr><td style="width:50%;padding-right:20px;vertical-align:top;"><p><strong>Client Signature</strong></p><div style="border-bottom:2px solid #333;height:50px;margin-bottom:8px;"></div><p style="font-size:12px;">Printed Name: ______________________________</p><p style="font-size:12px;">Date: ______________</p></td><td style="width:50%;padding-left:20px;vertical-align:top;"><p><strong>Baseline Studio</strong></p><div style="border-bottom:2px solid #333;height:50px;margin-bottom:8px;"></div><p style="font-size:12px;">Date: ______________</p></td></tr></table>` },
         { id: genId(), name: 'Services Adjustment Agreement', category: 'client', contentHTML: `<h1>Services Adjustment Agreement</h1><p>Date: <strong>{{current_date}}</strong></p><p>This agreement modifies the original DJ Services Agreement between <strong>Baseline Studio</strong> and <strong>{{client_name}}</strong> for the event on <strong>{{event_date}}</strong>.</p><h2>Original Agreement</h2><p>Original Services: [list from original contract]<br>Original Total: [original amount]</p><h2>Modifications</h2><p><strong>Services Added:</strong></p><ul><li>___________________________________________</li></ul><p><strong>Services Removed:</strong></p><ul><li>___________________________________________</li></ul><h2>Revised Pricing</h2><p>Revised Total: {{total_price}}<br>Additional Balance Due: $____________<br>Due Date: {{balance_due_date}}</p><h2>All Other Terms Unchanged</h2><p>All other terms from the original agreement remain in full force.</p><br><table style="width:100%;border-collapse:collapse;"><tr><td style="width:50%;padding-right:20px;vertical-align:top;"><p><strong>Client Signature</strong></p><div style="border-bottom:2px solid #333;height:50px;margin-bottom:8px;"></div><p style="font-size:12px;">Date: ______________</p></td><td style="width:50%;padding-left:20px;vertical-align:top;"><p><strong>Baseline Studio</strong></p><div style="border-bottom:2px solid #333;height:50px;margin-bottom:8px;"></div><p style="font-size:12px;">Date: ______________</p></td></tr></table>` },
         { id: genId(), name: 'Photo & Video Release', category: 'client', contentHTML: `<h1>Photo &amp; Video Release Form</h1><p>Date: <strong>{{current_date}}</strong> &nbsp;&bull;&nbsp; Event: <strong>{{event_type}}</strong> on <strong>{{event_date}}</strong></p><p>I, <strong>{{client_name}}</strong>, grant Baseline Studio permission to use photos and video from the above event for marketing purposes (website, social media, portfolio). No names or personal details will be shared without additional written consent.</p><p><strong>Optional social media tag permission:</strong><br>[ ] I consent to being tagged in posts featuring my event.<br>Preferred handle: ___________________________</p><br><table style="width:100%;border-collapse:collapse;"><tr><td style="width:50%;vertical-align:top;"><p><strong>Client Signature</strong></p><div style="border-bottom:2px solid #333;height:50px;margin-bottom:8px;"></div><p style="font-size:12px;">Printed Name: ______________________________<br>Date: ______________</p></td><td style="width:50%;"></td></tr></table>` },
-        { id: genId(), name: 'DJ / Performer — Independent Contractor Agreement', category: 'employee', contentHTML: `<h1>Independent Contractor Agreement</h1><p>This agreement is entered into as of <strong>{{current_date}}</strong>, between <strong>Baseline Studio</strong> ("Company") and <strong>_______________________</strong> ("Contractor").</p><h2>1. Services</h2><p>Contractor agrees to provide DJ/Performer services at events as assigned by Baseline Studio, including DJing, MCing, equipment operation, and professional client interaction.</p><h2>2. Independent Contractor Status</h2><p>Contractor is an independent contractor, not an employee. Contractor is responsible for their own taxes, insurance, and expenses unless otherwise agreed in writing.</p><h2>3. Compensation</h2><p>Per-event rate: $____________<br>Payment method: ___________________________<br>Payment timing: Within 5 business days of completed event.</p><h2>4. Equipment</h2><p>Baseline Studio will provide equipment as specified per event. Contractor is responsible for any damage caused by negligence or misuse.</p><h2>5. Confidentiality</h2><p>Contractor agrees not to disclose client information, pricing, or any proprietary business information of Baseline Studio to any third party.</p><h2>6. Cancellation Policy</h2><p>If Contractor cannot perform an assigned event, they must notify Baseline Studio at least 72 hours in advance. Failure to provide adequate notice without a documented emergency may result in forfeiture of that event's compensation.</p><h2>7. Term</h2><p>This agreement is in effect on a per-event basis until terminated in writing by either party.</p><br><table style="width:100%;border-collapse:collapse;"><tr><td style="width:50%;padding-right:20px;vertical-align:top;"><p><strong>Contractor Signature</strong></p><div style="border-bottom:2px solid #333;height:50px;margin-bottom:8px;"></div><p style="font-size:12px;">Printed Name: ______________________________<br>Date: ______________</p></td><td style="width:50%;padding-left:20px;vertical-align:top;"><p><strong>Baseline Studio</strong></p><div style="border-bottom:2px solid #333;height:50px;margin-bottom:8px;"></div><p style="font-size:12px;">Authorized Signature<br>Date: ______________</p></td></tr></table>` },
+        { id: genId(), name: 'DJ / Performer: Independent Contractor Agreement', category: 'employee', contentHTML: `<h1>Independent Contractor Agreement</h1><p>This agreement is entered into as of <strong>{{current_date}}</strong>, between <strong>Baseline Studio</strong> ("Company") and <strong>_______________________</strong> ("Contractor").</p><h2>1. Services</h2><p>Contractor agrees to provide DJ/Performer services at events as assigned by Baseline Studio, including DJing, MCing, equipment operation, and professional client interaction.</p><h2>2. Independent Contractor Status</h2><p>Contractor is an independent contractor, not an employee. Contractor is responsible for their own taxes, insurance, and expenses unless otherwise agreed in writing.</p><h2>3. Compensation</h2><p>Per-event rate: $____________<br>Payment method: ___________________________<br>Payment timing: Within 5 business days of completed event.</p><h2>4. Equipment</h2><p>Baseline Studio will provide equipment as specified per event. Contractor is responsible for any damage caused by negligence or misuse.</p><h2>5. Confidentiality</h2><p>Contractor agrees not to disclose client information, pricing, or any proprietary business information of Baseline Studio to any third party.</p><h2>6. Cancellation Policy</h2><p>If Contractor cannot perform an assigned event, they must notify Baseline Studio at least 72 hours in advance. Failure to provide adequate notice without a documented emergency may result in forfeiture of that event's compensation.</p><h2>7. Term</h2><p>This agreement is in effect on a per-event basis until terminated in writing by either party.</p><br><table style="width:100%;border-collapse:collapse;"><tr><td style="width:50%;padding-right:20px;vertical-align:top;"><p><strong>Contractor Signature</strong></p><div style="border-bottom:2px solid #333;height:50px;margin-bottom:8px;"></div><p style="font-size:12px;">Printed Name: ______________________________<br>Date: ______________</p></td><td style="width:50%;padding-left:20px;vertical-align:top;"><p><strong>Baseline Studio</strong></p><div style="border-bottom:2px solid #333;height:50px;margin-bottom:8px;"></div><p style="font-size:12px;">Authorized Signature<br>Date: ______________</p></td></tr></table>` },
         { id: genId(), name: 'Non-Disclosure Agreement (NDA)', category: 'employee', contentHTML: `<h1>Non-Disclosure Agreement</h1><p>This NDA is entered into as of <strong>{{current_date}}</strong>, between <strong>Baseline Studio</strong> ("Company") and <strong>_______________________</strong> ("Recipient").</p><h2>1. Confidential Information</h2><p>"Confidential Information" includes all business information, client data, event details, pricing, and proprietary processes of Baseline Studio not publicly available.</p><h2>2. Obligations</h2><p>Recipient agrees to: (a) keep all Confidential Information strictly confidential; (b) not disclose to any third party without written consent; (c) use it only in connection with services provided to Baseline Studio.</p><h2>3. Duration</h2><p>These obligations remain in effect for 2 years from the date of this agreement, and indefinitely with respect to client personal data.</p><h2>4. Agreement</h2><p>Both parties confirm they have read and agree to these terms.</p><br><table style="width:100%;border-collapse:collapse;"><tr><td style="width:50%;padding-right:20px;vertical-align:top;"><p><strong>Recipient Signature</strong></p><div style="border-bottom:2px solid #333;height:50px;margin-bottom:8px;"></div><p style="font-size:12px;">Printed Name: ______________________________<br>Date: ______________</p></td><td style="width:50%;padding-left:20px;vertical-align:top;"><p><strong>Baseline Studio</strong></p><div style="border-bottom:2px solid #333;height:50px;margin-bottom:8px;"></div><p style="font-size:12px;">Date: ______________</p></td></tr></table>` },
-        { id: genId(), name: 'Equipment Use Policy — Acknowledgment', category: 'employee', contentHTML: `<h1>Equipment Use Policy — Acknowledgment</h1><p>Date: <strong>{{current_date}}</strong></p><p>By signing below, <strong>_______________________</strong> acknowledges receipt and understanding of Baseline Studio's Equipment Use Policy.</p><h2>Policy Summary</h2><ol><li><strong>Care:</strong> All equipment must be handled carefully and transported in provided cases.</li><li><strong>Setup/Teardown:</strong> Follow Baseline Studio's setup and breakdown procedures at every event.</li><li><strong>Damage Reporting:</strong> Any damage, loss, or theft must be reported immediately. Damage from negligence may be charged to the responsible party.</li><li><strong>No Modifications:</strong> No modifications to equipment without written authorization.</li><li><strong>Return:</strong> All equipment returned within 24 hours of the event, in the condition received.</li></ol><br><table style="width:100%;border-collapse:collapse;"><tr><td style="width:50%;vertical-align:top;"><p><strong>Signature</strong></p><div style="border-bottom:2px solid #333;height:50px;margin-bottom:8px;"></div><p style="font-size:12px;">Printed Name: ______________________________<br>Date: ______________</p></td><td style="width:50%;"></td></tr></table>` },
-        { id: genId(), name: 'Code of Conduct Agreement', category: 'employee', contentHTML: `<h1>Code of Conduct Agreement</h1><p>Date: <strong>{{current_date}}</strong></p><p>All Baseline Studio representatives are expected to maintain the highest standards of professionalism. By signing, <strong>_______________________</strong> agrees to the following:</p><ol><li><strong>Appearance:</strong> Arrive professionally dressed per management's guidelines for each event.</li><li><strong>Punctuality:</strong> Arrive at least 90 minutes before event start for setup, or as directed.</li><li><strong>Client Interaction:</strong> Be courteous and professional with all clients and guests at all times.</li><li><strong>No Substances:</strong> No alcohol or impairing substances before or during events while on duty.</li><li><strong>Social Media:</strong> Do not post content from events without explicit written permission from Baseline Studio and the client.</li><li><strong>Confidentiality:</strong> Client names, event details, and pricing are confidential — not to be shared externally.</li></ol><p>Violations may result in removal from an event and/or termination of the working relationship.</p><br><table style="width:100%;border-collapse:collapse;"><tr><td style="width:50%;vertical-align:top;"><p><strong>Signature</strong></p><div style="border-bottom:2px solid #333;height:50px;margin-bottom:8px;"></div><p style="font-size:12px;">Printed Name: ______________________________<br>Date: ______________</p></td><td style="width:50%;"></td></tr></table>` },
+        { id: genId(), name: 'Equipment Use Policy: Acknowledgment', category: 'employee', contentHTML: `<h1>Equipment Use Policy: Acknowledgment</h1><p>Date: <strong>{{current_date}}</strong></p><p>By signing below, <strong>_______________________</strong> acknowledges receipt and understanding of Baseline Studio's Equipment Use Policy.</p><h2>Policy Summary</h2><ol><li><strong>Care:</strong> All equipment must be handled carefully and transported in provided cases.</li><li><strong>Setup/Teardown:</strong> Follow Baseline Studio's setup and breakdown procedures at every event.</li><li><strong>Damage Reporting:</strong> Any damage, loss, or theft must be reported immediately. Damage from negligence may be charged to the responsible party.</li><li><strong>No Modifications:</strong> No modifications to equipment without written authorization.</li><li><strong>Return:</strong> All equipment returned within 24 hours of the event, in the condition received.</li></ol><br><table style="width:100%;border-collapse:collapse;"><tr><td style="width:50%;vertical-align:top;"><p><strong>Signature</strong></p><div style="border-bottom:2px solid #333;height:50px;margin-bottom:8px;"></div><p style="font-size:12px;">Printed Name: ______________________________<br>Date: ______________</p></td><td style="width:50%;"></td></tr></table>` },
+        { id: genId(), name: 'Code of Conduct Agreement', category: 'employee', contentHTML: `<h1>Code of Conduct Agreement</h1><p>Date: <strong>{{current_date}}</strong></p><p>All Baseline Studio representatives are expected to maintain the highest standards of professionalism. By signing, <strong>_______________________</strong> agrees to the following:</p><ol><li><strong>Appearance:</strong> Arrive professionally dressed per management's guidelines for each event.</li><li><strong>Punctuality:</strong> Arrive at least 90 minutes before event start for setup, or as directed.</li><li><strong>Client Interaction:</strong> Be courteous and professional with all clients and guests at all times.</li><li><strong>No Substances:</strong> No alcohol or impairing substances before or during events while on duty.</li><li><strong>Social Media:</strong> Do not post content from events without explicit written permission from Baseline Studio and the client.</li><li><strong>Confidentiality:</strong> Client names, event details, and pricing are confidential and not to be shared externally.</li></ol><p>Violations may result in removal from an event and/or termination of the working relationship.</p><br><table style="width:100%;border-collapse:collapse;"><tr><td style="width:50%;vertical-align:top;"><p><strong>Signature</strong></p><div style="border-bottom:2px solid #333;height:50px;margin-bottom:8px;"></div><p style="font-size:12px;">Printed Name: ______________________________<br>Date: ______________</p></td><td style="width:50%;"></td></tr></table>` },
         { id: genId(), name: 'Emergency Contact Form', category: 'employee', contentHTML: `<h1>Emergency Contact Information</h1><p>Date: <strong>{{current_date}}</strong></p><p>Team Member Name: ___________________________<br>Phone: ___________________________<br>Email: ___________________________</p><h2>Primary Emergency Contact</h2><p>Name: ___________________________<br>Relationship: ___________________________<br>Phone: ___________________________</p><h2>Secondary Emergency Contact</h2><p>Name: ___________________________<br>Relationship: ___________________________<br>Phone: ___________________________</p><h2>Medical Information (Optional)</h2><p>Allergies or medical conditions we should be aware of:<br>_______________________________________________</p><p>I confirm the above information is accurate and I will notify Baseline Studio of any changes.</p><br><div style="border-bottom:2px solid #333;height:50px;margin-bottom:8px;width:50%;"></div><p style="font-size:12px;">Signature &nbsp;&nbsp;&nbsp; Date: ______________</p>` }
       ];
       setDB('templates', T);
@@ -956,48 +975,56 @@ body{margin:0;background:#e6e8eb;color:#111;font-family:Georgia,'Times New Roman
       const accounts = getDB('accounts') || [];
       const currentUser = BSPortal.getCurrentUser();
       const isDJ = currentUser?.role === 'dj';
-      if (isDJ) { document.getElementById('docTabSend').innerHTML = '<div style="padding:40px;text-align:center;color:var(--gray);">Send access is not available for your role.</div>'; return; }
+      if (isDJ) { document.getElementById('docTabSend').innerHTML = '<div class="empty"><p class="empty-title">Send access is not available for your role</p></div>'; return; }
 
-      const tOpts = templates.map(t => `<option value="${t.id}">${t.name}${t.category === 'employee' ? ' [Employee]' : ' [Client]'}</option>`).join('');
-      const evOpts = events.map(e => `<option value="${e.id}">${e.clientName || 'Client'} — ${e.name || e.type || ''} (${e.date || ''})</option>`).join('') || '<option value="">No client events with email on file</option>';
-      const empOpts = accounts.map(a => `<option value="${encodeURIComponent(a.email)}|${encodeURIComponent(a.name)}|${encodeURIComponent(a.role || '')}">${a.name} (${a.role || 'staff'}) — ${a.email}</option>`).join('') || '<option value="">No team accounts yet</option>';
+      const tOpts = templates.map(t => `<option value="${esc(t.id)}">${esc(t.name)}${t.category === 'employee' ? ' [Employee]' : ' [Client]'}</option>`).join('');
+      const evOpts = events.map(e => `<option value="${esc(e.id)}">${esc(e.clientName || 'Client')} &middot; ${esc(e.name || e.type || '')} (${esc(e.date || '')})</option>`).join('') || '<option value="">No client events with email on file</option>';
+      const empOpts = accounts.map(a => `<option value="${encodeURIComponent(a.email)}|${encodeURIComponent(a.name)}|${encodeURIComponent(a.role || '')}">${esc(a.name)} (${esc(a.role || 'staff')}), ${esc(a.email)}</option>`).join('') || '<option value="">No team accounts</option>';
 
       document.getElementById('docTabSend').innerHTML = `
-        <div style="font-family:'Anton',sans-serif;font-size:22px;margin-bottom:6px;">Send Document for Signature</div>
-        <div style="color:var(--gray);font-size:13px;margin-bottom:28px;">Pick a template, choose who receives it, and send. They sign from their portal.</div>
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:28px;max-width:1000px;">
-          <div>
-            <div class="form-group">
-              <label class="form-label" for="sendDocTemplate">Document Template</label>
-              <select class="form-select" id="sendDocTemplate" onchange="previewSendDoc()">
-                <option value="">Select template...</option>${tOpts}
-              </select>
+        <div class="docsend">
+          <h3 class="docsend-title">Send a document for signature</h3>
+          <p class="docsend-sub">Pick a template, choose who receives it, and send. They sign from their portal.</p>
+          <div class="docsend-grid">
+            <div class="docsend-form">
+              <section class="docsend-chunk">
+                <h4 class="evdoc-sec-head"><span>What</span></h4>
+                <div class="field">
+                  <label class="form-label" for="sendDocTemplate">Document template</label>
+                  <select class="form-select" id="sendDocTemplate" onchange="previewSendDoc()">
+                    <option value="">Select a template</option>${tOpts}
+                  </select>
+                </div>
+              </section>
+              <section class="docsend-chunk">
+                <h4 class="evdoc-sec-head"><span>Who</span></h4>
+                <div class="docsend-radios" role="radiogroup" aria-label="Send to">
+                  <label class="check check-radio"><input type="radio" name="sendDocTarget" value="client" checked onchange="toggleSendDocRecipient()"><span class="check-box"></span><span class="check-text">Client</span></label>
+                  <label class="check check-radio"><input type="radio" name="sendDocTarget" value="employee" onchange="toggleSendDocRecipient()"><span class="check-box"></span><span class="check-text">Employee or team</span></label>
+                </div>
+                <div class="field" id="sendDocClientWrap">
+                  <label class="form-label" for="sendDocClientEvent">Client event</label>
+                  <select class="form-select" id="sendDocClientEvent">${evOpts}</select>
+                </div>
+                <div class="field" id="sendDocEmployeeWrap" style="display:none;">
+                  <label class="form-label" for="sendDocEmployee">Team member</label>
+                  <select class="form-select" id="sendDocEmployee">${empOpts}</select>
+                </div>
+              </section>
+              <section class="docsend-chunk">
+                <h4 class="evdoc-sec-head"><span>Message</span></h4>
+                <div class="field">
+                  <label class="form-label" for="sendDocMessage">Note to recipient (optional)</label>
+                  <textarea class="form-textarea" id="sendDocMessage" rows="3" placeholder="Add a short note"></textarea>
+                </div>
+              </section>
+              <button type="button" class="btn btn-primary docsend-send" onclick="sendDocumentForSignature()">Send for signature</button>
             </div>
-            <div class="form-group">
-              <label class="form-label">Send to</label>
-              <div style="display:flex;gap:16px;margin-bottom:14px;">
-                <label style="display:flex;align-items:center;gap:6px;cursor:pointer;font-size:13px;"><input type="radio" name="sendDocTarget" value="client" checked onchange="toggleSendDocRecipient()"> Client</label>
-                <label style="display:flex;align-items:center;gap:6px;cursor:pointer;font-size:13px;"><input type="radio" name="sendDocTarget" value="employee" onchange="toggleSendDocRecipient()"> Employee / Team</label>
+            <div class="docsend-side">
+              <h4 class="evdoc-sec-head"><span>Preview</span></h4>
+              <div id="sendDocPreviewWrap" class="docsend-preview">
+                <div class="docsend-preview-empty">Select a template to preview</div>
               </div>
-              <div id="sendDocClientWrap">
-                <label class="form-label" style="font-size:12px;" for="sendDocClientEvent">Select Client Event</label>
-                <select class="form-select" id="sendDocClientEvent">${evOpts}</select>
-              </div>
-              <div id="sendDocEmployeeWrap" style="display:none;">
-                <label class="form-label" style="font-size:12px;" for="sendDocEmployee">Select Team Member</label>
-                <select class="form-select" id="sendDocEmployee">${empOpts}</select>
-              </div>
-            </div>
-            <div class="form-group">
-              <label class="form-label" for="sendDocMessage">Note to Recipient (Optional)</label>
-              <textarea class="form-textarea" id="sendDocMessage" rows="3" placeholder="Add a short note..."></textarea>
-            </div>
-            <button class="btn btn-primary" style="width:100%;padding:14px;font-size:14px;" onclick="sendDocumentForSignature()">Send for Signature</button>
-          </div>
-          <div>
-            <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--gray);margin-bottom:10px;">Document Preview</div>
-            <div id="sendDocPreviewWrap" style="background:var(--black-4);border:1px solid var(--border);border-radius:8px;padding:16px;min-height:400px;max-height:600px;overflow-y:auto;">
-              <div style="color:var(--gray);font-size:13px;text-align:center;padding-top:60px;">Select a template to preview</div>
             </div>
           </div>
         </div>
@@ -1018,8 +1045,10 @@ body{margin:0;background:#e6e8eb;color:#111;font-family:Georgia,'Times New Roman
       const t = templates.find(t => t.id === tid);
       const wrap = document.getElementById('sendDocPreviewWrap');
       if (!wrap) return;
-      if (!t) { wrap.innerHTML = '<div style="color:var(--gray);font-size:13px;text-align:center;padding-top:60px;">Select a template to preview</div>'; return; }
-      wrap.innerHTML = `<div style="background:#fff;color:#111;border-radius:4px;padding:28px 32px;font-family:Georgia,serif;font-size:13px;line-height:1.7;">${t.contentHTML || t.content || '(empty)'}</div>`;
+      if (!t) { wrap.innerHTML = '<div class="docsend-preview-empty">Select a template to preview</div>'; return; }
+      const raw = t.contentHTML || t.content || '';
+      const safe = (raw && typeof _sanitizeDocHtml === 'function') ? _sanitizeDocHtml(raw) : raw;
+      wrap.innerHTML = `<div class="docsend-paper">${safe || '(empty)'}</div>`;
     }
 
     async function _hashDoc(content) {
@@ -1087,29 +1116,65 @@ body{margin:0;background:#e6e8eb;color:#111;font-family:Georgia,'Times New Roman
     // ── Track tab ──────────────────────────────────────────────────────────────
     function renderTrackTab() {
       const instances = [...(getDB('document_instances') || [])].sort((a,b) => b.sentAt - a.sentAt);
-      const statusBadge = s => ({ pending:`<span class="track-status-badge track-status-pending">Pending</span>`, viewed:`<span class="track-status-badge" style="background:rgba(31,163,224,0.18);color:var(--cyan);">Viewed</span>`, signed:`<span class="track-status-badge track-status-signed">Signed</span>`, declined:`<span class="track-status-badge track-status-declined">Declined</span>` }[s] || `<span class="track-status-badge track-status-pending">Pending</span>`);
-      const rows = instances.map(inst => `<tr>
-        <td style="font-weight:600;max-width:200px;">${inst.templateName}</td>
-        <td>${inst.recipientName}<br><span style="font-size:12px;color:var(--gray);">${inst.recipientEmail}</span></td>
-        <td><span class="badge" style="background:rgba(31,163,224,0.12);color:var(--cyan);font-size:12px;">${inst.recipientType === 'client' ? 'Client' : (inst.recipientRole || 'Employee')}</span></td>
-        <td>${new Date(inst.sentAt).toLocaleDateString()}</td>
-        <td>${statusBadge(inst.status)}</td>
-        <td>${inst.signedAt ? new Date(inst.signedAt).toLocaleDateString() : '—'}</td>
-        <td style="display:flex;gap:6px;flex-wrap:wrap;">
-          ${inst.status === 'signed' ? `<button class="btn btn-secondary" style="padding:4px 8px;font-size:12px;" onclick="viewDocSignature('${inst.id}')">View Sig</button>` : `<button class="btn btn-secondary" style="padding:4px 8px;font-size:12px;" onclick="resendDocInstance('${inst.id}')">Resend</button>`}
-          <button class="btn btn-danger" style="padding:4px 8px;font-size:12px;" onclick="deleteDocInstance('${inst.id}')">Del</button>
-        </td>
-      </tr>`).join('') || `<tr><td colspan="7" style="text-align:center;padding:40px;color:var(--gray);">No documents sent yet. Go to "Send for Signature" to start.</td></tr>`;
-      document.getElementById('docTabTrack').innerHTML = `
-        <div style="font-family:'Anton',sans-serif;font-size:22px;margin-bottom:20px;">Sent Documents &amp; Signatures</div>
-        <div style="background:var(--black-3);border:1px solid var(--border);border-radius:8px;overflow:hidden;">
-          <table style="width:100%;border-collapse:collapse;">
-            <thead><tr>
-              <th>Document</th><th>Recipient</th><th>Type</th><th>Sent</th><th>Status</th><th>Signed</th><th>Actions</th>
-            </tr></thead>
-            <tbody>${rows}</tbody>
-          </table>
+      const ic = (n, s) => (typeof CRMUI !== 'undefined' && CRMUI.icon) ? CRMUI.icon(n, s || 16) : '';
+      const dShort = ts => { const d = new Date(ts); return isNaN(d.getTime()) ? '' : d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }); };
+      // Status stepper: Sent, Viewed, Signed. A declined document shows a danger pill instead.
+      const stepper = inst => {
+        if (inst.status === 'declined') return '<span class="pill pill-danger" data-ui="pill">Declined</span>';
+        const viewed = inst.status === 'viewed' || inst.status === 'signed';
+        const signed = inst.status === 'signed';
+        const steps = [['Sent', true], ['Viewed', viewed], ['Signed', signed]];
+        const cur = steps.findIndex(s => !s[1]);
+        const word = (steps.filter(s => s[1]).pop() || steps[0])[0];
+        return `<ol class="evdoc-steps" aria-label="Status: ${word}">${steps.map((s, i) => `<li class="${s[1] ? 'is-done' : (i === cur ? 'is-current' : '')}"><span class="evdoc-dot" aria-hidden="true"></span>${s[0]}</li>`).join('')}</ol>`;
+      };
+      const kind = inst => esc(inst.recipientType === 'client' ? 'Client' : (inst.recipientRole || 'Employee'));
+      const resend = inst => (inst.status === 'signed' || inst.status === 'declined') ? '' : `<button type="button" class="btn btn-secondary btn-sm" onclick="resendDocInstance('${inst.id}')">Resend</button>`;
+      const kebab = inst => resend(inst) + `<button type="button" class="btn btn-ghost btn-icon btn-sm evdoc-kebab" aria-label="More actions for ${esc(inst.templateName)}" aria-haspopup="menu" onclick="openTrackRowMenu(this,'${inst.id}')">${ic('ellipsis', 20)}</button>`;
+      const tableHtml = list => `<table class="tbl track-tbl">
+        <thead><tr><th>Document</th><th>Recipient</th><th>Type</th><th>Sent</th><th>Status</th><th>Signed</th><th><span class="sr-only">Actions</span></th></tr></thead>
+        <tbody>${list.map(inst => `<tr>
+          <td class="track-doc">${esc(inst.templateName)}</td>
+          <td>${esc(inst.recipientName)}<div class="t-meta">${esc(inst.recipientEmail)}</div></td>
+          <td><span class="pill pill-neutral pill-sm" data-ui="pill">${kind(inst)}</span></td>
+          <td class="num">${dShort(inst.sentAt)}</td>
+          <td>${stepper(inst)}</td>
+          <td class="num">${inst.signedAt ? dShort(inst.signedAt) : '-'}</td>
+          <td class="track-act">${kebab(inst)}</td>
+        </tr>`).join('')}</tbody></table>`;
+      const cardHtml = inst => `<div class="row track-card">
+          <div class="row-main">
+            <div class="row-title">${esc(inst.templateName)}</div>
+            <div class="row-sub">${esc(inst.recipientName)} &middot; ${kind(inst)} &middot; Sent ${dShort(inst.sentAt)}</div>
+            ${stepper(inst)}
+          </div>
+          <div class="row-trail">${kebab(inst)}</div>
         </div>`;
+      let body;
+      if (!instances.length) {
+        body = `<div class="empty">${ic('send', 32)}<p class="empty-title">Nothing sent yet</p><p class="empty-text">Documents you send for signature show up here with their status.</p><button type="button" class="btn btn-secondary" onclick="switchDocTab('send')">Send a document</button></div>`;
+      } else if (typeof CRMUI !== 'undefined' && CRMUI.renderList) {
+        body = CRMUI.renderList(instances, { table: tableHtml, card: cardHtml });
+      } else {
+        body = `<div class="tbl-wrap">${tableHtml(instances)}</div>`;
+      }
+      document.getElementById('docTabTrack').innerHTML = `
+        <div class="docsend">
+          <h3 class="docsend-title">Sent and tracking</h3>
+          ${body}
+        </div>`;
+    }
+
+    // Row menu for one sent document (the kebab on Sent and tracking).
+    function openTrackRowMenu(anchor, instanceId) {
+      const inst = (getDB('document_instances') || []).find(i => i.id === instanceId);
+      if (!inst) return;
+      if (typeof CRMUI === 'undefined' || !CRMUI.menu) { showToast('Reload the page to use document actions.', 'warning'); return; }
+      const items = [];
+      if (inst.status === 'signed') items.push({ label: 'View signature', icon: 'eye', onSelect: () => viewDocSignature(instanceId) });
+      else items.push({ label: 'Resend reminder', icon: 'send', onSelect: () => resendDocInstance(instanceId) });
+      items.push({ label: 'Delete record', icon: 'trash-2', danger: true, onSelect: () => deleteDocInstance(instanceId) });
+      CRMUI.menu(anchor, items, { label: 'Sent document actions', align: 'right' });
     }
 
     function viewDocSignature(instanceId) {
@@ -1132,7 +1197,7 @@ body{margin:0;background:#e6e8eb;color:#111;font-family:Georgia,'Times New Roman
     async function resendDocInstance(instanceId) {
       const inst = (getDB('document_instances') || []).find(i => i.id === instanceId);
       if (!inst) return;
-      const _rSubject = `Reminder: Signature needed — ${inst.templateName}`;
+      const _rSubject = `Reminder: signature needed for ${inst.templateName}`;
       const _rBody = `Hi ${inst.recipientName},\n\nThis is a reminder that the document "${inst.templateName}" is waiting for your signature.\n\nLog in here: ${window.location.origin}/portal-employee.html\n\nBaseline Studio`;
       const _rRes = await BSPortal.sendEmail('generic', {
         email: inst.recipientEmail, clientName: inst.recipientName,
@@ -1148,14 +1213,10 @@ body{margin:0;background:#e6e8eb;color:#111;font-family:Georgia,'Times New Roman
     }
 
     function deleteDocInstance(instanceId) {
-      window.confirmCallback = () => {
+      confirmDestructive('Delete document record', 'Remove this sent document record? The signature data will be lost.', function() {
         const updated = (getDB('document_instances') || []).filter(i => i.id !== instanceId);
         setDB('document_instances', updated);
-        closeModal('confirmDialog');
         renderTrackTab();
         showToast('Deleted', 'success');
-      };
-      document.getElementById('confirmTitle').textContent = 'Delete Document Record';
-      document.getElementById('confirmMessage').textContent = 'Remove this sent document record? The signature data will be lost.';
-      openModal('confirmDialog');
+      }, 'Delete');
     }

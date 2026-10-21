@@ -1,0 +1,178 @@
+/* portal-provider/css/50-money.css  -  lane P3 (Money): event Money tab, payment schedule, Invoices/Payments/Quotes page, invoice and quote sheets.
+   Tokens only (crm-tokens.css). Loaded after the page <style>, so these rules win ties. */
+
+/* ---------------------------------------------------------------- shared bits */
+.mny-note { margin: var(--sp-3) 0 0; font-size: var(--fs-13); line-height: 1.45; color: var(--text-3); }
+.mny-pos { color: var(--ok); }
+.mny-flabel { display: block; font: 500 var(--fs-12)/1.3 var(--font-body); color: var(--text-3); }
+.mny-fval { display: block; margin-top: 2px; font: 600 var(--fs-18)/1.2 var(--font-body); color: var(--text-1); }
+.mny-fval.is-ok { color: var(--ok); }
+.mny-fval.is-warn { color: var(--warn); }
+.mny-card { margin-bottom: var(--sp-4); }
+.mny-banner { margin-bottom: var(--sp-4); align-items: center; }
+.mny-banner .btn { flex: none; }
+.btn.mny-confirm { border-color: var(--ok); color: var(--ok); background: var(--ok-tint); }
+.btn.mny-confirm:hover { background: var(--ok-tint); border-color: var(--ok); color: var(--ok); filter: brightness(1.12); }
+.btn.mny-confirm.btn-sm { box-shadow: inset 0 0 0 1px var(--ok); }
+
+/* ---------------------------------------------------------------- event Money tab */
+.mny-tab { max-width: 880px; }
+.mny-tab-foot { display: flex; gap: var(--sp-2); flex-wrap: wrap; }
+
+/* client says paid */
+.mny-reports { margin-bottom: var(--sp-4); display: flex; flex-direction: column; gap: var(--sp-3); }
+.mny-report { display: flex; align-items: center; justify-content: space-between; gap: var(--sp-4); margin-bottom: var(--sp-4); padding: var(--sp-4); background: var(--ok-tint); border: 1px solid var(--ok); border-radius: var(--r-lg); }
+.mny-reports .mny-report { margin-bottom: 0; }
+.mny-report-main { display: flex; align-items: flex-start; gap: var(--sp-3); min-width: 0; }
+.mny-report-main > svg.i { flex: none; margin-top: 1px; color: var(--ok); }
+.mny-report-title { font: 600 var(--fs-15)/1.35 var(--font-body); color: var(--text-1); }
+.mny-report-sub { margin-top: 2px; font-size: var(--fs-13); line-height: 1.4; color: var(--text-2); }
+.mny-report .btn { flex: none; }
+
+/* payment schedule */
+.mny-sched { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; }
+.mny-srow { display: grid; grid-template-columns: 28px minmax(0, 1fr) auto auto; grid-template-areas: "ico main amt pill" ". act act act"; align-items: center; column-gap: var(--sp-3); row-gap: var(--sp-3); padding: var(--sp-4) 0; border-top: 1px solid var(--border); }
+.mny-srow:first-child { border-top: 0; padding-top: var(--sp-1); }
+.mny-sico { grid-area: ico; display: inline-flex; color: var(--text-3); }
+.mny-srow.is-paid .mny-sico { color: var(--ok); }
+.mny-srow.is-overdue .mny-sico { color: var(--danger); }
+.mny-smain { grid-area: main; min-width: 0; }
+.mny-stitle { font: 600 var(--fs-16)/1.3 var(--font-body); color: var(--text-1); }
+.mny-spct { margin-left: 4px; font-weight: 500; color: var(--text-3); }
+.mny-smeta { margin-top: 2px; font-size: var(--fs-13); line-height: 1.4; color: var(--text-3); }
+.mny-samt { grid-area: amt; font: 600 var(--fs-18)/1.2 var(--font-body); color: var(--text-1); text-align: right; }
+.mny-spill { grid-area: pill; justify-self: end; }
+.mny-sact { grid-area: act; display: flex; gap: var(--sp-2); flex-wrap: wrap; }
+.mny-sfoot { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: var(--sp-3); margin: var(--sp-2) 0 var(--sp-3); padding-top: var(--sp-4); border-top: 1px solid var(--border-ui); }
+.mny-sfoot > div:last-child { text-align: right; }
+.mny-sfoot > div:nth-child(2) { text-align: center; }
+.mny-bartext { margin-top: var(--sp-2); font-size: var(--fs-13); color: var(--text-2); }
+@media (max-width: 767.98px) {
+  .mny-srow { grid-template-columns: 28px minmax(0, 1fr) auto; grid-template-areas: "ico main amt" ". pill pill" ". act act"; row-gap: var(--sp-2); }
+  .mny-spill { justify-self: start; }
+  .mny-sact .btn { flex: 1 1 0; }
+  .mny-report { flex-direction: column; align-items: stretch; }
+  .mny-report .btn { width: 100%; min-height: 52px; }
+}
+
+/* invoice lists (page + event tab) */
+.mny-cell-main { font-weight: 600; color: var(--text-1); }
+.mny-cell-sub { margin-top: 1px; font-size: var(--fs-12); color: var(--text-3); }
+.tbl td.mny-no { text-align: left; color: var(--text-2); }
+.tbl td.mny-acts { white-space: nowrap; text-align: right; }
+.tbl td.mny-acts .btn + .btn { margin-left: var(--sp-1); }
+.tbl tbody tr { height: 56px; }
+.mny-row { flex-direction: column; align-items: stretch; gap: 4px; padding: var(--sp-3) var(--sp-4); min-height: 0; }
+.mny-row-top { display: flex; align-items: baseline; justify-content: space-between; gap: var(--sp-3); }
+.mny-row-top .row-title { flex: 1; min-width: 0; }
+.mny-amt { flex: none; font: 600 var(--fs-16)/1.3 var(--font-body); color: var(--text-1); }
+.mny-row-bot { display: flex; align-items: center; justify-content: space-between; gap: var(--sp-2); margin-top: var(--sp-1); }
+.mny-row-state { display: flex; align-items: center; flex-wrap: wrap; gap: var(--sp-2); min-width: 0; }
+.mny-due { font-size: var(--fs-13); color: var(--text-3); }
+.mny-row-act { flex: none; display: flex; align-items: center; gap: var(--sp-1); }
+
+/* ---------------------------------------------------------------- Money page */
+.mny-stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: var(--sp-3); margin-bottom: var(--sp-5); }
+.mny-stat { background: var(--surface-1); border: 1px solid var(--border); border-radius: var(--r-lg); padding: var(--sp-4); }
+.mny-stat-label { font: 500 var(--fs-12)/1.3 var(--font-body); color: var(--text-3); }
+.mny-stat-val { margin: var(--sp-1) 0 2px; font: 400 var(--fs-32)/1.1 var(--font-display); color: var(--text-1); letter-spacing: 0.01em; }
+.mny-stat-val.is-ok { color: var(--ok); }
+.mny-stat-val.is-warn { color: var(--warn); }
+.mny-stat-val.is-danger { color: var(--danger); }
+.mny-stat-sub { font-size: var(--fs-12); color: var(--text-3); }
+.mny-toolbar { display: flex; align-items: center; justify-content: space-between; gap: var(--sp-3); margin-bottom: var(--sp-4); flex-wrap: wrap; }
+.mny-seg-wrap { max-width: 100%; overflow-x: auto; scrollbar-width: none; }
+.mny-seg-wrap::-webkit-scrollbar { display: none; }
+.mny-search { width: 260px; max-width: 100%; }
+.mny-ledger-sum { margin: 0 0 var(--sp-3); font-size: var(--fs-14); color: var(--text-2); }
+#invoices .tbl-wrap { background: var(--surface-1); border: 1px solid var(--border); border-radius: var(--r-lg); overflow: hidden; }
+#invoices .tbl-wrap.tbl-scroll { overflow-x: auto; }
+.mny-tab .tbl-wrap { margin: 0 calc(-1 * var(--sp-1)); }
+@media (max-width: 767.98px) {
+  .mny-stat-val { font-size: 28px; }
+  .mny-search { width: 100%; }
+  #invoices .tbl-wrap { border-radius: var(--r-lg); }
+}
+
+/* ---------------------------------------------------------------- sheets: invoice and quote */
+.mny-chunk { border: 0; margin: 0 0 var(--sp-5); padding: 0; min-width: 0; }
+.mny-chunk > legend { padding: 0; margin: 0 0 var(--sp-3); }
+.mny-two { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0 var(--sp-3); }
+@media (max-width: 767.98px) { .mny-two { grid-template-columns: minmax(0, 1fr); } }
+.mny-tax { max-width: 160px; }
+.mny-quick { display: flex; align-items: center; flex-wrap: wrap; gap: var(--sp-2); margin-bottom: var(--sp-3); }
+.mny-quick[hidden] { display: none; }
+.mny-quick-label { font: 500 var(--fs-12)/1.3 var(--font-body); color: var(--text-3); margin-right: var(--sp-1); }
+.mny-lines { display: flex; flex-direction: column; gap: var(--sp-3); margin-bottom: var(--sp-3); }
+
+/* one invoice line: description, then qty stepper, price, line total, remove */
+.mny-line { display: grid; gap: var(--sp-2); padding: var(--sp-3); background: var(--surface-2); border: 1px solid var(--border); border-radius: var(--r-lg); }
+.mny-l-nums { display: flex; align-items: center; gap: var(--sp-2); flex-wrap: wrap; }
+.mny-qty { display: inline-flex; align-items: center; gap: 2px; }
+.mny-qty .input { width: 56px; text-align: center; padding: 0 var(--sp-1); -moz-appearance: textfield; }
+.mny-qty .input::-webkit-outer-spin-button, .mny-qty .input::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
+.mny-l-unit { width: 132px; flex: none; }
+.mny-l-total { margin-left: auto; min-width: 72px; text-align: right; font: 600 var(--fs-15)/1.2 var(--font-body); color: var(--text-1); }
+.mny-break { display: flex; flex-direction: column; gap: 4px; padding: var(--sp-3) var(--sp-4); background: var(--surface-2); border: 1px solid var(--border); border-radius: var(--r-lg); font-size: var(--fs-14); }
+.mny-break > div { display: flex; justify-content: space-between; color: var(--text-2); }
+.mny-break > div.is-total { margin-top: 2px; padding-top: 6px; border-top: 1px solid var(--border); color: var(--text-1); font-weight: 600; }
+
+/* sticky total + actions at the bottom of a sheet */
+.mny-foot { position: sticky; bottom: calc(-1 * var(--sp-6)); z-index: 3; display: flex; align-items: center; justify-content: space-between; gap: var(--sp-3); margin: var(--sp-4) calc(-1 * var(--sp-6)) calc(-1 * var(--sp-6)); padding: var(--sp-3) var(--sp-6); background: var(--surface-3); border-top: 1px solid var(--border); }
+.mny-foot-total { min-width: 0; }
+.mny-foot-amt { display: block; margin-top: 1px; font: 400 var(--fs-24)/1.1 var(--font-display); color: var(--text-1); }
+.mny-foot-btns { display: flex; align-items: center; gap: var(--sp-2); }
+@media (max-width: 767.98px) {
+  .mny-foot { bottom: calc(-1 * (var(--sp-4) + var(--safe-bottom))); margin: var(--sp-4) calc(-1 * var(--sp-4)) calc(-1 * (var(--sp-4) + var(--safe-bottom))); padding: var(--sp-3) var(--sp-4) calc(var(--sp-3) + var(--safe-bottom)); }
+  /* 00-core.js lifts a sheet's button row into .modal-sticky-foot; the sheet's own bar carries that class so it is left alone */
+  .mny-foot.modal-sticky-foot { flex-wrap: nowrap; justify-content: space-between; }
+  .mny-foot.modal-sticky-foot .btn { flex: 0 0 auto; min-height: 52px; }
+  .mny-foot.modal-sticky-foot .btn-icon { width: 52px; min-width: 52px; min-height: 52px; }
+  .mny-foot.modal-sticky-foot .mny-foot-btns { flex: 1; justify-content: flex-end; min-width: 0; }
+  .mny-foot.modal-sticky-foot .mny-foot-btns .btn:not(.btn-icon) { flex: 1 1 0; min-width: 0; padding-left: var(--sp-2); padding-right: var(--sp-2); }
+  .mny-foot-amt { font-size: 22px; }
+  /* the sheet scrolls inside .modal, and the checker reads the page: keep both clear of the 76px bar */
+  .modal:has(.mny-foot), html:has(.modal-backdrop.active .mny-foot) { scroll-padding-bottom: 96px; }
+}
+
+/* quote builder: two panes on desktop, Edit | Preview on phone */
+.mny-q-seg { display: none; margin-bottom: var(--sp-4); }
+.mny-q-previewbtn { display: none; }
+.mny-q-grid { display: grid; grid-template-columns: minmax(0, 1.25fr) minmax(280px, 1fr); gap: var(--sp-6); align-items: start; }
+.mny-q-prev { position: sticky; top: 0; }
+.mny-qcard { padding: var(--sp-4); background: var(--surface-2); border: 1px solid var(--border); border-radius: var(--r-lg); }
+.mny-qcard .section-label { margin-bottom: var(--sp-3); }
+.mny-qwho { margin-bottom: var(--sp-3); font-size: var(--fs-14); color: var(--text-2); }
+.mny-ql { display: flex; justify-content: space-between; gap: var(--sp-3); padding: 8px 0; border-bottom: 1px solid var(--border); font-size: var(--fs-14); color: var(--text-1); }
+.mny-ql > span:first-child { min-width: 0; overflow-wrap: anywhere; }
+.mny-qtotal { display: flex; justify-content: space-between; align-items: baseline; padding: var(--sp-3) 0 4px; font: 400 var(--fs-24)/1.1 var(--font-display); color: var(--text-1); }
+.mny-qdep { display: flex; justify-content: space-between; gap: var(--sp-3); font-size: var(--fs-14); font-weight: 600; color: var(--info); }
+.mny-qline { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: var(--sp-2); align-items: center; }
+.mny-ql-row { display: flex; align-items: center; gap: var(--sp-1); }
+.mny-ql-price { width: 132px; }
+@media (max-width: 767.98px) {
+  .mny-q-seg { display: inline-flex; }
+  .mny-q-previewbtn { display: inline-flex; }
+  .mny-q-grid { grid-template-columns: minmax(0, 1fr); }
+  .mny-q[data-pane="edit"] .mny-q-prev, .mny-q[data-pane="preview"] .mny-q-edit { display: none; }
+  .mny-qline { grid-template-columns: minmax(0, 1fr); padding: var(--sp-3); background: var(--surface-2); border: 1px solid var(--border); border-radius: var(--r-lg); }
+  .mny-ql-row { justify-content: space-between; }
+  .mny-ql-price { width: auto; flex: 1; }
+}
+@media (min-width: 768px) {
+  .mny-qline { grid-template-columns: minmax(0, 1fr) auto; }
+  .mny-ql-desc { min-width: 0; }
+}
+
+/* "Deposit received" card (toggleDepositPaid) */
+.mny-invite { position: fixed; right: var(--sp-6); bottom: var(--sp-6); z-index: var(--z-toast); max-width: 320px; padding: var(--sp-4); background: var(--surface-4); border: 1px solid var(--ok); border-radius: var(--r-lg); box-shadow: var(--shadow-float); color: var(--text-1); }
+.mny-invite-title { display: flex; align-items: center; gap: var(--sp-2); font-weight: 600; color: var(--ok); }
+.mny-invite-sub { margin: 4px 0 var(--sp-3); font-size: var(--fs-13); color: var(--text-2); }
+.mny-invite-btns { display: flex; gap: var(--sp-2); }
+@media (max-width: 767.98px) { .mny-invite { left: var(--sp-4); right: var(--sp-4); bottom: calc(var(--bottombar-h, 56px) + var(--sp-4) + var(--safe-bottom)); max-width: none; } }
+
+/* touch: lane F's selected-chip rule (.chip.is-selected border-color) beats its own transparent touch border; keep the ring inside */
+@media (pointer: coarse), (max-width: 767.98px) {
+  .mny-quick button.chip.is-selected, .mny-quick button.chip { border-color: transparent; }
+}
+.tbl-ledger td:first-child { white-space: nowrap; }

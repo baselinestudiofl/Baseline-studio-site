@@ -1,0 +1,95 @@
+/* Home (UI-PLAN 3.1). Tokens only. Loaded after the page <style>, so equal-specificity rules here win. */
+
+/* The old table wrapper around #upcomingEventsContainer becomes a plain holder */
+.table-section:has(> #upcomingEventsContainer) { background: none; border: 0; border-radius: 0; overflow: visible; margin-bottom: 0; }
+#dashboardWidgets { display: block; }
+#statCards { display: block; margin-bottom: 0; }
+#pipelinePillsContainer { display: block; }
+.home-grid { gap: var(--sp-5); }
+.home-main, .home-side { gap: var(--sp-5); }
+.home-solo .home-grid { grid-template-columns: minmax(0, 1fr); }
+.home-solo .home-side { display: none; }
+
+.home-card { padding: var(--sp-4); }
+@media (min-width: 768px) { .home-card { padding: var(--sp-5); } }
+.home-card .card-head { margin-bottom: var(--sp-3); min-height: 28px; }
+.home-sub { margin: var(--sp-4) 0 var(--sp-2); }
+.home-card .home-sub:first-of-type { margin-top: 0; }
+.home-card .card-head + .home-sub { margin-top: 0; }
+.home-tasks { margin-top: var(--sp-5); }
+.home-tasks .home-sub { margin-top: 0; }
+.home-more { margin-top: var(--sp-2); }
+.home-count { display: inline-flex; align-items: center; justify-content: center; min-width: 24px; height: 24px; padding: 0 8px; border-radius: var(--r-pill); background: var(--neutral-tint); color: var(--text-2); font-size: var(--fs-12); font-weight: 600; }
+.row-ctx { font-weight: 400; color: var(--text-2); }
+.home-seeall { margin-top: var(--sp-3); }
+
+/* Needs-me rows: one icon, two lines, one trailing action */
+.row-task { padding-top: var(--sp-2); padding-bottom: var(--sp-2); min-height: var(--row-touch); }
+.row-task .row-ic { align-self: center; }
+.row-task .row-main { gap: 2px; }
+.row-task .row-link { align-items: flex-start; text-align: left; }
+.row-task .row-link .row-title, .row-task .row-link .row-sub { max-width: 100%; }
+.row-task .row-sub { color: var(--text-3); }
+.row-task.is-urgent .row-sub { color: var(--text-2); }
+.row-task.is-urgent .row-ic { color: var(--danger); }
+.row-trail .row-action { min-width: 64px; justify-content: center; }
+.row-trail .row-more { margin-left: -4px; }
+.task-text { white-space: normal; }
+
+/* This week */
+.home-week .card-head { margin-bottom: var(--sp-3); }
+.week-row { display: grid; grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: var(--sp-3); }
+.week-card {
+  position: relative; box-sizing: border-box; display: flex; flex-direction: column; align-items: flex-start; gap: var(--sp-2);
+  padding: var(--sp-3); background: var(--surface-1); border: 1px solid var(--border); border-radius: var(--r-lg); min-width: 0;
+  transition: background-color var(--t-fast) var(--ease-out);
+}
+.week-card:hover { background: var(--surface-2); }
+.week-top { display: flex; align-items: center; gap: var(--sp-3); width: 100%; }
+.week-rel { font-size: var(--fs-12); color: var(--text-3); }
+.week-main { align-items: flex-start; justify-content: flex-start; flex: none; min-height: 44px; width: 100%; gap: 2px; }
+.week-main::after { border-radius: var(--r-lg); }
+.week-title { font-weight: 600; font-size: var(--fs-14); line-height: 1.3; color: var(--text-1); display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+.week-need { min-height: 16px; }
+.week-card .chip { cursor: default; }
+.btn-dayof { align-self: stretch; position: relative; z-index: 1; margin-top: var(--sp-1); justify-content: center; }
+@media (max-width: 767.98px) {
+  .week-row { display: flex; gap: var(--sp-3); overflow-x: auto; scroll-snap-type: x mandatory; margin: 0 calc(var(--gutter) * -1); padding: 0 var(--gutter) var(--sp-2); scroll-padding-left: var(--gutter); }
+  .week-card { flex: none; width: 156px; scroll-snap-align: start; }
+}
+
+/* Money */
+.money-row {
+  box-sizing: border-box; display: flex; align-items: center; justify-content: space-between; gap: var(--sp-3); width: 100%; min-height: 56px;
+  padding: var(--sp-2) 0; background: none; border: 0; border-top: 1px solid var(--border); color: var(--text-1); font: inherit; text-align: left; cursor: pointer;
+}
+.money-row:first-of-type { border-top: 0; }
+.money-row:hover .money-num { color: var(--cyan-hover); }
+.money-label { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.money-name { font-size: var(--fs-13); font-weight: 600; color: var(--text-2); }
+.money-hint { font-size: var(--fs-12); color: var(--text-3); }
+.money-num { font-family: var(--font-display); font-size: var(--fs-24); font-weight: 400; line-height: 1.1; color: var(--text-1); white-space: nowrap; }
+.money-num.is-late { color: var(--danger); }
+
+/* Pipeline strip */
+.home-strip { display: flex; flex-wrap: wrap; gap: var(--sp-2); }
+.home-strip .chip strong { font-weight: 600; margin-left: 4px; color: var(--text-1); }
+.home-reply { display: flex; align-items: center; justify-content: space-between; gap: var(--sp-3); margin-top: var(--sp-4); padding-top: var(--sp-3); border-top: 1px solid var(--border); }
+.home-reply-val { font-size: var(--fs-16); font-weight: 600; color: var(--text-1); }
+
+.home-empty { padding: var(--sp-6) var(--sp-4); }
+
+/* Weather chip on the event Overview (attachWeatherChip) */
+.wx-chip { display: flex; flex-direction: column; gap: 4px; padding: var(--sp-3) var(--sp-4); margin-bottom: var(--sp-4); background: var(--info-tint); border: 1px solid var(--border); border-radius: var(--r-lg); }
+.wx-main { display: flex; align-items: center; gap: var(--sp-3); font-weight: 600; color: var(--text-1); }
+.wx-cap { font-size: var(--fs-13); color: var(--text-2); }
+
+/* Phone: the rows are the cards, so the Needs-me wrapper drops its own chrome */
+@media (max-width: 767.98px) {
+  #homeNeeds { background: none; border: 0; padding: 0; }
+  #homeNeeds .card-head { margin-bottom: var(--sp-2); }
+  .row-ctx { display: none; }
+  .home-grid, .home-main, .home-side { gap: var(--sp-5); }
+}
+
+.row-more-slot { flex: none; width: 44px; margin-left: -4px; }
