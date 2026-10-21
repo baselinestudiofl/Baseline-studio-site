@@ -1,5 +1,6 @@
 /**
  * portal-supabase.js — Baseline Studio Portal Data Layer
+ * v14 (+1C client magic links) — clients can sign in with an emailed link (Supabase Auth OTP). Their session holds a JWT (authMode 'magic'); every client call goes to the authenticated twin RPC (*_jwt) with no email or password in the request. completeMagicLink() consumes the redirect hash. The password session path is unchanged and stays for the 30 day fallback.
  * v13 (+0D staff access) — provider data is read and written under ownerId (org_members lookup at initProvider; own uid when master / no membership / lookup fails).
  * v13 — client signDocument (RPC client_sign_document), refreshClientEvent, client save payload whitelisted (no money/identity fields), provider alert via send-email internal_client_update (old form-service call removed), client RPCs no longer return portalPassword.
  * v12 — sendEmail returns {ok,id}|{ok:false,error,detail} on every status; createProviderUser uses the signed-in JWT and no longer sends email.
@@ -260,8 +261,71 @@ const SB = {
     });
     if (!r.ok) { console.warn('[updateClientEvent] failed', r.status); return false; }
     return true;
+  },
+
+  // ── Magic-link (JWT) twins. No email, no password in the request: the server reads the
+  //    caller's email from the Auth token. One retry after a token refresh on 401.
+  async clientRpcJwt(name, body, extra) {
+    const mk = () => Object.assign({
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'apikey': SUPABASE_ANON, 'Authorization': 'Bearer ' + _token },
+      body: JSON.stringify(body || {})
+    }, extra || {});
+    const url = `${SUPABASE_URL}/rest/v1/rpc/${name}`;
+    let r = await fetch(url, mk());
+    if (r && r.status === 401) {
+      if (await _refreshToken()) r = await fetch(url, mk());
+      if (r && r.status === 401) _showClientLinkExpiredBanner();
+    }
+    return r;
+  },
+
+  async getAllClientEventsJwt() {
+    const r = await this.clientRpcJwt('get_all_client_events_jwt', {});
+    if (!r || !r.ok) return null;
+    const data = await r.json();
+    return Array.isArray(data) && data.length ? data : null;
+  },
+
+  async updateClientEventJwt(eventData) {
+    const r = await this.clientRpcJwt('update_client_event_jwt', { p_event_data: _clientSavePayload(eventData) });
+    if (!r || !r.ok) { console.warn('[updateClientEventJwt] failed', r && r.status); return false; }
+    return (await r.json()) === true;
   }
 };
+
+// ── Client session helpers (password OR magic link) ────────────────────────────
+function _isMagicClient() {
+  return !!(_session && _session.type === 'client' && _session.authMode === 'magic' && _token);
+}
+function _clientReady() {
+  return !!(_session && _session.type === 'client' && _session.email && (_isMagicClient() || _session.portalPw));
+}
+function _showClientLinkExpiredBanner() {
+  if (!document.body || document.getElementById('bs-expired-banner')) return;
+  const b = document.createElement('div');
+  b.id = 'bs-expired-banner';
+  b.style.cssText = 'position:fixed;top:0;left:0;right:0;z-index:9999;background:rgba(220,53,69,0.95);color:#fff;font-family:Barlow,system-ui,sans-serif;font-size:14px;font-weight:500;padding:14px 20px;display:flex;align-items:center;justify-content:center;gap:16px;flex-wrap:wrap';
+  b.innerHTML = '<span>Your sign-in timed out. Ask for a new link to keep saving. Your changes are safe on this device.</span><a href="login.html?role=client" style="color:#fff;font-weight:700;text-decoration:underline;">Get a new link</a>';
+  document.body.insertBefore(b, document.body.firstChild);
+}
+function _b64urlJson(seg) {
+  try {
+    let t = String(seg).replace(/-/g, '+').replace(/_/g, '/');
+    while (t.length % 4) t += '=';
+    return JSON.parse(decodeURIComponent(escape(atob(t))));
+  } catch (e) { return null; }
+}
+// Event to open first after a magic-link sign-in: the next upcoming one, else the most recent.
+function _pickDefaultClientEvent(list) {
+  const d = e => String(e.date || e.eventDate || '');
+  const today = new Date().toISOString().slice(0, 10);
+  const dated = list.filter(e => d(e));
+  const upcoming = dated.filter(e => d(e) >= today).sort((a, b) => d(a).localeCompare(d(b)));
+  if (upcoming.length) return upcoming[0];
+  const past = dated.sort((a, b) => d(b).localeCompare(d(a)));
+  return past[0] || list[0];
+}
 
 // ── Client save payload ────────────────────────────────────────────────────────
 // update_client_event only accepts these fields. Everything else (money, names, dates, venue,
@@ -295,9 +359,9 @@ function _loadSession() { try { return JSON.parse(sessionStorage.getItem('bs_sb_
   if (s.access_token) {
     // Provider session — restore JWT and start refresh timer
     _token = s.access_token; window._sbToken = s.access_token; _session = s;
-    if (s.type === 'provider' && s.refresh_token) _startRefreshTimer();
+    if ((s.type === 'provider' || s.authMode === 'magic') && s.refresh_token) _startRefreshTimer();
   } else if (s.type === 'client' && s.event) {
-    // Client sessions have no access_token (credential-based, not JWT)
+    // Password client sessions have no access_token (credential-based, not JWT)
     // Still need to restore _session so initClient() can return the event
     _session = s;
   }
@@ -372,7 +436,7 @@ window.setDB = function setDB(key, data) {
   // A3: always mirror to localStorage as safety net
   try { localStorage.setItem('bs_backup_' + k, JSON.stringify({ data, ts: Date.now() })); } catch {}
 
-  if (!_token) return; // not logged in as provider — skip cloud write
+  if (!_token || (_session && _session.type === 'client')) return; // not logged in as provider (a client magic-link token never writes provider_data) — skip cloud write
 
   if (!_ready) {
     // A4: queue writes that arrive before initProvider resolves
@@ -465,6 +529,7 @@ window.BSPortal = {
       name:       _session.name || '',
       email:      _session.email || '',
       eventId:    _session.eventId || null,
+      authMode:   _session.type === 'client' ? (_session.authMode === 'magic' ? 'magic' : 'password') : null,
       profilePic: _session.profilePic || null
     } : null;
   },
@@ -523,6 +588,64 @@ window.BSPortal = {
     };
     _saveSession(_session);
     return { ok: true, event };
+  },
+
+  // True when the page was opened from a Supabase Auth email link (tokens or an error in the URL hash).
+  hasMagicLinkHash() {
+    try {
+      const h = (window.location && window.location.hash) || '';
+      return /(^|[#&])(access_token|error_code|error)=/.test(h);
+    } catch (e) { return false; }
+  },
+
+  // Finishes a magic-link sign-in on the redirect back. Parses the tokens from the URL hash, wipes the
+  // hash, confirms the user with Auth, loads the client's events through the JWT twin, and stores a
+  // client session like the provider one (access + refresh token, authMode 'magic').
+  // Returns {ok:true, event} or {ok:false, error, message}. Nothing here sends a password.
+  async completeMagicLink() {
+    const fail = (error, message) => ({ ok: false, error, message });
+    const hash = ((window.location && window.location.hash) || '').replace(/^#/, '');
+    const p = new URLSearchParams(hash);
+    try { window.history.replaceState(null, '', window.location.pathname + window.location.search); } catch (e) {}
+    if (p.get('error') || p.get('error_code')) {
+      const code = p.get('error_code') || p.get('error');
+      return fail(code, code === 'otp_expired'
+        ? 'That link expired or was already used. Ask for a new one and it will come right over.'
+        : 'That link did not work. Ask for a new one and try again.');
+    }
+    const access = p.get('access_token'), refresh = p.get('refresh_token');
+    if (!access || p.get('type') === 'recovery') return fail('invalid_link', 'That link did not work. Ask for a new one and try again.');
+    try {
+      const ur = await fetch(`${SUPABASE_URL}/auth/v1/user`, { headers: { 'apikey': SUPABASE_ANON, 'Authorization': 'Bearer ' + access } });
+      if (!ur || !ur.ok) return fail('invalid_link', 'That link did not work. Ask for a new one and try again.');
+      const user = await ur.json();
+      const email = String((user && user.email) || (_b64urlJson(access.split('.')[1]) || {}).email || '').toLowerCase();
+      if (!email) return fail('invalid_link', 'That link did not work. Ask for a new one and try again.');
+
+      _token = access; window._sbToken = access;
+      _session = { type: 'client', authMode: 'magic', role: 'client-private', email, name: email,
+                   user_id: user && user.id, access_token: access, refresh_token: refresh || null };
+      let list = await SB.getAllClientEventsJwt();
+      if (!list) {
+        _token = null; window._sbToken = null; _session = null; sessionStorage.removeItem('bs_sb_session');
+        return fail('no_events', 'We could not find an event for that email. Check which address you gave us, or call (786) 302-6056.');
+      }
+      const event = _pickDefaultClientEvent(list);
+      _session.role = event.type === 'corporate' ? 'client-corporate' : 'client-private';
+      _session.name = event.clientName || email;
+      _session.eventId = event.id; _session.event = event; _session.allEvents = list;
+      _saveSession(_session);
+      _startRefreshTimer();
+      return { ok: true, event };
+    } catch (e) {
+      _token = null; window._sbToken = null; _session = null;
+      try { sessionStorage.removeItem('bs_sb_session'); } catch (e2) {}
+      return fail('network', 'We could not reach the server. Check your connection and try the link again.');
+    }
+  },
+
+  getAuthMode() {
+    return _session && _session.type === 'client' ? (_session.authMode === 'magic' ? 'magic' : 'password') : null;
   },
 
   async initProvider() {
@@ -588,7 +711,7 @@ window.BSPortal = {
   syncNow() { return _syncFromServer(); },
 
   async saveClientEvent(eventData) {
-    if (!_session || _session.type !== 'client' || !_session.email || !_session.portalPw) {
+    if (!_clientReady()) {
       console.warn('[saveClientEvent] no client session'); return false;
     }
     // The page edits _session.event in place, so the previous state comes from the baseline
@@ -602,7 +725,9 @@ window.BSPortal = {
     const changed = vendorsDiff || timelineDiff || prefsDiff || enhancementsDiff || messagesDiff;
     _session.event = Object.assign({}, _session.event, eventData);
     _saveSession(_session);
-    const ok = await SB.updateClientEvent(_session.email, _session.portalPw, eventData);
+    const ok = _isMagicClient()
+      ? await SB.updateClientEventJwt(eventData)
+      : await SB.updateClientEvent(_session.email, _session.portalPw, eventData);
     if (ok) {
       _setNotifyBaseline(eventData);
       if (changed) {
@@ -626,8 +751,16 @@ window.BSPortal = {
 
   // Same save, built for page unload: keepalive fetch, session credentials, whitelisted payload.
   saveClientEventOnUnload(eventData) {
-    if (!_session || _session.type !== 'client' || !_session.email || !_session.portalPw || !eventData) return false;
+    if (!_clientReady() || !eventData) return false;
     try {
+      if (_isMagicClient()) {
+        fetch(`${SUPABASE_URL}/rest/v1/rpc/update_client_event_jwt`, {
+          method: 'POST', keepalive: true,
+          headers: { 'Content-Type': 'application/json', 'apikey': SUPABASE_ANON, 'Authorization': 'Bearer ' + _token },
+          body: JSON.stringify({ p_event_data: _clientSavePayload(eventData) })
+        }).catch(() => {});
+        return true;
+      }
       fetch(`${SUPABASE_URL}/rest/v1/rpc/update_client_event`, {
         method: 'POST', keepalive: true,
         headers: { 'Content-Type': 'application/json', 'apikey': SUPABASE_ANON },
@@ -641,23 +774,31 @@ window.BSPortal = {
   // client logged in with. Returns {ok:true, signedAt} or {ok:false, error, message}.
   // The RPC answers {ok:false,...} for every refusal (already_signed, consent_required, ...).
   async signDocument(eventId, docId, signaturePng, signedName, consentVersion) {
-    if (!_session || _session.type !== 'client' || !_session.email || !_session.portalPw) {
+    if (!_clientReady()) {
       return { ok: false, error: 'not_authorized', message: 'Your session ended. Sign in again and try once more.' };
     }
     try {
-      const r = await fetch(`${SUPABASE_URL}/rest/v1/rpc/client_sign_document`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'apikey': SUPABASE_ANON },
-        body: JSON.stringify({
-          p_email: _session.email.toLowerCase(),
-          p_password: _session.portalPw,
-          p_event_id: eventId,
-          p_doc_id: docId,
-          p_signature_png: signaturePng,
-          p_signed_name: signedName,
-          p_consent_version: consentVersion
-        })
-      });
+      const r = _isMagicClient()
+        ? await SB.clientRpcJwt('client_sign_document_jwt', {
+            p_event_id: eventId,
+            p_doc_id: docId,
+            p_signature_png: signaturePng,
+            p_signed_name: signedName,
+            p_consent_version: consentVersion
+          })
+        : await fetch(`${SUPABASE_URL}/rest/v1/rpc/client_sign_document`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'apikey': SUPABASE_ANON },
+            body: JSON.stringify({
+              p_email: _session.email.toLowerCase(),
+              p_password: _session.portalPw,
+              p_event_id: eventId,
+              p_doc_id: docId,
+              p_signature_png: signaturePng,
+              p_signed_name: signedName,
+              p_consent_version: consentVersion
+            })
+          });
       let data = null;
       try { data = await r.json(); } catch (e) { data = null; }
       if (data && data.ok === true) return { ok: true, signedAt: data.signedAt || null };
@@ -675,13 +816,13 @@ window.BSPortal = {
   // which keep the live copy so unsaved typing is not lost. Updates that object (and the
   // session copy) and returns it, or null if the fetch failed.
   async refreshClientEvent(liveEvent) {
-    if (!_session || _session.type !== 'client' || !_session.email || !_session.portalPw) return null;
+    if (!_clientReady()) return null;
     try {
       const target = liveEvent || _session.event || {};
       const wantId = target.id || _session.eventId;
-      let list = await SB.getAllClientEvents(_session.email, _session.portalPw);
+      let list = _isMagicClient() ? await SB.getAllClientEventsJwt() : await SB.getAllClientEvents(_session.email, _session.portalPw);
       let fresh = list ? list.find(e => e.id === wantId) : null;
-      if (!fresh) {
+      if (!fresh && !_isMagicClient()) {
         const one = await SB.getClientEvent(_session.email, _session.portalPw);
         if (one && one.id === wantId) fresh = one;
       }
@@ -718,10 +859,12 @@ window.BSPortal = {
   async searchVendors(query) {
     if (!_session || _session.type !== 'client' || !query || query.length < 2) return [];
     try {
-      const r = await fetch(`${SUPABASE_URL}/rest/v1/rpc/client_search_vendors`, {
-        method: 'POST', headers: { 'Content-Type': 'application/json', 'apikey': SUPABASE_ANON },
-        body: JSON.stringify({ p_email: _session.email, p_password: _session.portalPw, p_query: query })
-      });
+      const r = _isMagicClient()
+        ? await SB.clientRpcJwt('client_search_vendors_jwt', { p_query: query })
+        : await fetch(`${SUPABASE_URL}/rest/v1/rpc/client_search_vendors`, {
+            method: 'POST', headers: { 'Content-Type': 'application/json', 'apikey': SUPABASE_ANON },
+            body: JSON.stringify({ p_email: _session.email, p_password: _session.portalPw, p_query: query })
+          });
       if (!r.ok) return [];
       const data = await r.json();
       return Array.isArray(data) ? data : [];
@@ -730,6 +873,7 @@ window.BSPortal = {
 
   addVendorToLibrary(vendorObj) {
     if (!_session || _session.type !== 'client') return;
+    if (_isMagicClient()) { SB.clientRpcJwt('client_add_vendor_jwt', { p_vendor: vendorObj }).catch(() => {}); return; }
     fetch(`${SUPABASE_URL}/rest/v1/rpc/client_add_vendor`, {
       method: 'POST', headers: { 'Content-Type': 'application/json', 'apikey': SUPABASE_ANON },
       body: JSON.stringify({ p_email: _session.email, p_password: _session.portalPw, p_vendor: vendorObj })
@@ -811,9 +955,10 @@ window.BSPortal = {
     if (_refreshTimer) { clearInterval(_refreshTimer); _refreshTimer = null; }
     _writeQueue = []; _retryQueue = [];
     await SB.signOut();
+    const wasClient = !!(_session && _session.type === 'client');
     sessionStorage.removeItem('bs_sb_session');
     _session = null; _token = null;
-    window.location.href = 'login.html';
+    window.location.href = wasClient ? 'login.html?role=client' : 'login.html';
   }
 };
 

@@ -80,6 +80,11 @@
   .f-link { display: block; text-align: right; font-size: 0.78rem; color: rgba(255,255,255,0.55); cursor: pointer; margin-top: 0.4rem; background: none; border: none; padding: 0; transition: color 0.2s; }
   .f-link:hover { color: var(--cyan); }
 
+  .c-intro { font-size: 0.88rem; color: var(--text-2); line-height: 1.6; margin-bottom: 1.4rem; }
+  .f-link-center { display: block; width: 100%; text-align: center; font-family: var(--font-body); font-size: 0.82rem; color: var(--text-2); cursor: pointer; margin-top: 0.8rem; background: none; border: none; padding: 0.85rem 0.5rem; text-decoration: underline; transition: color 0.2s; }
+  .f-link-center:hover { color: var(--cyan); }
+  .f-ok { line-height: 1.55; }
+
   /* FORGOT PASSWORD VIEW */
   #forgot-view { display: none; }
   #forgot-view.active { display: block; }
@@ -146,16 +151,34 @@
 
       <!-- CLIENT TAB -->
       <div class="tab-panel" id="tab-client">
-        <div class="f-group">
-          <label class="f-label" for="cEmail">Email</label>
-          <input class="f-input" type="email" id="cEmail" placeholder="your@email.com" autocomplete="email">
+
+        <!-- Email link (default) -->
+        <div id="cLinkView">
+          <p class="c-intro">No password needed. Put in your email and we will send you a link that opens your portal.</p>
+          <div class="f-group">
+            <label class="f-label" for="cLinkEmail">Email</label>
+            <input class="f-input" type="email" id="cLinkEmail" placeholder="your@email.com" autocomplete="email">
+          </div>
+          <p class="f-err" id="cLinkErr" role="alert"></p>
+          <p class="f-ok" id="cLinkOk" role="status"></p>
+          <button class="f-btn" id="cLinkBtn" onclick="sendMagicLink()">Email me a link</button>
+          <button class="f-link-center" id="cUsePwBtn" onclick="showClientPassword()">Use a password instead</button>
         </div>
-        <div class="f-group">
-          <label class="f-label" for="cPass">Portal Password</label>
-          <input class="f-input" type="password" id="cPass" placeholder="Your event portal code" autocomplete="current-password">
+
+        <!-- Password (stays during the switchover, see PASSWORD_FALLBACK_ENDS) -->
+        <div id="cPwView" style="display:none;">
+          <div class="f-group">
+            <label class="f-label" for="cEmail">Email</label>
+            <input class="f-input" type="email" id="cEmail" placeholder="your@email.com" autocomplete="email">
+          </div>
+          <div class="f-group">
+            <label class="f-label" for="cPass">Portal Password</label>
+            <input class="f-input" type="password" id="cPass" placeholder="Your event portal code" autocomplete="current-password">
+          </div>
+          <p class="f-err" id="cErr"></p>
+          <button class="f-btn" id="cBtn" onclick="doLogin('client')">Access My Portal</button>
+          <button class="f-link-center" onclick="showClientLink()">Email me a link instead</button>
         </div>
-        <p class="f-err" id="cErr"></p>
-        <button class="f-btn" id="cBtn" onclick="doLogin('client')">Access My Portal</button>
       </div>
     </div>
 
@@ -292,6 +315,127 @@ async function doLogin(type) {
   }
 }
 
+// ── Client email link (Supabase Auth OTP) ────────────────────────────────────
+// Flow: ask the server whether this email belongs to an event (client_login_allowed). Only then ask Auth
+// to send the link, with create_user true so a first-time client gets an account. The page says the same
+// thing whether or not the email is on file. No password is read or sent anywhere in this section.
+const PORTAL_REDIRECT = 'https://www.baselinestudiofl.com/portal-client.html';
+// The old email + password form stays reachable until this date (30 days after the switchover). Set it to
+// ship date + 30 days when this page goes live. After it, the "Use a password instead" link disappears.
+const PASSWORD_FALLBACK_ENDS = '2026-11-20';
+function passwordFallbackOpen() {
+  return new Date() <= new Date(PASSWORD_FALLBACK_ENDS + 'T23:59:59');
+}
+const LINK_SENT_MSG = 'Check your email. If that address is on file, your link is on its way. It works for the next hour. Nothing yet? Look in spam, then ask for another.';
+const LINK_ERRORS = {
+  otp_expired: 'That link expired or was already used. Ask for a new one below.',
+  no_events: 'We could not find an event for that email. Use the address you gave us, or call (786) 302-6056.',
+  network: 'We could not reach the server. Check your connection and try again.',
+  invalid_link: 'That link did not work. Ask for a new one below.'
+};
+
+function showClientPassword() {
+  if (!passwordFallbackOpen()) return;
+  const v = document.getElementById('cLinkEmail').value.trim();
+  if (v) document.getElementById('cEmail').value = v;
+  document.getElementById('cLinkView').style.display = 'none';
+  document.getElementById('cPwView').style.display = '';
+}
+function showClientLink() {
+  const v = document.getElementById('cEmail').value.trim();
+  if (v) document.getElementById('cLinkEmail').value = v;
+  document.getElementById('cPwView').style.display = 'none';
+  document.getElementById('cLinkView').style.display = '';
+}
+
+async function sendMagicLink() {
+  const email = document.getElementById('cLinkEmail').value.trim().toLowerCase();
+  const errEl = document.getElementById('cLinkErr');
+  const okEl  = document.getElementById('cLinkOk');
+  const btn   = document.getElementById('cLinkBtn');
+  const label = 'Email me a link';
+  const headers = { 'Content-Type': 'application/json', 'apikey': SUPABASE_ANON };
+  errEl.style.display = 'none';
+  okEl.style.display  = 'none';
+
+  if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) {
+    errEl.textContent = 'Enter the email address you gave us.';
+    errEl.style.display = 'block';
+    return;
+  }
+  setLoading(btn, true, label);
+
+  // 1. Does this email belong to an event? The answer is never shown.
+  let allowed = false;
+  try {
+    const chk = await fetch(`${SUPABASE_URL}/rest/v1/rpc/client_login_allowed`, {
+      method: 'POST', headers, body: JSON.stringify({ p_email: email })
+    });
+    if (!chk.ok) throw new Error('client_login_allowed ' + chk.status);
+    allowed = (await chk.json()) === true;
+  } catch (err) {
+    console.error('[email link] check failed', err);
+    errEl.textContent = passwordFallbackOpen()
+      ? 'Email links are not available right now. Use your password below, or call (786) 302-6056.'
+      : 'Email links are not available right now. Call us at (786) 302-6056 and we will get you in.';
+    errEl.style.display = 'block';
+    setLoading(btn, false, label);
+    if (passwordFallbackOpen()) showClientPassword();
+    return;
+  }
+
+  // 2. Ask Auth to send the link, only for a real client. Nothing but the email goes out.
+  try {
+    if (allowed) {
+      const res = await fetch(`${SUPABASE_URL}/auth/v1/otp?redirect_to=${encodeURIComponent(PORTAL_REDIRECT)}`, {
+        method: 'POST', headers, body: JSON.stringify({ email, create_user: true })
+      });
+      if (res.status >= 500) {
+        errEl.textContent = 'We could not send that link right now. Try again in a few minutes, or call (786) 302-6056.';
+        errEl.style.display = 'block';
+        setLoading(btn, false, label);
+        return;
+      }
+      if (!res.ok && res.status !== 429) console.warn('[email link] Auth answered', res.status);
+    } else {
+      await new Promise(r => setTimeout(r, 600 + Math.floor(Math.random() * 400)));   // similar timing either way
+    }
+  } catch (err) {
+    console.error('[email link] send failed', err);
+    errEl.textContent = LINK_ERRORS.network;
+    errEl.style.display = 'block';
+    setLoading(btn, false, label);
+    return;
+  }
+
+  // 3. Same message for everyone.
+  okEl.textContent = LINK_SENT_MSG;
+  okEl.style.display = 'block';
+  btn.disabled = true;
+  btn.textContent = 'Link sent';
+  setTimeout(() => { btn.disabled = false; btn.textContent = 'Send it again'; }, 30000);
+}
+
+// Coming back from the email: tokens (or an error) arrive in the URL hash. The portal page handles the
+// tokens, so forward them there untouched. Errors are shown here and the hash is wiped.
+(function handleLinkReturn() {
+  const raw = (location.hash || '').replace(/^#/, '');
+  const p = new URLSearchParams(raw);
+  if (p.get('access_token') && p.get('type') !== 'recovery') {
+    location.replace('portal-client.html#' + raw);
+    return;
+  }
+  const code = p.get('error_code') || p.get('error') || new URLSearchParams(location.search).get('link');
+  if (!code) return;
+  try { history.replaceState(null, '', location.pathname + (location.search.includes('role=client') ? '?role=client' : '')); } catch (e) {}
+  document.addEventListener('DOMContentLoaded', () => {
+    document.querySelector('[data-tab="client"]').click();
+    const errEl = document.getElementById('cLinkErr');
+    errEl.textContent = LINK_ERRORS[code] || LINK_ERRORS.invalid_link;
+    errEl.style.display = 'block';
+  });
+})();
+
 // ── Forgot password ───────────────────────────────────────────────────────────
 async function doForgot() {
   const email = document.getElementById('fEmail').value.trim().toLowerCase();
@@ -392,6 +536,8 @@ document.querySelectorAll('.tab-btn').forEach(btn => {
   });
 });
 
+if (!passwordFallbackOpen()) document.getElementById('cUsePwBtn').style.display = 'none';
+
 // URL param: login.html?role=client
 const urlRole = new URLSearchParams(location.search).get('role');
 if (urlRole === 'client') document.querySelector('[data-tab="client"]').click();
@@ -403,7 +549,9 @@ document.addEventListener('keydown', e => {
   const forgotVisible = document.getElementById('forgot-view').style.display === 'block';
   if (forgotVisible) { doForgot(); return; }
   const active = document.querySelector('.tab-btn.active');
-  if (active) doLogin(active.dataset.tab);
+  if (!active) return;
+  if (active.dataset.tab === 'client' && document.getElementById('cLinkView').style.display !== 'none') { sendMagicLink(); return; }
+  doLogin(active.dataset.tab);
 });
 </script>
 </body>

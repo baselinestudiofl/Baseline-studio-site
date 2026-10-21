@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Baseline Studio - Your Event</title>
-  <script src="portal-supabase.js?v=13"></script>
+  <script src="portal-supabase.js?v=14"></script>
   <script src="lighting-preview.js?v=2"></script>
   <link rel="stylesheet" href="fonts/fonts.css">
   <style>
@@ -1839,6 +1839,14 @@
       box-shadow: 0 0 10px rgba(31,163,224,0.55);
     }
     .ob-dot.done { background: rgba(31,163,224,0.38); }
+    .ob-count {
+      text-align: center;
+      font-size: 12px;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: rgba(255,255,255,0.55);
+      margin: -26px 0 28px;
+    }
 
     .ob-question {
       font-family: 'Anton', sans-serif;
@@ -2085,7 +2093,7 @@
             <div class="profile-menu-name" id="menuClientName">Loading...</div>
             <div class="profile-menu-event" id="menuEventName"></div>
           </div>
-          <button onclick="openChangePassword()">&#128274; Change my password</button>
+          <button id="menuChangePw" onclick="openChangePassword()">&#128274; Change my password</button>
           <button class="danger" onclick="logout()">&#8594; Log out</button>
         </div>
       </div>
@@ -2367,10 +2375,19 @@
       const o = currentEvent && currentEvent.clientOnboarding;
       return (o && typeof o === 'object' && o[k]) ? String(o[k]) : '';
     }
-    function realVal(v) { return (v && v !== 'TBD' && v !== 'event') ? v : ''; }
-    function evVenueName()    { return realVal(currentEvent.venueName || currentEvent.venue) || onbVal('venueName') || 'TBD'; }
-    function evVenueAddress() { return currentEvent.venueAddress || onbVal('venueAddress'); }
-    function evType()         { return realVal(currentEvent.type || currentEvent.eventType) || onbVal('eventType') || 'event'; }
+    // Values that mean "nobody has answered this": empty, TBD, N/A, and the defaults that event
+    // creation / init / inquiry conversion put in ('event', 'inquiry', 'lead', 'my event').
+    const OB_PLACEHOLDERS = ['', 'tbd', 'n/a', 'na', 'null', 'undefined', 'unknown', 'pending', '-', '--',
+      'to be determined', 'to be decided', 'event', 'inquiry', 'lead', 'my event'];
+    function obIsBlank(v) {
+      if (v === undefined || v === null) return true;
+      if (typeof v === 'object') return true;           // objects/arrays are never a plain text answer
+      return OB_PLACEHOLDERS.indexOf(String(v).trim().toLowerCase()) !== -1;
+    }
+    function realVal(v) { return obIsBlank(v) ? '' : String(v).trim(); }
+    function evVenueName()    { return realVal(currentEvent.venueName || currentEvent.venue) || realVal(onbVal('venueName')) || 'TBD'; }
+    function evVenueAddress() { return realVal(currentEvent.venueAddress) || realVal(onbVal('venueAddress')); }
+    function evType()         { return realVal(currentEvent.type || currentEvent.eventType) || realVal(onbVal('eventType')) || 'event'; }
     function evDate()         { return currentEvent.date || currentEvent.eventDate || onbVal('eventDate'); }
     function evClientName()   { return onbVal('clientName') || currentEvent.clientName || ''; }
     function evPhone()        { return onbVal('phone') || currentEvent.clientPhone || ''; }
@@ -2389,6 +2406,11 @@
       if (!sessionEvent) return;
 
       currentUser = BSPortal.getCurrentUser();
+      // Signed in with an emailed link: there is no password to change.
+      if (currentUser && currentUser.authMode === 'magic') {
+        const pwBtn = document.getElementById('menuChangePw');
+        if (pwBtn) pwBtn.style.display = 'none';
+      }
 
       // Check role
       if (!['client-private', 'client-corporate'].includes(currentUser.role)) {
@@ -2455,7 +2477,8 @@
           try { return !!localStorage.getItem('bs_ob_done_' + currentEvent.id); } catch(e) { return false; }
         })();
         if (!currentEvent.onboardingComplete && !obDoneLocally) {
-          document.getElementById('tabBar').style.display = 'none';
+          // renderOnboarding builds the step list. If nothing is missing it marks onboarding
+          // complete silently and goes straight to the portal; otherwise it hides the tab bar.
           renderOnboarding();
         } else {
           // Keep the flag synced on currentEvent in case it came from localStorage only
@@ -3614,6 +3637,7 @@
       const name  = evClientName() || (currentUser && (currentUser.firstName || currentUser.name)) || '';
       const phone = evPhone() || (currentUser && currentUser.phone) || '';
       const email = (currentUser && currentUser.email) || '';
+      const isMagic = !!(currentUser && currentUser.authMode === 'magic');
 
       const inputStyle = 'width:100%;box-sizing:border-box;background:rgba(255,255,255,0.06);border:1px solid var(--border-ui);border-radius:8px;padding:12px 14px;color:#fff;font-size:15px;font-family:inherit;';
       const labelStyle = 'display:block;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.08em;color:rgba(255,255,255,0.55);margin-bottom:7px;';
@@ -3649,7 +3673,12 @@
             </div>
           </div>
 
-          <!-- Password -->
+          <!-- Password (hidden for emailed-link sign-ins) -->
+          ${isMagic ? `
+          <div style="${cardStyle}">
+            <div style="${headStyle}">Signing in</div>
+            <p style="font-size:14px;line-height:1.6;color:rgba(255,255,255,0.72);margin:0;">You sign in with a link we email you, so there is no password to remember. Next time, open the portal and ask for a new link.</p>
+          </div>` : `
           <div style="${cardStyle}">
             <div style="${headStyle}">Change Password</div>
 
@@ -3672,7 +3701,7 @@
               <button onclick="saveClientPassword()" style="background:#1FA3E0;color:#000;border:none;border-radius:8px;padding:11px 22px;font-size:14px;font-weight:700;cursor:pointer;letter-spacing:0.02em;">Update password</button>
               <span id="pwSaveFb" style="font-size:13px;color:rgba(255,255,255,0.55);"></span>
             </div>
-          </div>
+          </div>`}
 
           <!-- Sign out -->
           <div style="text-align:center;padding-top:4px;">
@@ -3816,33 +3845,61 @@
     });
 
     // ============ ONBOARDING WIZARD ============
-    // Smart: only asks questions for fields that are actually missing from event data.
-    // If everything is already filled in from intake, skips the wizard entirely.
+    // Only asks what we do not already have. The step list is built once at wizard start from
+    // what is already on the event (provider fields, earlier client answers). Nothing missing
+    // means no wizard: onboarding is marked complete silently. See _DEV/crm-v2/changes-wizard.md.
+
+    // Venue address is a real question when the venue name is known but the address is not.
+    // Flip to false to ask the address only when the venue name is also missing.
+    const OB_VENUE_NEEDS_ADDRESS = true;
 
     let _obStep = -1;       // -1 = welcome screen, 0+ = index into _obStepList
     let _obStepList = [];   // dynamic list of step names that need to be asked
+    let _obVenueNeed = { name: false, addr: false };  // which venue fields are asked (frozen at start)
+
+    function _obPrefs() {
+      const p = currentEvent && currentEvent.clientPrefs;
+      return (p && typeof p === 'object' && !Array.isArray(p)) ? p : {};
+    }
+    // A text answer counts only if it is a non-empty string that is not a placeholder.
+    function _obHasText(v) { return typeof v === 'string' && !obIsBlank(v); }
+    function _obItems(v) {
+      const arr = Array.isArray(v) ? v : (v && typeof v === 'object' ? (v.moments || v.songs) : null);
+      return Array.isArray(arr) ? arr.filter(x => x && typeof x === 'object') : [];
+    }
+    function _obHasMoments() {
+      const prefs = _obPrefs();
+      if (Array.isArray(prefs.moments) && prefs.moments.some(_obHasText)) return true;
+      if (prefs.momentSongs && typeof prefs.momentSongs === 'object' &&
+          Object.keys(prefs.momentSongs).some(k => _obHasText(k) && _obHasText(String(prefs.momentSongs[k])))) return true;
+      // Songs the client already tied to a moment on the Music tab.
+      return _obItems(currentEvent.clientMusic).concat(_obItems(currentEvent.music)).some(s => _obHasText(s.moment));
+    }
+    function _obVenueNeeds() {
+      const nameKnown = evVenueName() !== 'TBD';
+      const addrKnown = !!evVenueAddress();
+      const name = !nameKnown;
+      const addr = !addrKnown && (OB_VENUE_NEEDS_ADDRESS || name);
+      return { name, addr };
+    }
 
     function _obGetPendingSteps() {
+      const prefs = _obPrefs();
       const steps = [];
-      // Only ask if the field is genuinely blank / missing
-      const hasType = evType() !== 'event';
-      const hasVibe = !!(currentEvent.clientPrefs && currentEvent.clientPrefs.vibe);
-      const hasVenue = evVenueName() !== 'TBD';
-      const hasMoments = !!(currentEvent.clientPrefs && currentEvent.clientPrefs.moments && currentEvent.clientPrefs.moments.length);
-      const hasSpecial = !!(currentEvent.clientPrefs && currentEvent.clientPrefs.specialRequests);
-
-      if (!hasType)    steps.push('type');
-      if (!hasVibe)    steps.push('vibe');
-      if (!hasVenue)   steps.push('venue');
-      if (!hasMoments) steps.push('moments');
-      if (!hasSpecial) steps.push('special');
+      if (evType() === 'event') steps.push('type');
+      if (!(_obHasText(prefs.vibe) || _obHasText(prefs.vibeOther) || _obHasText(onbVal('vibe')))) steps.push('vibe');
+      const vn = _obVenueNeeds();
+      if (vn.name || vn.addr) steps.push('venue');
+      if (!_obHasMoments()) steps.push('moments');
+      if (!(_obHasText(prefs.specialRequests) || _obHasText(onbVal('specialRequests')))) steps.push('special');
       return steps;
     }
 
     function renderOnboarding() {
       _obStepList = _obGetPendingSteps();
+      _obVenueNeed = _obVenueNeeds();
 
-      // Nothing missing — mark complete immediately and skip the wizard
+      // Nothing missing: mark complete silently and skip the wizard
       if (_obStepList.length === 0) {
         _obComplete(true);
         return;
@@ -3861,7 +3918,9 @@
       if (fns[name]) fns[name]();
     }
 
+    // Next and Back only ever move through _obStepList, so they never land on a skipped step.
     function _obNext() { _obStep++; _obRenderStep(); }
+    function _obBack() { _obStep = _obStep > 0 ? _obStep - 1 : -1; _obRenderStep(); }
 
     function _obDots(currentIdx) {
       const total = _obStepList.length;
@@ -3872,11 +3931,23 @@
           else if (i === currentIdx) cls += ' active';
           return '<div class="' + cls + '"></div>';
         }).join('') +
-      '</div>';
+      '</div><div class="ob-count">' + (currentIdx + 1) + ' of ' + total + '</div>';
+    }
+
+    // Back (not on the first step's welcome-less case), Skip, and Next/Finish for one step.
+    function _obActions(idx, nextFn) {
+      const isLast = idx === _obStepList.length - 1;
+      return `<div class="ob-actions">
+        <div style="display:flex;gap:20px;align-items:center;">
+          <button type="button" class="ob-skip" onclick="_obBack()">Back</button>
+          <button type="button" class="ob-skip" onclick="_obNext()">${isLast ? "Skip, I'm done" : 'Skip this'}</button>
+        </div>
+        <button type="button" class="ob-next" onclick="${nextFn}()">${isLast ? 'Finish ✓' : 'Next →'}</button>
+      </div>`;
     }
 
     function _obWelcome() {
-      const eventName = currentEvent.name || currentEvent.title || 'your event';
+      const eventName = esc(currentEvent.name || currentEvent.title || 'your event');
       const count = _obStepList.length;
       const timeEst = count <= 2 ? 'under a minute' : 'about two minutes';
       document.getElementById('contentArea').innerHTML = `
@@ -3884,11 +3955,11 @@
           <div class="ob-welcome-wrap">
             <div class="ob-welcome-title">Welcome to your portal.</div>
             <div class="ob-welcome-body">
-              We've got ${eventName} locked in on our end. We just have ${count === 1 ? 'one quick question' : count + ' quick things'} for you — ${timeEst} — and it helps us make sure the night goes exactly how you want it.
+              We've got ${eventName} locked in on our end. We just need ${count === 1 ? 'one quick answer' : count + ' quick answers'} from you, ${timeEst}, so the night goes exactly how you want it.
             </div>
-            <button class="ob-next" onclick="_obStep=0;_obRenderStep();" style="font-size:16px;padding:14px 40px;">Let's do it →</button>
+            <button class="ob-next" onclick="_obNext()" style="font-size:16px;padding:14px 40px;">Let's do it →</button>
             <div style="margin-top:18px;">
-              <button class="ob-skip" onclick="_obComplete(true)">Skip for now — just take me in</button>
+              <button class="ob-skip" onclick="_obComplete(true)">Skip for now and take me in</button>
             </div>
           </div>
         </div>`;
@@ -3902,14 +3973,11 @@
         <div class="ob-wrap">
           ${_obDots(idx)}
           <div class="ob-question">What kind of event are we doing together?</div>
-          <div class="ob-sub">Just confirm the type — we'll tailor everything around it.</div>
+          <div class="ob-sub">Just confirm the type and we'll tailor everything around it.</div>
           <div class="ob-chips" id="obTypeChips">
             ${types.map(t => `<button type="button" class="ob-chip ${cur && t.toLowerCase().startsWith(cur.split(' ')[0]) ? 'selected' : ''}" data-val="${t}" onclick="_obPickChip(this,'obTypeChips')">${t}</button>`).join('')}
           </div>
-          <div class="ob-actions">
-            <button class="ob-skip" onclick="_obNext()">Skip this</button>
-            <button class="ob-next" onclick="_obSaveType()">Next →</button>
-          </div>
+          ${_obActions(idx, '_obSaveType')}
         </div>`;
     }
 
@@ -3927,54 +3995,56 @@
     function _obVibe() {
       const idx = _obStepList.indexOf('vibe');
       const vibes = ['Romantic & Intimate','Grand & Dramatic','Fun & High-Energy','Sophisticated & Elegant','Modern & Bold','Something Else'];
-      const cur = (currentEvent.clientPrefs && currentEvent.clientPrefs.vibe) || '';
+      const cur = _obPrefs().vibe || '';
       document.getElementById('contentArea').innerHTML = `
         <div class="ob-wrap">
           ${_obDots(idx)}
           <div class="ob-question">What's the overall vibe?</div>
-          <div class="ob-sub">One answer — go with your gut. You can always update it later.</div>
+          <div class="ob-sub">One answer. Go with your gut. You can always update it later.</div>
           <div class="ob-chips" id="obVibeChips">
             ${vibes.map(v => `<button type="button" class="ob-chip ${cur === v ? 'selected' : ''}" data-val="${v}" onclick="_obPickChip(this,'obVibeChips')">${v}</button>`).join('')}
           </div>
-          <div class="ob-actions">
-            <button class="ob-skip" onclick="_obNext()">Skip this</button>
-            <button class="ob-next" onclick="_obSaveVibe()">Next →</button>
-          </div>
+          ${_obActions(idx, '_obSaveVibe')}
         </div>`;
     }
 
     function _obSaveVibe() {
       const sel = document.querySelector('#obVibeChips .ob-chip.selected');
       if (sel) {
-        if (!currentEvent.clientPrefs) currentEvent.clientPrefs = {};
+        if (!currentEvent.clientPrefs || typeof currentEvent.clientPrefs !== 'object' || Array.isArray(currentEvent.clientPrefs)) currentEvent.clientPrefs = {};
         currentEvent.clientPrefs.vibe = sel.dataset.val;
         saveEvent();
       }
       _obNext();
     }
 
+    // Asks only the venue fields we are missing (frozen in _obVenueNeed at wizard start).
+    // If the name is already on file and only the address is missing, the name shows in the question.
     function _obVenue() {
       const idx = _obStepList.indexOf('venue');
-      const venueName = evVenueName() === 'TBD' ? '' : evVenueName();
+      const need = _obVenueNeed;
+      const known = evVenueName() === 'TBD' ? '' : evVenueName();
       const venueAddr = evVenueAddress();
+      let question, sub;
+      if (need.name) { question = "Where's it happening?"; sub = need.addr ? 'Just the name for now. Address and contact details can come later.' : 'Just the venue name.'; }
+      else { question = 'What\'s the address for ' + esc(known) + '?'; sub = 'So we know exactly where to load in and where guests will be headed.'; }
       document.getElementById('contentArea').innerHTML = `
         <div class="ob-wrap">
           ${_obDots(idx)}
-          <div class="ob-question">Where's it happening?</div>
-          <div class="ob-sub">Just the name for now — address and contact details can come later.</div>
-          <input class="ob-input-large" type="text" id="obVenueName" placeholder="Venue name (e.g., The Biltmore, Pérez Art Museum)" value="${venueName.replace(/"/g,'&quot;')}">
-          <input class="ob-input-large" type="text" id="obVenueAddr" placeholder="Address (optional)" value="${venueAddr.replace(/"/g,'&quot;')}">
-          <div class="ob-actions">
-            <button class="ob-skip" onclick="_obNext()">Skip this</button>
-            <button class="ob-next" onclick="_obSaveVenue()">Next →</button>
-          </div>
+          <div class="ob-question">${question}</div>
+          <div class="ob-sub">${sub}</div>
+          ${need.name ? `<input class="ob-input-large" type="text" id="obVenueName" placeholder="Venue name (e.g., The Biltmore, Pérez Art Museum)" value="${esc(known)}">` : ''}
+          ${need.addr ? `<input class="ob-input-large" type="text" id="obVenueAddr" placeholder="Address (optional)" value="${esc(venueAddr)}">` : ''}
+          ${_obActions(idx, '_obSaveVenue')}
         </div>`;
-      requestAnimationFrame(() => document.getElementById('obVenueName').focus());
+      requestAnimationFrame(() => { const f = document.getElementById(need.name ? 'obVenueName' : 'obVenueAddr'); if (f) f.focus(); });
     }
 
     function _obSaveVenue() {
-      const name = document.getElementById('obVenueName').value.trim();
-      const addr = document.getElementById('obVenueAddr').value.trim();
+      const nEl = document.getElementById('obVenueName');
+      const aEl = document.getElementById('obVenueAddr');
+      const name = nEl ? nEl.value.trim() : '';
+      const addr = aEl ? aEl.value.trim() : '';
       if (name || addr) { obSet({ venueName: name, venueAddress: addr }); saveEvent(); }
       _obNext();
     }
@@ -3982,7 +4052,7 @@
     function _obMoments() {
       const idx = _obStepList.indexOf('moments');
       const all = ['First Dance','Grand Entrance','Parent Dances','Cake Cutting','Toasts','Cocktail Hour','Anniversary Dance','Bouquet Toss','Surprise Dance','Candle Ceremony'];
-      const cur = (currentEvent.clientPrefs && currentEvent.clientPrefs.moments) || [];
+      const cur = Array.isArray(_obPrefs().moments) ? _obPrefs().moments : [];
       document.getElementById('contentArea').innerHTML = `
         <div class="ob-wrap">
           ${_obDots(idx)}
@@ -3995,10 +4065,7 @@
                 <span>${m}</span>
               </div>`).join('')}
           </div>
-          <div class="ob-actions">
-            <button class="ob-skip" onclick="_obNext()">Skip this</button>
-            <button class="ob-next" onclick="_obSaveMoments()">Next →</button>
-          </div>
+          ${_obActions(idx, '_obSaveMoments')}
         </div>`;
     }
 
@@ -4009,26 +4076,24 @@
 
     function _obSaveMoments() {
       const checked = Array.from(document.querySelectorAll('.ob-check-item.checked')).map(el => el.dataset.val);
-      if (!currentEvent.clientPrefs) currentEvent.clientPrefs = {};
-      currentEvent.clientPrefs.moments = checked;
-      if (checked.length) saveEvent();
+      if (checked.length) {
+        if (!currentEvent.clientPrefs || typeof currentEvent.clientPrefs !== 'object' || Array.isArray(currentEvent.clientPrefs)) currentEvent.clientPrefs = {};
+        currentEvent.clientPrefs.moments = checked;
+        saveEvent();
+      }
       _obNext();
     }
 
     function _obSpecial() {
       const idx = _obStepList.indexOf('special');
-      const isLast = idx === _obStepList.length - 1;
-      const cur = (currentEvent.clientPrefs && currentEvent.clientPrefs.specialRequests) || '';
+      const cur = _obPrefs().specialRequests || '';
       document.getElementById('contentArea').innerHTML = `
         <div class="ob-wrap">
           ${_obDots(idx)}
           <div class="ob-question">Anything we should know going in?</div>
           <div class="ob-sub">Special requests, things that are off-limits, details that make this yours. No wrong answers.</div>
-          <textarea class="ob-textarea-large" id="obSpecial" placeholder="Examples: no chicken dance, groom is hard of hearing, we want cold sparklers for the grand entrance...">${cur}</textarea>
-          <div class="ob-actions">
-            <button class="ob-skip" onclick="_obComplete(false)">Skip, I'm done</button>
-            <button class="ob-next" onclick="_obSaveSpecial()">Finish ✓</button>
-          </div>
+          <textarea class="ob-textarea-large" id="obSpecial" placeholder="Examples: no chicken dance, groom is hard of hearing, we want cold sparklers for the grand entrance...">${esc(cur)}</textarea>
+          ${_obActions(idx, '_obSaveSpecial')}
         </div>`;
       requestAnimationFrame(() => document.getElementById('obSpecial').focus());
     }
@@ -4036,7 +4101,7 @@
     function _obSaveSpecial() {
       const val = document.getElementById('obSpecial').value.trim();
       if (val) {
-        if (!currentEvent.clientPrefs) currentEvent.clientPrefs = {};
+        if (!currentEvent.clientPrefs || typeof currentEvent.clientPrefs !== 'object' || Array.isArray(currentEvent.clientPrefs)) currentEvent.clientPrefs = {};
         currentEvent.clientPrefs.specialRequests = val;
         saveEvent();
       }
@@ -4055,7 +4120,7 @@
         document.getElementById('contentArea').innerHTML = `
           <div class="ob-complete-wrap">
             <div class="ob-welcome-title">All set.</div>
-            <div class="ob-welcome-body" style="max-width:320px;margin:0 auto 0;">Everything's saved. You can update any of it from the tabs above — your event details, your music, your timeline, all of it. We've got it from here.</div>
+            <div class="ob-welcome-body" style="max-width:320px;margin:0 auto 0;">Everything's saved. You can update any of it from the tabs above. Your event details, your music, your timeline, all of it. We've got it from here.</div>
           </div>`;
         setTimeout(() => setActiveTab('my-event'), 1800);
       } else {
@@ -4063,8 +4128,21 @@
       }
     }
 
-    // Initialize on load
-    window.addEventListener('load', init);
+    // Initialize on load. Coming back from an emailed sign-in link, finish that sign-in first
+    // (reads the tokens from the URL, clears them, loads the client's events), then start the page.
+    async function bootClient() {
+      if (BSPortal.hasMagicLinkHash && BSPortal.hasMagicLinkHash()) {
+        const area = document.getElementById('contentArea');
+        if (area) area.innerHTML = '<div role="status" style="padding:48px 24px;text-align:center;color:rgba(255,255,255,0.72);font-size:15px;">Signing you in&hellip;</div>';
+        const res = await BSPortal.completeMagicLink();
+        if (!res || !res.ok) {
+          window.location.replace('login.html?role=client&link=' + encodeURIComponent((res && res.error) || 'invalid_link'));
+          return;
+        }
+      }
+      init();
+    }
+    window.addEventListener('load', bootClient);
 
     // ── AUTO-SYNC: save client event data to Supabase automatically ──────────────
     // Runs every 90 seconds AND immediately when the user switches away from the tab.

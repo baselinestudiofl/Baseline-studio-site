@@ -96,7 +96,7 @@
 
     .badge { display: inline-block; padding: 4px 8px; border-radius: 4px; font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; }
     .badge-wedding { background: #d91c5d; color: var(--white); }
-    .badge-quince { background: #9c27b0; color: var(--white); }
+    .badge-quince, .badge-sweet16, .badge-mitzvah { background: #9c27b0; color: var(--white); }
     .badge-corporate { background: #2196f3; color: #07070d; }
     .badge-gala { background: #673ab7; color: var(--white); }
     .badge-birthday { background: #ff6f00; color: #07070d; }
@@ -256,7 +256,7 @@
 
     .event-type-indicator { width: 20px; height: 20px; border-radius: 50%; display: inline-block; margin-right: 8px; }
     .type-wedding { background: #e91e63; }
-    .type-quince { background: #9c27b0; }
+    .type-quince, .type-sweet16, .type-mitzvah { background: #9c27b0; }
     .type-corporate { background: #2196f3; }
     .type-gala { background: #673ab7; }
     .type-birthday { background: #ff6f00; }
@@ -804,8 +804,9 @@
     </div>
   </div>
 
-  <script src="portal-supabase.js?v=13"></script>
+  <script src="portal-supabase.js?v=14"></script>
   <script src="lighting-preview.js?v=2"></script>
+  <script src="contract-templates.js?v=1"></script>
   <script>
     // Async provider init — loads Supabase data before rendering anything
     window._sbDataReady = BSPortal.initProvider().then(ok => {
@@ -945,6 +946,8 @@
             <option value="">All Types</option>
             <option value="wedding">Wedding</option>
             <option value="quince">Quince/Sweet 16</option>
+            <option value="sweet16">Sweet 16</option>
+            <option value="mitzvah">Bar/Bat Mitzvah</option>
             <option value="corporate">Corporate</option>
             <option value="gala">Gala/Fundraiser</option>
             <option value="birthday">Birthday/Private Party</option>
@@ -1094,7 +1097,16 @@
                 </optgroup>
                 <optgroup label="── Pricing ──">
                   <option value="{{total_price}}">Total Price</option>
-                  <option value="{{deposit_amount}}">Deposit Amount (50%)</option>
+                  <option value="{{deposit_amount}}">Deposit Amount</option>
+                  <option value="{{deposit_percent}}">Deposit Percent</option>
+                  <option value="{{balance_amount}}">Balance Amount</option>
+                </optgroup>
+                <optgroup label="── Contract Sections (auto) ──">
+                  <option value="{{booked_items_table}}">Booked Items &amp; Prices</option>
+                  <option value="{{service_sections}}">Service Sections (booked only)</option>
+                  <option value="{{cancellation_terms}}">Cancellation Terms</option>
+                  <option value="{{overtime_rate}}">Overtime Rate</option>
+                  <option value="{{client_responsibilities}}">Client Responsibilities</option>
                 </optgroup>
                 <optgroup label="── Dates &amp; Payment Terms ──">
                   <option value="{{current_date}}">Today's Date</option>
@@ -1409,6 +1421,9 @@
             <div id="settingsSaveNote" style="font-size:12px;color:var(--gray);display:none;">Updating active client portals…</div>
           </div>
 
+          <!-- Contract terms -->
+          <div id="contractTermsCard" style="background:var(--black-3);border:1px solid var(--border);border-radius:10px;padding:24px;margin-top:20px;margin-bottom:20px;"></div>
+
         </div>
       </div>
 
@@ -1643,6 +1658,8 @@
           <option value="">Select type...</option>
           <option value="wedding">Wedding</option>
           <option value="quince">Quince/Sweet 16</option>
+          <option value="sweet16">Sweet 16</option>
+          <option value="mitzvah">Bar/Bat Mitzvah</option>
           <option value="corporate">Corporate Event</option>
           <option value="gala">Gala/Fundraiser</option>
           <option value="birthday">Birthday/Private Party</option>
@@ -1701,8 +1718,6 @@
       }
       if (!getDB('templates') || getDB('templates').length === 0) {
         setDB('templates', [
-          { id: genId(), name: 'DJ Services Agreement', content: 'DJ SERVICES AGREEMENT - Between Baseline Studio and {{client_name}} for {{event_date}} at {{venue_name}}. Services: {{services_list}}. Investment: ${{total_price}}. Terms: Deposit due on signing, balance 10 days prior. Cancellation: 90+ days full refund, 30-90 days 50% forfeited, <30 days all fees forfeited. Overtime: $200/hr. Baseline Studio | (786) 302-6056' },
-          { id: genId(), name: 'Full Production Agreement', content: 'FULL EVENT PRODUCTION AGREEMENT - Client: {{client_name}}, Event: {{event_type}} on {{event_date}} at {{venue_name}}. Services: {{services_list}}. Total: ${{total_price}}, Deposit: ${{deposit_amount}}. Cancellation: 90+ full refund, 30-90 50% retained, <30 all forfeited. Baseline Studio | (786) 302-6056' },
           { id: genId(), name: 'Event Proposal', content: 'EVENT PROPOSAL - Dear {{client_name}},\n\nProposal for {{event_type}} on {{event_date}} at {{venue_name}}.\n\nServices Included: {{services_list}}\n\nInvestment Breakdown:\nTotal: ${{total_price}}\nDeposit Required: ${{deposit_amount}}\n\nNext Steps:\n1. Review proposal\n2. Confirm event details\n3. Sign agreement\n4. Submit deposit\n\nBaseline Studio | (786) 302-6056 | Hello@baselinestudiofl.com' }
         ]);
       }
@@ -1763,10 +1778,11 @@
       // Always scroll back to top when switching sections
       const mc = document.querySelector('.main-content');
       if (mc) mc.scrollTop = 0;
+      _routeWrite({ type: 'section', id: sectionId }, 'push');
     }
 
     function openModal(modalId) { document.getElementById(modalId).classList.add('active'); }
-    function closeModal(modalId) { document.getElementById(modalId).classList.remove('active'); clearHash(); }
+    function closeModal(modalId) { document.getElementById(modalId).classList.remove('active'); _routeModalClosed(modalId); }
 
     function showToast(message, type = 'info') {
       const container = document.getElementById('toastContainer');
@@ -1876,6 +1892,7 @@
       if (sectionId === 'events')    renderEvents();
       if (sectionId === 'clients')   renderClients();
       if (sectionId === 'vendors')   renderVendors();
+      _routeWrite({ type: 'section', id: sectionId }, 'push');
     }
 
     // Navigate to a section programmatically (used by search)
@@ -1890,14 +1907,189 @@
       if (sectionId === 'events')    renderEvents();
       if (sectionId === 'clients')   renderClients();
       if (sectionId === 'vendors')   renderVendors();
+      _routeWrite({ type: 'section', id: sectionId }, 'push');
     }
 
     // ── Hash routing ──────────────────────────────────────────────────────
-    // Format: #event=id  |  #client=id  |  #lead=id
+    // Canonical hashes:  #/<section>  |  #/event/<id>[/<tab>]  |  #/client/<id>  |  #/lead/<id>
+    // Old links still open:  #event=<id>  #client=<id>  #lead=<id>  #inquiry=<id>  (rewritten to the new form)
+    // Sections and detail pages push a history entry. Event tab switches replace the current one.
+    // Modals are not routes, except the lead modal (it was already deep-linkable).
     let _detailReturnSection = 'events'; // where to go on back
+    const ROUTE_SECTIONS = ['dashboard','pipeline','events','clients','vendors','documents','equipment','invoices','marketing','accounts','reports','automations','settings'];
+    const ROUTE_EVENT_TABS = ['overview','invoices','documents','messages','timeline','plan','lighting','portal'];
+    let _route = null;              // the route currently shown (or last written)
+    let _routeApplying = 0;         // >0 while the router itself changes the view: no history writes
+    let _routeSeq = 0;              // newest apply wins when an async apply (lead) is overtaken
+    let _routeInflight = '';        // hash being applied, stops popstate + hashchange applying twice
+    let _routeBackPending = false;  // a history.back() from closing the lead modal is still travelling
+    let _routeDeferred = null;      // a history write asked for while that back() was travelling
 
-    function pushDetailHash(type, id) { history.pushState({ type, id }, '', '#' + type + '=' + id); }
-    function clearHash() { if (location.hash) history.pushState({}, '', location.pathname); }
+    function _routeParse(hash) {
+      const h = String(hash || '');
+      if (h === '' || h === '#' || h === '#/') return { type: 'section', id: 'dashboard' };
+      const dec = s => { try { return decodeURIComponent(s); } catch (e) { return null; } };
+      let m = h.match(/^#\/(event|client|lead)\/([^\/?]+)(?:\/([^\/?]+))?\/?$/);
+      if (m) {
+        const id = dec(m[2]);
+        if (!id) return null;
+        const tab = m[1] === 'event' && m[3] && m[3] !== 'overview' && ROUTE_EVENT_TABS.indexOf(m[3]) > -1 ? m[3] : null;
+        return { type: m[1], id: id, tab: tab };
+      }
+      m = h.match(/^#\/([a-z]+)\/?$/);
+      if (m && ROUTE_SECTIONS.indexOf(m[1]) > -1) return { type: 'section', id: m[1] };
+      m = h.match(/^#(event|client|lead|inquiry)=(.+)$/);
+      if (m) {
+        const id = dec(m[2]);
+        return id ? { type: m[1] === 'inquiry' ? 'lead' : m[1], id: id, tab: null } : null;
+      }
+      return null;
+    }
+
+    function _routeHash(r) {
+      if (!r) return '';
+      if (r.type === 'section') return '#/' + r.id;
+      const base = '#/' + r.type + '/' + encodeURIComponent(r.id);
+      return r.type === 'event' && r.tab && r.tab !== 'overview' ? base + '/' + r.tab : base;
+    }
+
+    // The only place history is touched. Same hash twice = no new entry. Silent while the router is applying a route.
+    function _routeWrite(r, mode) {
+      _route = r;
+      if (_routeApplying) return false;
+      if (_routeBackPending) { _routeDeferred = { r: r, mode: mode }; return false; }
+      const h = _routeHash(r);
+      if (location.hash === h || (!location.hash && h === '#/dashboard')) return false;
+      const st = { route: r, pushed: mode !== 'replace' };
+      if (mode === 'replace') history.replaceState(st, '', h);
+      else history.pushState(st, '', h);
+      return true;
+    }
+
+    function _routeFlushDeferred() {
+      _routeBackPending = false;
+      const d = _routeDeferred;
+      _routeDeferred = null;
+      if (d) _routeWrite(d.r, d.mode);
+      return !!d;
+    }
+
+    // Same visibility rules as applyRoleBasedAccess: a route the nav hides is not reachable by URL either.
+    function _routeAllowed(r) {
+      const u = BSPortal.getCurrentUser();
+      const role = (u && u.role) || 'master';
+      const sec = r.type === 'section' ? r.id : r.type === 'client' ? 'clients' : r.type === 'lead' ? 'pipeline' : 'events';
+      if (role === 'dj' && ['pipeline', 'clients', 'vendors', 'invoices'].indexOf(sec) > -1) return false;
+      if (['reports', 'accounts', 'automations', 'marketing'].indexOf(sec) > -1 && ['master', 'admin'].indexOf(role) < 0) return false;
+      return true;
+    }
+
+    function _routeEventVisible(ev) {
+      const u = BSPortal.getCurrentUser();
+      if (u && u.role === 'dj') return (ev.staff || []).includes(u.id);
+      return true;
+    }
+
+    function _routeFindInquiry(id) {
+      return (window._inquiries || []).find(i => String(i.id) === String(id)) || null;
+    }
+
+    // Open an event-detail tab by clicking its real button (so Lighting still runs its picker init).
+    function _routeActivateTab(tab) {
+      const btns = document.querySelectorAll('#detailContent .tab-btn');
+      for (let i = 0; i < btns.length; i++) {
+        const m = /switchEventTab\(this,\s*'(\w+)'\)/.exec(btns[i].getAttribute('onclick') || '');
+        if (m && m[1] === tab) { btns[i].click(); return true; }
+      }
+      return false;
+    }
+
+    // Show the view a route describes. Unknown id or a section the role can't see falls back (and the hash is cleaned).
+    async function _routeApply(r, opts) {
+      opts = opts || {};
+      if (!r) return false;
+      const seq = ++_routeSeq;
+      _routeInflight = location.hash;
+      try {
+        let target = r;
+        const active = () => document.querySelector('.section.active');
+        const toSection = id => {
+          _routeApplying++;
+          try { const a = active(); if (!a || a.id !== id) switchSection(id); else closeMobileSidebar(); }
+          finally { _routeApplying--; }
+        };
+        if (!_routeAllowed(r)) {
+          target = { type: 'section', id: 'dashboard' };
+        } else if (r.type === 'event') {
+          const ev = (getDB('events') || []).find(e => String(e.id) === r.id);
+          target = ev && _routeEventVisible(ev) ? { type: 'event', id: ev.id, tab: r.tab } : { type: 'section', id: 'events' };
+        } else if (r.type === 'client') {
+          const cl = (getDB('clients') || []).find(c => String(c.id) === r.id);
+          target = cl ? { type: 'client', id: cl.id } : { type: 'section', id: 'clients' };
+        } else if (r.type === 'lead') {
+          toSection('pipeline');
+          let inq = _routeFindInquiry(r.id);
+          if (!inq) { try { await loadInquiries(); } catch (e) {} inq = _routeFindInquiry(r.id); }
+          if (seq !== _routeSeq) return false; // a newer navigation took over while inquiries loaded
+          target = inq ? { type: 'lead', id: inq.id } : { type: 'section', id: 'pipeline' };
+        }
+
+        _routeApplying++;
+        try {
+          const leadOpen = !!(_route && _route.type === 'lead' && String(_route.id) === String(target.id));
+          const modals = document.querySelectorAll('.modal-backdrop.active');
+          for (let i = 0; i < modals.length; i++) { if (!(target.type === 'lead' && leadOpen)) modals[i].classList.remove('active'); }
+          const a = active();
+          if (target.type === 'section') {
+            toSection(target.id);
+          } else if (target.type === 'event') {
+            const same = !!(a && a.id === 'detail' && _route && _route.type === 'event' && String(_route.id) === String(target.id));
+            if (same) { closeMobileSidebar(); _routeActivateTab(target.tab || 'overview'); }
+            else {
+              _detailReturnSection = a && a.id !== 'detail' && !opts.initial ? a.id : (a && a.id === 'detail' && _detailReturnSection) || 'events';
+              closeMobileSidebar();
+              showEventPage(target.id, target.tab || null);
+            }
+          } else if (target.type === 'client') {
+            _detailReturnSection = a && a.id !== 'detail' && !opts.initial ? a.id : (a && a.id === 'detail' && _detailReturnSection) || 'clients';
+            closeMobileSidebar();
+            showClientPage(target.id);
+          } else if (target.type === 'lead') {
+            if (!leadOpen) openInquiry(target.id);
+          }
+        } finally { _routeApplying--; }
+        _routeWrite(target, 'replace'); // no-op when the hash is already canonical
+        return true;
+      } finally {
+        if (seq === _routeSeq) _routeInflight = '';
+      }
+    }
+
+    function _routeOnPop() {
+      if (_routeBackPending) {
+        // A view opened right after the lead modal closed: its own write was waiting for this back() to land.
+        if (_routeFlushDeferred()) return;
+      }
+      if (_routeInflight && _routeInflight === location.hash) return;
+      if (_routeHash(_route) === location.hash) return;
+      const r = _routeParse(location.hash);
+      if (r) _routeApply(r, { fromPop: true }).catch(e => console.warn('[route]', e));
+    }
+
+    // Called by closeModal / Esc. Closing the lead modal steps back to the entry it was opened from.
+    function _routeModalClosed(modalId) {
+      if (modalId !== 'eventDetailModal' || !_route || _route.type !== 'lead' || _routeApplying) return;
+      if (history.state && history.state.pushed && history.state.route && history.state.route.type === 'lead') {
+        _routeBackPending = true;
+        history.back();
+        setTimeout(function() {
+          if (!_routeBackPending) return;
+          if (!_routeFlushDeferred()) _routeWrite({ type: 'section', id: 'pipeline' }, 'replace');
+        }, 400);
+      } else {
+        _routeWrite({ type: 'section', id: 'pipeline' }, 'replace');
+      }
+    }
 
     function _showDetailSection() {
       document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
@@ -1908,54 +2100,18 @@
     }
 
     function goBack() {
-      clearHash();
       switchSection(_detailReturnSection);
     }
 
-    function _navigateToHash(hash) {
-      if (!hash) return;
-      const m = hash.match(/^#(event|client|lead|inquiry)=(.+)$/);
-      if (!m) return;
-      const [, type, id] = m;
-      const attempt = () => {
-        if (type === 'event') {
-          const ev = (getDB('events') || []).find(e => e.id === id);
-          if (ev) showEventPage(id);
-        } else if (type === 'client') {
-          const cl = (getDB('clients') || []).find(c => c.id === id);
-          if (cl) showClientPage(id);
-        } else if (type === 'lead' || type === 'inquiry') {
-          openInquiry && openInquiry(id);
-        }
-      };
-      if (window._sbDataReady) {
-        window._sbDataReady.then(attempt);
-      } else {
-        setTimeout(attempt, 800);
-      }
-    }
-
-    window.addEventListener('popstate', function(e) {
-      if (e.state && e.state.type && e.state.id) {
-        _navigateToHash('#' + e.state.type + '=' + e.state.id);
-      } else {
-        // Back — return to whatever section we came from
-        const wasInDetail = document.getElementById('detail').classList.contains('active');
-        if (wasInDetail) switchSection(_detailReturnSection);
-        else document.querySelectorAll('.modal-backdrop.active').forEach(m => m.classList.remove('active'));
-      }
-    });
-
-    if (location.hash) {
-      window.addEventListener('load', () => _navigateToHash(location.hash), { once: true });
-    }
+    window.addEventListener('popstate', _routeOnPop);
+    window.addEventListener('hashchange', _routeOnPop);
 
     // ── Keyboard shortcuts ────────────────────────────────────────────────
     document.addEventListener('keydown', function(e) {
       // Esc — close topmost modal
       if (e.key === 'Escape') {
         const open = document.querySelector('.modal-backdrop.active');
-        if (open) { open.classList.remove('active'); clearHash(); }
+        if (open) { open.classList.remove('active'); _routeModalClosed(open.id); }
         hideSearchResults();
       }
       // Cmd/Ctrl+K — focus global search
@@ -2657,7 +2813,7 @@
           ${renderAutomationLog(inq.id)}
         </div>`;
 
-      pushDetailHash('lead', id);
+      _routeWrite({ type: 'lead', id: id }, 'push');
       openModal('eventDetailModal');
     }
 
@@ -2698,10 +2854,13 @@
       const inq = (window._inquiries || []).find(i => i.id === id);
       if (!inq) return;
       closeModal('eventDetailModal');
+      const _invType = (typeof BSContracts !== 'undefined') ? BSContracts.eventTypeFromText(inq.event_type) : '';
 
       // Seed wizard pre-fill data then open modal
       window.wizardPrefill = {
-        type:        (inq.event_type || '').toLowerCase().replace(/[^a-z]/g,'').slice(0,12) || 'wedding',
+        // Use the inquiry's own type. No type: 'event' and flagged, so the owner picks one and the right contract is chosen.
+        type:        _invType || 'event',
+        typeNeedsReview: !_invType,
         name:        inq.name ? inq.name + '\'s Event' : '',
         date:        inq.event_date || '',
         clientName:  inq.name  || '',
@@ -2725,6 +2884,7 @@
         if (clientEmailEl) clientEmailEl.value = window.wizardPrefill.clientEmail;
         // Store in wizardData so saves pick it up
         window.wizardData = Object.assign(window.wizardData || {}, window.wizardPrefill);
+        if (window.wizardPrefill.typeNeedsReview) showToast('This inquiry has no event type. Pick one in step 1 so the right contract is chosen.', 'warning');
       }, 150);
 
       saveInquiryStatus_silent(id, 'converted');
@@ -3008,10 +3168,13 @@
     }
 
     // ── Full-page event detail ─────────────────────────────────────────────
-    function showEventPage(eventId) {
+    function showEventPage(eventId, tab) {
       const events = getDB('events');
       const event = events.find(e => e.id === eventId);
       if (!event) return;
+      // Re-rendering the event that is already open (after a save, or a background sync) keeps its tab.
+      if (tab === undefined && _route && _route.type === 'event' && String(_route.id) === String(eventId) && document.getElementById('detail').classList.contains('active')) tab = _route.tab;
+      if (ROUTE_EVENT_TABS.indexOf(tab) < 0) tab = null;
 
       window.currentEvent = event;
 
@@ -3067,7 +3230,8 @@
 
       document.getElementById('detailContent').innerHTML = html;
       _showDetailSection();
-      pushDetailHash('event', eventId);
+      _routeWrite({ type: 'event', id: eventId, tab: tab === 'overview' ? null : tab }, 'push');
+      if (tab && tab !== 'overview') _routeActivateTab(tab);
       attachWeatherChip(event);
     }
 
@@ -3196,7 +3360,7 @@
 
       document.getElementById('detailContent').innerHTML = html;
       _showDetailSection();
-      pushDetailHash('client', clientId);
+      _routeWrite({ type: 'client', id: clientId }, 'push');
     }
 
     // ── Navigate to event / client (sets return section, pushes hash) ─────
@@ -3258,13 +3422,17 @@
         ink.style.left  = (btnRect.left - barRect.left + tabs.scrollLeft) + 'px';
         ink.style.width = btnRect.width + 'px';
       }
+      // Tab switches rewrite the current history entry (Back should not step through tabs)
+      if (window.currentEvent && _route && _route.type === 'event' && String(_route.id) === String(window.currentEvent.id)) {
+        _routeWrite({ type: 'event', id: _route.id, tab: tabName === 'overview' ? null : tabName }, 'replace');
+      }
     }
 
     function renderEventOverview(event) {
       return `<div class="grid-2">
         <div>
           <div class="form-group"><label class="form-label" for="editEventName">Event Name</label><input type="text" class="form-input" value="${event.name}" id="editEventName"></div>
-          <div class="form-group"><label class="form-label" for="editEventType">Type</label><select class="form-select" id="editEventType"><option value="wedding" ${event.type === 'wedding' ? 'selected' : ''}>Wedding</option><option value="quince" ${event.type === 'quince' ? 'selected' : ''}>Quince/Sweet 16</option><option value="corporate" ${event.type === 'corporate' ? 'selected' : ''}>Corporate</option><option value="gala" ${event.type === 'gala' ? 'selected' : ''}>Gala/Fundraiser</option><option value="birthday" ${event.type === 'birthday' ? 'selected' : ''}>Birthday/Private Party</option><option value="concert" ${event.type === 'concert' ? 'selected' : ''}>Concert/Festival</option></select></div>
+          <div class="form-group"><label class="form-label" for="editEventType">Type</label><select class="form-select" id="editEventType"><option value="wedding" ${event.type === 'wedding' ? 'selected' : ''}>Wedding</option><option value="quince" ${event.type === 'quince' ? 'selected' : ''}>Quince/Sweet 16</option><option value="corporate" ${event.type === 'corporate' ? 'selected' : ''}>Corporate</option><option value="gala" ${event.type === 'gala' ? 'selected' : ''}>Gala/Fundraiser</option><option value="birthday" ${event.type === 'birthday' ? 'selected' : ''}>Birthday/Private Party</option><option value="concert" ${event.type === 'concert' ? 'selected' : ''}>Concert/Festival</option><option value="sweet16" ${event.type === 'sweet16' ? 'selected' : ''}>Sweet 16</option><option value="mitzvah" ${event.type === 'mitzvah' ? 'selected' : ''}>Bar/Bat Mitzvah</option>${['wedding','quince','corporate','gala','birthday','concert','sweet16','mitzvah'].includes(event.type) ? '' : `<option value="${esc(event.type || '')}" selected>Not set (pick a type)</option>`}</select></div>
           <div class="form-group"><label class="form-label" for="editEventStatus">Status</label><select class="form-select" id="editEventStatus"><option value="lead" ${event.status === 'lead' ? 'selected' : ''}>Lead</option><option value="quote_sent" ${event.status === 'quote_sent' ? 'selected' : ''}>Quote Sent</option><option value="proposal" ${event.status === 'proposal' ? 'selected' : ''}>Proposal</option><option value="negotiation" ${event.status === 'negotiation' ? 'selected' : ''}>Negotiation</option><option value="booked" ${event.status === 'booked' ? 'selected' : ''}>Booked</option><option value="confirmed" ${event.status === 'confirmed' ? 'selected' : ''}>Confirmed</option><option value="completed" ${event.status === 'completed' ? 'selected' : ''}>Completed</option><option value="cancelled" ${event.status === 'cancelled' ? 'selected' : ''}>Cancelled</option><option value="ghosted" ${event.status === 'ghosted' ? 'selected' : ''}>Ghosted</option></select></div>
           <div class="form-group"><label class="form-label" for="editEventDate">Date</label><input type="date" class="form-input" value="${event.date}" id="editEventDate"></div>
           <div class="form-group"><label class="form-label" for="editEventStartTime">Start Time</label><input type="time" class="form-input" value="${event.startTime}" id="editEventStartTime"></div>
@@ -3787,15 +3955,16 @@
     }
     function _docClientSigned(doc) { return !!(doc && (doc.clientSignature || doc.clientSignedAt)); }
     function _sigWhen(ts) {
-      const d = new Date(ts);
-      return isNaN(d.getTime()) ? '' : d.toLocaleString('en-US', { month: 'short', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit' });
+      const v = typeof ts === 'string' && /^\d{9,}$/.test(ts.trim()) ? Number(ts) : ts;
+      const d = new Date(v);
+      return isNaN(d.getTime()) ? '' : d.toLocaleString('en-US', { timeZone: 'America/New_York', month: 'short', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit', timeZoneName: 'short' }).replace(/\u202f/g, ' ');
     }
     function _clientSigBlock(doc) {
       if (!_docClientSigned(doc)) return '';
       const src = _sigSrc(doc.clientSignature);
       const when = doc.clientSignedAt ? _sigWhen(doc.clientSignedAt) : '';
       return `<div style="display:flex;align-items:center;gap:16px;margin-top:10px;padding-top:10px;border-top:1px solid rgba(255,255,255,0.05);">
-              ${src ? `<div style="background:#fff;border-radius:4px;padding:6px 10px;flex-shrink:0;"><img src="${esc(src)}" alt="Client signature" style="display:block;max-height:56px;max-width:200px;filter:invert(1);"></div>` : ''}
+              ${src ? `<div style="background:#fff;border-radius:4px;padding:6px 10px;flex-shrink:0;"><img src="${esc(src)}" alt="Client signature" onload="_sigDetectInk(this)" style="display:block;max-height:56px;max-width:200px;filter:invert(1);"></div>` : ''}
               <div style="font-size:12px;min-width:0;">
                 <div style="font-weight:600;color:var(--text-1);font-size:13px;">${esc(doc.clientSignedName || 'Client')}</div>
                 ${when ? `<div style="color:var(--text-2);margin-top:2px;">Signed ${esc(when)}</div>` : ''}
@@ -3875,13 +4044,14 @@
             <div style="display:flex;align-items:center;gap:12px;">
               <div style="flex:1;min-width:0;">
                 <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:5px;">
-                  <span style="font-weight:600;font-size:13px;">${doc.name}</span>
+                  <span style="font-weight:600;font-size:13px;">${esc(doc.name)}</span>
                   ${clientShared ? `<span style="background:rgba(31,163,224,0.2);color:var(--cyan);padding:1px 7px;border-radius:3px;font-size:12px;font-weight:700;letter-spacing:.04em;">VISIBLE TO CLIENT</span>` : ''}
                 </div>
                 <div style="display:flex;align-items:center;gap:8px;">${signedBadge}<span style="font-size:12px;color:var(--gray);">Created ${new Date(doc.createdAt).toLocaleDateString()}</span></div>
               </div>
               <div style="display:flex;gap:6px;flex-shrink:0;">
                 ${doc.contentHTML ? `<button class="btn btn-secondary" style="padding:6px 10px;font-size:12px;" onclick="viewEventDoc('${eid}','${doc.id}')">View</button>` : ''}
+                ${doc.contentHTML && isSigned ? `<button class="btn btn-secondary" style="padding:6px 10px;font-size:12px;" onclick="downloadEventDoc('${eid}','${doc.id}')">Download</button>` : ''}
                 ${!isSigned ? `<button class="btn btn-primary" style="padding:6px 10px;font-size:12px;" onclick="openSignatureModal('${eid}','${doc.id}')">✎ Sign</button>` : `<button class="btn btn-secondary" style="padding:6px 10px;font-size:12px;" onclick="viewEventDocSignature('${eid}','${doc.id}')">View Sig</button>`}
                 <button class="btn btn-danger" style="padding:6px 10px;font-size:12px;" onclick="deleteEventDoc('${eid}','${doc.id}')">✕</button>
               </div>
@@ -3903,7 +4073,11 @@
       }
 
       const isEmpty = !allInvoices.length && !allQuotes.length && !event.docs.length;
-      const templateOptions = templates.map(t => `<option value="${t.id}">${t.name}</option>`).join('');
+      const _pick = (typeof BSContracts !== 'undefined') ? BSContracts.pickTemplate(event, templates) : { template: null, kind: 'generic', typeUnknown: false };
+      const templateOptions = templates.map(t => `<option value="${esc(t.id)}"${_pick.template && _pick.template.id === t.id ? ' selected' : ''}>${esc(t.name)}</option>`).join('');
+      const _pickHint = !_pick.template ? ''
+        : _pick.typeUnknown ? 'This event has no recognized type, so the generic agreement is selected. Set the event type to get the matching one.'
+        : 'Selected for this event: ' + esc(_pick.template.name) + '. Pick another from the list if you need a different one.';
 
       return `
         ${isEmpty ? '<div style="padding:20px;text-align:center;color:var(--gray);font-size:13px;border:1px dashed var(--border);border-radius:6px;margin-bottom:16px;">No documents yet — invoices, quotes, and contracts will appear here automatically</div>' : ''}
@@ -3914,11 +4088,34 @@
             <select class="form-select" id="evtDocTemplate_${eid}" style="flex:1;margin:0;font-size:12px;"><option value="">From template…</option>${templateOptions}</select>
             <button class="btn btn-primary" style="white-space:nowrap;" onclick="createEventDocFromTemplate('${eid}')">+ From Template</button>
           </div>
+          ${_pickHint ? `<div style="font-size:12px;color:var(--text-2);margin:-2px 0 10px;">${_pickHint}</div>` : ''}
           <div style="display:flex;gap:8px;">
             <input type="text" class="form-input" id="evtDocBlankName_${eid}" placeholder="Blank document name…" style="flex:1;margin:0;font-size:12px;">
             <button class="btn btn-secondary" style="white-space:nowrap;" onclick="createBlankEventDoc('${eid}')">+ Blank</button>
           </div>
         </div>`;
+    }
+
+    // Data the contract engine reads (prices from invoices, terms from settings).
+    function _contractEnv() { return { invoices: getDB('invoices') || [], settings: getDB('settings') || {} }; }
+
+    // Add the standard contract templates once, rename untouched legacy agreements, report edited ones.
+    function _contractsBoot() {
+      try {
+        if (typeof BSContracts === 'undefined') return;
+        const u = BSPortal.getCurrentUser();
+        if (!u || (u.role !== 'master' && u.role !== 'admin')) return;
+        const r = BSContracts.ensureTemplates(getDB('templates'), getDB('settings') || {});
+        if (!r.changed) return;
+        setDB('templates', r.templates);
+        const st = Object.assign({}, r.settings);
+        st.contractMigration = { at: Date.now(), added: r.added, renamed: r.renamed, keptEdited: r.keptEdited };
+        setDB('settings', st);
+        if (r.keptEdited.length) {
+          console.info('[contracts] Edited older agreements left as they are (they still carry their own terms):', r.keptEdited);
+          showToast(r.keptEdited.length + ' older agreement' + (r.keptEdited.length > 1 ? 's were' : ' was') + ' edited, so ' + (r.keptEdited.length > 1 ? 'they were' : 'it was') + ' left unchanged. Check the terms in Documents.', 'warning');
+        }
+      } catch (e) { console.warn('[contracts]', e); }
     }
 
     function createEventDocFromTemplate(eventId) {
@@ -3928,35 +4125,14 @@
       const templates = getDB('templates');
       const tmpl = templates.find(t => t.id === templateId);
       if (!tmpl) return;
+      if (typeof BSContracts === 'undefined') { showToast('The contract engine did not load. Refresh the page and try again.', 'error'); return; }
       const events = getDB('events');
       const ev = events.find(e => e.id === eventId);
       if (!ev) return;
       if (!ev.docs) ev.docs = [];
 
-      // ── Variable substitution ──────────────────────────────────────
-      const allInvoices = (getDB('invoices') || []).filter(i => i.eventId === eventId);
-      const lastInv = allInvoices[allInvoices.length - 1];
-      const lastQuote = (ev.quotes || [])[((ev.quotes||[]).length) - 1];
-      const servicesList = lastInv
-        ? (lastInv.lines || []).map(l => l.desc).join(', ')
-        : lastQuote ? (lastQuote.lines || []).map(l => l.desc).join(', ') : '';
-      const totalPrice = lastInv
-        ? `$${(lastInv.total||0).toFixed(2)}`
-        : lastQuote ? `$${(lastQuote.total||0).toLocaleString()}` : '';
-      const depositAmt = lastInv
-        ? `$${((lastInv.total||0) * 0.5).toFixed(2)}`
-        : lastQuote ? `$${(lastQuote.deposit||0).toLocaleString()}` : '';
-      const eventDateStr = ev.date
-        ? new Date(ev.date + 'T12:00:00').toLocaleDateString('en-US',{weekday:'long',year:'numeric',month:'long',day:'numeric'})
-        : '';
-
-      let docHTML = (tmpl.contentHTML || tmpl.content || '')
-        .replace(/\{\{client_name\}\}/gi, ev.clientName || '')
-        .replace(/\{\{event_date\}\}/gi, eventDateStr)
-        .replace(/\{\{venue_name\}\}/gi, ev.venue || '')
-        .replace(/\{\{services_list\}\}/gi, servicesList)
-        .replace(/\{\{total_price\}\}/gi, totalPrice)
-        .replace(/\{\{deposit_amount\}\}/gi, depositAmt);
+      // ── Variable substitution: one merge engine (contract-templates.js) ──
+      let docHTML = BSContracts.mergeForEvent(tmpl.contentHTML || tmpl.content || '', ev, _contractEnv());
 
       // ── Auto-inject addenda for agreements/contracts/proposals ─────
       if (/agreement|contract|proposal/i.test(tmpl.name || '')) {
@@ -3964,14 +4140,18 @@
       }
 
       ev.docs.push({
-        id: genId(), name: tmpl.name, contentHTML: docHTML,
+        id: genId(), name: tmpl.name, contentHTML: docHTML, templateId: tmpl.id,
         createdAt: Date.now(), signedAt: null, signature: null,
         fromTemplate: true, requiresSignature: false, sharedWithClient: false
       });
       setDB('events', events);
       window.currentEvent = ev;
       document.getElementById('tabDocuments').innerHTML = renderEventDocuments(ev);
-      showToast('Document created from template', 'success');
+      if (/^tpl-contract-/.test(tmpl.id || '') && !BSContracts.resolveKind(ev)) {
+        showToast('Document created. This event has no recognized type, so check that this is the right agreement.', 'warning');
+      } else {
+        showToast('Document created from template', 'success');
+      }
     }
 
     function createBlankEventDoc(eventId) {
@@ -3989,36 +4169,361 @@
       showToast('Document created', 'success');
     }
 
-    function viewEventDoc(eventId, docId) {
+    // ── Document paper view (docview) ─────────────────────────────────────────
+    // One white-paper renderer behind View, View Sig and Download. Stored document HTML was authored in the
+    // dark CRM (inline light text colors, theme CSS variables), so it is sanitized and rendered on paper with
+    // forced dark text. The old popup linked fable.css, whose black body background sat under default black text.
+    const _CSS_NAMED = { white:'#ffffff', black:'#000000', snow:'#fffafa', ghostwhite:'#f8f8ff', whitesmoke:'#f5f5f5', ivory:'#fffff0', floralwhite:'#fffaf0',
+      aliceblue:'#f0f8ff', azure:'#f0ffff', mintcream:'#f5fffa', honeydew:'#f0fff0', seashell:'#fff5ee', linen:'#faf0e6', beige:'#f5f5dc', oldlace:'#fdf5e6',
+      lavender:'#e6e6fa', lightgray:'#d3d3d3', lightgrey:'#d3d3d3', gainsboro:'#dcdcdc', silver:'#c0c0c0', lightyellow:'#ffffe0', lightcyan:'#e0ffff',
+      darkgray:'#a9a9a9', darkgrey:'#a9a9a9', gray:'#808080', grey:'#808080', dimgray:'#696969', dimgrey:'#696969', navy:'#000080', midnightblue:'#191970',
+      darkslategray:'#2f4f4f', darkblue:'#00008b', darkgreen:'#006400', darkred:'#8b0000', maroon:'#800000' };
+
+    // Parse a CSS color. Returns { l: relative luminance after blending onto white, a: alpha } or null.
+    function _cssColor(v) {
+      let s = String(v || '').trim().toLowerCase();
+      if (s === 'transparent') return { l: 1, a: 0 };
+      if (_CSS_NAMED[s]) s = _CSS_NAMED[s];
+      let r, g, b, a = 1, m;
+      if ((m = s.match(/^#([0-9a-f]{3,8})$/))) {
+        let h = m[1];
+        if (h.length === 3 || h.length === 4) h = h.split('').map(c => c + c).join('');
+        if (h.length !== 6 && h.length !== 8) return null;
+        r = parseInt(h.slice(0, 2), 16); g = parseInt(h.slice(2, 4), 16); b = parseInt(h.slice(4, 6), 16);
+        if (h.length === 8) a = parseInt(h.slice(6, 8), 16) / 255;
+      } else if ((m = s.match(/^rgba?\(\s*([^)]+)\)$/))) {
+        const p = m[1].split(/[\s,\/]+/).filter(Boolean);
+        if (p.length < 3) return null;
+        const ch = x => (/%$/.test(x) ? parseFloat(x) * 2.55 : parseFloat(x));
+        r = ch(p[0]); g = ch(p[1]); b = ch(p[2]);
+        if (p[3] != null) a = /%$/.test(p[3]) ? parseFloat(p[3]) / 100 : parseFloat(p[3]);
+      } else if ((m = s.match(/^hsla?\(\s*([^)]+)\)$/))) {
+        const p = m[1].split(/[\s,\/]+/).filter(Boolean);
+        if (p.length < 3) return null;
+        const h = ((parseFloat(p[0]) % 360) + 360) % 360 / 360, sat = parseFloat(p[1]) / 100, lig = parseFloat(p[2]) / 100;
+        const q = lig < 0.5 ? lig * (1 + sat) : lig + sat - lig * sat, pp = 2 * lig - q;
+        const f = t => { t = (t + 1) % 1; return (t < 1/6 ? pp + (q - pp) * 6 * t : t < 1/2 ? q : t < 2/3 ? pp + (q - pp) * (2/3 - t) * 6 : pp) * 255; };
+        r = f(h + 1/3); g = f(h); b = f(h - 1/3);
+        if (p[3] != null) a = /%$/.test(p[3]) ? parseFloat(p[3]) / 100 : parseFloat(p[3]);
+      } else return null;
+      if ([r, g, b, a].some(x => isNaN(x))) return null;
+      a = Math.max(0, Math.min(1, a));
+      const lin = c => { c = Math.max(0, Math.min(255, c)) / 255; return c <= 0.03928 ? c / 12.92 : Math.pow((c + 0.055) / 1.055, 2.4); };
+      const bl = c => a * c + (1 - a) * 255;
+      return { l: 0.2126 * lin(bl(r)) + 0.7152 * lin(bl(g)) + 0.0722 * lin(bl(b)), a };
+    }
+
+    // Split inline CSS on ';' outside parentheses and quotes (data: URLs contain ';').
+    function _splitDecls(css) {
+      const out = []; let cur = '', depth = 0, q = '';
+      for (const ch of String(css || '')) {
+        if (q) { if (ch === q) q = ''; cur += ch; continue; }
+        if (ch === '"' || ch === "'") { q = ch; cur += ch; continue; }
+        if (ch === '(') depth++;
+        if (ch === ')' && depth) depth--;
+        if (ch === ';' && !depth) { out.push(cur); cur = ''; continue; }
+        cur += ch;
+      }
+      if (cur.trim()) out.push(cur);
+      return out;
+    }
+
+    // Drop declarations that would make text unreadable on white paper (light text, theme variables, dark fills).
+    function _cleanStyleAttr(css) {
+      const keep = [];
+      _splitDecls(css).forEach(d => {
+        const i = d.indexOf(':');
+        if (i < 0) return;
+        const prop = d.slice(0, i).trim().toLowerCase();
+        let val = d.slice(i + 1).trim();
+        if (!prop || !val) return;
+        if (/expression\(|javascript:|behavior\s*:|-moz-binding/i.test(d)) return;
+        if (/^(text-shadow|-webkit-text-fill-color|filter|backdrop-filter|mix-blend-mode)$/.test(prop)) return;
+        if (prop === 'position' && /fixed|sticky/i.test(val)) return;
+        if (prop === 'opacity' && parseFloat(val) < 0.7) return;
+        if (/^(border|outline)/.test(prop)) val = val.replace(/var\([^)]*\)/gi, '#999');
+        else if (/var\(/i.test(val)) return;
+        if (prop === 'color') {
+          const c = _cssColor(val);
+          if (c && c.l > 0.183) return;
+        }
+        if (prop === 'background' || prop === 'background-color' || prop === 'background-image') {
+          if (/gradient|url\(/i.test(val)) return;
+          const toks = val.match(/#[0-9a-f]{3,8}\b|(?:rgb|hsl)a?\([^)]*\)|[a-z]+/gi) || [];
+          for (const t of toks) {
+            const c = _cssColor(t);
+            if (c) { if (c.a > 0.3 && c.l < 0.5) return; break; }
+          }
+        }
+        keep.push(prop + ':' + val);
+      });
+      return keep.join(';');
+    }
+
+    // String-level sanitizer for stored document HTML (no DOM needed, so it is unit-testable).
+    function _sanitizeDocHtml(html) {
+      let s = String(html == null ? '' : html);
+      s = s.replace(new RegExp('<!' + '--[\\s\\S]*?--' + '>', 'g'), '').replace(/<!doctype[^>]*>/gi, '');
+      s = s.replace(/<(script|style|iframe|frameset|frame|object|embed|applet|noscript|template|title|head)\b[\s\S]*?<\/\1\s*>/gi, '');
+      s = s.replace(/<\/?(script|style|iframe|frameset|frame|object|embed|applet|noscript|template|title|head|html|body|link|meta|base)\b(?:"[^"]*"|'[^']*'|[^>"'])*>/gi, '');
+      const DROP = /^(on\w+|color|bgcolor|text|link|vlink|alink|background|srcdoc|formaction|contenteditable|autofocus|nonce)$/i;
+      const decode = v => v.replace(/&#x([0-9a-f]+);?/gi, (m, h) => String.fromCharCode(parseInt(h, 16)))
+        .replace(/&#(\d+);?/g, (m, d) => String.fromCharCode(parseInt(d, 10)))
+        .replace(/&colon;/gi, ':').replace(/&(tab|newline);/gi, '').replace(/[\u0000- ]/g, '');
+      return s.replace(/<([a-zA-Z][^\s\/>]*)((?:"[^"]*"|'[^']*'|[^>"'])*)>/g, (all, tag, rest) => {
+        const selfClose = /\/\s*$/.test(rest);
+        const attrs = [];
+        const re = /([^\s"'<>\/=]+)(?:\s*=\s*("[^"]*"|'[^']*'|[^\s"'=<>`]+))?/g;
+        let m;
+        while ((m = re.exec(rest))) {
+          const name = m[1], raw = m[2];
+          if (DROP.test(name)) continue;
+          const val = raw == null ? '' : raw.replace(/^["']|["']$/g, '');
+          if (/^(href|src|xlink:href|action|poster|data)$/i.test(name)) {
+            const dv = decode(val).toLowerCase();
+            if (/^(javascript|vbscript|livescript):/.test(dv)) continue;
+            if (/^data:/.test(dv) && !(name.toLowerCase() === 'src' && /^data:image\/(png|jpe?g|gif|webp);/.test(dv))) continue;
+          }
+          if (/^style$/i.test(name)) {
+            const cleaned = _cleanStyleAttr(val.replace(/&quot;/g, '"').replace(/&amp;/g, '&'));
+            if (cleaned) attrs.push('style="' + cleaned.replace(/&/g, '&amp;').replace(/"/g, '&quot;') + '"');
+            continue;
+          }
+          attrs.push(raw == null ? name : name + '=' + raw);
+        }
+        return '<' + tag + (attrs.length ? ' ' + attrs.join(' ') : '') + (selfClose ? ' /' : '') + '>';
+      });
+    }
+
+    // Short device label from a user agent string.
+    function _uaShort(ua) {
+      const s = String(ua || '').trim();
+      if (!s) return '';
+      let os = '', br = '', m;
+      if (/iPhone/.test(s)) os = 'iPhone';
+      else if (/iPad/.test(s)) os = 'iPad';
+      else if (/Android/.test(s)) os = 'Android';
+      else if (/Windows NT/.test(s)) os = 'Windows';
+      else if (/Mac OS X|Macintosh/.test(s)) os = 'macOS';
+      else if (/CrOS/.test(s)) os = 'ChromeOS';
+      else if (/Linux/.test(s)) os = 'Linux';
+      if ((m = s.match(/Edg(?:A|e|iOS)?\/(\d+)/))) br = 'Edge ' + m[1];
+      else if ((m = s.match(/OPR\/(\d+)/))) br = 'Opera ' + m[1];
+      else if ((m = s.match(/(?:Firefox|FxiOS)\/(\d+)/))) br = 'Firefox ' + m[1];
+      else if ((m = s.match(/(?:Chrome|CriOS)\/(\d+)/))) br = 'Chrome ' + m[1];
+      else if ((m = s.match(/Version\/(\d+)[\d.]*.*Safari/))) br = 'Safari ' + m[1];
+      else if (/Safari/.test(s)) br = 'Safari';
+      if (br && os) return br + ' on ' + os;
+      if (br || os) return br || os;
+      return s.length > 60 ? s.slice(0, 57) + '...' : s;
+    }
+
+    // Decide ink from the pixels: light ink on a transparent PNG gets inverted to dark, dark ink is left alone,
+    // opaque images (a JPEG with a white background) are left alone. Runs in the CRM page and, via toString, in the paper window.
+    function _sigDetectInk(img) {
+      function run() {
+        try {
+          const w = img.naturalWidth, h = img.naturalHeight;
+          if (!w || !h) return;
+          const k = Math.min(1, 240 / w);
+          const c = document.createElement('canvas');
+          c.width = Math.max(1, Math.round(w * k)); c.height = Math.max(1, Math.round(h * k));
+          const x = c.getContext('2d');
+          x.drawImage(img, 0, 0, c.width, c.height);
+          const d = x.getImageData(0, 0, c.width, c.height).data;
+          let sum = 0, wt = 0, solid = 0;
+          for (let i = 0; i < d.length; i += 4) {
+            const a = d[i + 3];
+            if (a < 32) continue;
+            solid++;
+            sum += (0.2126 * d[i] + 0.7152 * d[i + 1] + 0.0722 * d[i + 2]) * a;
+            wt += a;
+          }
+          if (!wt || solid > (d.length / 4) * 0.95) return;
+          img.style.filter = (sum / wt) > 140 ? 'invert(1)' : 'none';
+        } catch (e) { /* keep the default */ }
+      }
+      if (img.complete && img.naturalWidth) run(); else img.addEventListener('load', run, { once: true });
+    }
+
+    // Collect every signature on a doc: the client's e-signature and the provider's manual signature.
+    function _docSignatures(doc, ev) {
+      const out = [];
+      if (_docClientSigned(doc)) {
+        out.push({ role: 'Client', ink: 'light', src: _sigSrc(doc.clientSignature),
+          name: doc.clientSignedName || (ev && ev.clientName) || 'Client', at: doc.clientSignedAt,
+          ip: doc.clientSignedIp, ua: doc.clientSignedUa, hash: doc.clientSignedHash, consent: doc.consentVersion });
+      }
+      if (doc.signature || doc.signedAt) {
+        out.push({ role: 'Baseline Studio', ink: 'dark', src: _sigSrc(doc.signature),
+          name: doc.signedBy || 'Authorized Signatory', at: doc.signedAt });
+      }
+      return out;
+    }
+
+    function _docSigBlockHtml(sigs) {
+      if (!sigs.length) return '';
+      const cards = sigs.map(s => {
+        const when = s.at ? _sigWhen(s.at) : '';
+        return `<div class="sig">
+          <div class="sig-img">${s.src ? `<img class="sigimg" src="${esc(s.src)}" alt="${esc(s.role)} signature" style="filter:${s.ink === 'light' ? 'invert(1)' : 'none'};">` : `<span class="muted">Signature image not on file</span>`}</div>
+          <div class="sig-name">${esc(s.name)}</div>
+          <div class="muted">${esc(s.role)}${when ? ', signed ' + esc(when) : ''}</div>
+        </div>`;
+      }).join('');
+      const rec = s => {
+        const rows = [['Signer name', s.name], ['Signed at', s.at ? _sigWhen(s.at) : ''], ['IP address', s.ip],
+          ['Device', _uaShort(s.ua)], ['Document fingerprint (SHA-256)', s.hash, 'mono'], ['Consent version', s.consent]]
+          .filter(r => r[1] != null && String(r[1]).trim() !== '');
+        const title = s.ua ? ` title="${esc(s.ua)}"` : '';
+        return (sigs.length > 1 ? `<h4>${esc(s.role)}</h4>` : '') + '<dl>' + rows.map(r =>
+          `<dt>${esc(r[0])}</dt><dd${r[0] === 'Device' ? title : ''}${r[2] ? ` class="${r[2]}"` : ''}>${esc(r[1])}</dd>`).join('') + '</dl>';
+      };
+      return `<section class="sigblock" id="sigblock">
+        <h2>Signatures</h2>
+        <div class="sig-grid">${cards}</div>
+        <div class="esign">
+          <h3>Electronic signature record</h3>
+          ${sigs.map(rec).join('')}
+          <p class="esign-note">Signed electronically under the U.S. ESIGN Act.</p>
+        </div>
+      </section>`;
+    }
+
+    function _docPaperCss() {
+      return `
+*{box-sizing:border-box}
+html{-webkit-text-size-adjust:100%}
+body{margin:0;background:#e6e8eb;color:#111;font-family:Georgia,'Times New Roman',serif}
+.bar{position:sticky;top:0;z-index:5;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px 16px;padding:10px 20px;background:#14161a;color:#f4f6f8;font:14px/1.4 system-ui,-apple-system,'Segoe UI',Arial,sans-serif}
+.bar-title{font-weight:600;min-width:0;flex:1 1 240px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.bar-hint{color:#c3c8d0;font-size:13px}
+.bar button{font:inherit;font-weight:600;padding:8px 16px;border:0;border-radius:6px;background:#1fa3e0;color:#04121a;cursor:pointer}
+.bar button:hover{background:#6fd0ff}
+.sheet{padding:28px 16px 64px}
+.paper{background:#fff;color:#111;max-width:800px;margin:0 auto;padding:56px 64px;font-size:16px;line-height:1.6;box-shadow:0 2px 14px rgba(0,0,0,.18);border-radius:2px;overflow-wrap:anywhere}
+.paper * { color: inherit !important; }
+.paper a { color: #0b57d0 !important; text-decoration: underline; }
+.paper .muted { color: #4b5563 !important; }
+.paper h1{font-size:28px;line-height:1.25;margin:0 0 24px;padding-bottom:12px;border-bottom:2px solid #111}
+.paper h2{font-size:21px;line-height:1.3;margin:32px 0 10px}
+.paper h3{font-size:17px;line-height:1.35;margin:24px 0 8px}
+.paper p,.paper ul,.paper ol{margin:0 0 14px}
+.paper ul,.paper ol{padding-left:1.6em}
+.paper li{margin:0 0 6px}
+.paper table{border-collapse:collapse;max-width:100%}
+.paper td,.paper th{vertical-align:top}
+.paper img{max-width:100%;height:auto}
+.paper hr{border:0;border-top:1px solid #bbb;margin:24px 0}
+.paper .sigblock{margin-top:44px;padding-top:20px;border-top:2px solid #111;break-inside:avoid;page-break-inside:avoid}
+.paper .sigblock h2{margin:0 0 16px;font-size:20px}
+.paper .sig-grid{display:flex;flex-wrap:wrap;gap:28px 40px}
+.paper .sig{flex:1 1 280px;min-width:240px;break-inside:avoid;page-break-inside:avoid}
+.paper .sig-img{min-height:84px;display:flex;align-items:flex-end;border-bottom:2px solid #111;padding:0 4px 4px;background:#fff}
+.paper .sig-img img{max-height:76px;max-width:100%;display:block}
+.paper .sig-name{font-weight:700;margin-top:6px}
+.paper .muted{font-size:14px}
+.paper .esign{margin-top:24px;padding:14px 18px;border:1px solid #8b929c;border-radius:6px;background:#f6f7f9;font:13.5px/1.5 system-ui,-apple-system,'Segoe UI',Arial,sans-serif;break-inside:avoid;page-break-inside:avoid}
+.paper .esign h3{margin:0 0 10px;font-size:15px}
+.paper .esign h4{margin:12px 0 6px;font-size:13.5px}
+.paper .esign dl{margin:0;display:grid;grid-template-columns:200px 1fr;gap:4px 14px}
+.paper .esign dt{font-weight:600}
+.paper .esign dd{margin:0}
+.paper .esign .mono{font-family:ui-monospace,Menlo,Consolas,monospace;font-size:12.5px;word-break:break-all}
+.paper .esign-note{margin:12px 0 0;font-weight:600}
+@page{size:letter;margin:0.75in}
+@media print{
+  html,body{background:#fff !important}
+  .no-print,.bar{display:none !important}
+  .sheet{padding:0}
+  .paper{max-width:none;margin:0;padding:0;box-shadow:none;border-radius:0;-webkit-print-color-adjust:exact;print-color-adjust:exact}
+  .paper h1,.paper h2,.paper h3{break-after:avoid;page-break-after:avoid}
+  .paper table,.paper tr,.paper img{break-inside:avoid;page-break-inside:avoid}
+  .paper .sigblock,.paper .sig,.paper .esign{break-inside:avoid;page-break-inside:avoid}
+}
+@media (max-width:640px){
+  .paper{padding:28px 20px}
+  .paper .esign dl{grid-template-columns:1fr}
+  .paper .esign dt{margin-top:6px}
+}`;
+    }
+
+    function _docNonce() {
+      const a = new Uint8Array(16);
+      try { crypto.getRandomValues(a); } catch (e) { for (let i = 0; i < a.length; i++) a[i] = Math.floor(Math.random() * 256); }
+      return Array.from(a).map(b => b.toString(16).padStart(2, '0')).join('');
+    }
+
+    // "<Doc name> - <Client name> - Signed 2026-10-20": the window title becomes the default "Save as PDF" file name.
+    function _docFileTitle(doc, ev) {
+      const clean = t => String(t || '').replace(/[\\\/:*?"<>|\u0000-\u001f]+/g, ' ').replace(/\s+/g, ' ').trim();
+      const sigs = _docSignatures(doc, ev);
+      let latest = 0;
+      sigs.forEach(s => {
+        const v = typeof s.at === 'string' && /^\d{9,}$/.test(s.at.trim()) ? Number(s.at) : s.at;
+        const t = s.at ? new Date(v).getTime() : NaN;
+        if (!isNaN(t) && t > latest) latest = t;
+      });
+      const day = latest ? new Date(latest).toLocaleDateString('en-CA', { timeZone: 'America/New_York' }) : '';
+      return [clean(doc.name) || 'Document', clean(ev && ev.clientName), day ? 'Signed ' + day : ''].filter(Boolean).join(' - ');
+    }
+
+    // The whole paper page as one HTML string. opts: { scrollToSig, autoPrint }
+    function buildDocPaperHtml(doc, ev, opts) {
+      opts = opts || {};
+      const nonce = _docNonce();
+      const sigs = _docSignatures(doc, ev);
+      const title = _docFileTitle(doc, ev);
+      const body = _sanitizeDocHtml(doc.contentHTML || doc.content || '') || '<p>(Empty document)</p>';
+      const heading = /^\s*(?:<[^>]+>\s*)*<h1\b/i.test(body) ? '' : `<h1>${esc(doc.name || 'Document')}</h1>`;
+      const csp = `default-src 'none'; img-src data: https:; style-src 'unsafe-inline'; script-src 'nonce-${nonce}'; font-src data:; base-uri 'none'; form-action 'none'`;
+      const script = `(function(){
+  var detect = ${_sigDetectInk.toString()};
+  Array.prototype.forEach.call(document.querySelectorAll('img.sigimg'), detect);
+  var b = document.getElementById('bsDownloadPdf');
+  if (b) b.addEventListener('click', function(){ window.print(); });
+  ${opts.scrollToSig ? "var sb = document.getElementById('sigblock'); if (sb) sb.scrollIntoView({block:'start'});" : ''}
+  ${opts.autoPrint ? "window.addEventListener('load', function(){ setTimeout(function(){ window.print(); }, 500); });" : ''}
+})();`;
+      return `<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta http-equiv="Content-Security-Policy" content="${csp}"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${esc(title)}</title><style>${_docPaperCss()}</style></head><body>
+<div class="bar no-print"><div class="bar-title">${esc(title)}</div><div class="bar-hint">In the print window, choose Save as PDF.</div><button type="button" id="bsDownloadPdf">Download PDF</button></div>
+<div class="sheet"><main class="paper" id="paper">${heading}${body}${_docSigBlockHtml(sigs)}</main></div>
+<script nonce="${nonce}">${script}<\/script>
+</body></html>`;
+    }
+
+    function openDocPaper(eventId, docId, opts) {
       const events = getDB('events');
       const ev = events.find(e => e.id === eventId);
       const doc = ev && ev.docs && ev.docs.find(d => d.id === docId);
-      if (!doc) return;
-      const sigSection = doc.signature
-        ? `<div style="margin-top:60px;border-top:1px solid #ccc;padding-top:20px;"><p style="color:#8a8f98;font-size:12px;margin-bottom:10px;">Signed: ${new Date(doc.signedAt).toLocaleDateString()} by ${doc.signedBy || 'Authorized Signatory'}</p><img src="${doc.signature}" style="max-width:300px;border-bottom:2px solid #333;display:block;"></div>` : '';
-      const _cSrc = _sigSrc(doc.clientSignature);
-      const clientSigSection = _docClientSigned(doc)
-        ? `<div style="margin-top:40px;border-top:1px solid #ccc;padding-top:20px;"><p style="color:#8a8f98;font-size:12px;margin-bottom:10px;">Client signature: ${esc(doc.clientSignedName || 'Client')}${doc.clientSignedAt ? ', ' + esc(_sigWhen(doc.clientSignedAt)) : ''}. Signed electronically.</p>${_cSrc ? `<img src="${esc(_cSrc)}" alt="Client signature" style="max-width:300px;border-bottom:2px solid #333;display:block;filter:invert(1);">` : ''}</div>` : '';
+      if (!doc) return false;
       const win = window.open('', '_blank');
-      if (!win) { showToast('Allow pop-ups to view documents', 'warning'); return; }
-      win.document.write(`<!DOCTYPE html><html><head><title>${doc.name}</title><style>body{font-family:Arial,sans-serif;max-width:820px;margin:40px auto;padding:0 30px;line-height:1.6;}h1{font-size:22px;margin-bottom:20px;border-bottom:2px solid #000;padding-bottom:10px;}</style><link rel="stylesheet" href="fable.css">
-</head><body><h1>${doc.name}</h1>${doc.contentHTML || '<p>(Empty document)</p>'}${sigSection}${clientSigSection}</body></html>`);
+      if (!win) { showToast('Allow pop-ups to view documents', 'warning'); return false; }
+      win.document.open();
+      win.document.write(buildDocPaperHtml(doc, ev, opts));
       win.document.close();
+      return true;
     }
+
+    function viewEventDoc(eventId, docId) { openDocPaper(eventId, docId, {}); }
+
+    // Download = the same paper view, opened straight into the print dialog (choose Save as PDF).
+    function downloadEventDoc(eventId, docId) { openDocPaper(eventId, docId, { autoPrint: true }); }
 
     function viewEventDocSignature(eventId, docId) {
       const events = getDB('events');
       const ev = events.find(e => e.id === eventId);
       const doc = ev && ev.docs && ev.docs.find(d => d.id === docId);
-      const _cSrc = doc ? _sigSrc(doc.clientSignature) : '';
-      if (!doc || !(doc.signature || _cSrc)) return;
-      if (doc.signature) {
-        document.getElementById('sigViewImg').src = doc.signature;
-        document.getElementById('sigViewMeta').textContent = 'Signed on ' + new Date(doc.signedAt).toLocaleDateString() + ' by ' + (doc.signedBy || 'Authorized Signatory');
-      } else {
-        document.getElementById('sigViewImg').src = _cSrc;
-        document.getElementById('sigViewMeta').textContent = 'Signed electronically' + (doc.clientSignedAt ? ' on ' + _sigWhen(doc.clientSignedAt) : '') + ' by ' + (doc.clientSignedName || 'the client');
-      }
+      if (!doc || !_docSignatures(doc, ev).length) return;
+      if (openDocPaper(eventId, docId, { scrollToSig: true })) return;
+      // Pop-up blocked: fall back to the small modal, with the ink handled.
+      const sigs = _docSignatures(doc, ev);
+      const s = sigs.find(x => x.src) || sigs[0];
+      const img = document.getElementById('sigViewImg');
+      img.style.filter = s.ink === 'light' ? 'invert(1)' : 'none';
+      img.src = s.src || '';
+      _sigDetectInk(img);
+      document.getElementById('sigViewMeta').textContent = 'Signed' + (s.at ? ' ' + _sigWhen(s.at) : '') + ' by ' + s.name;
       openModal('sigViewModal');
     }
 
@@ -4281,8 +4786,8 @@
             .services h3 { margin-top: 0; }
             .services ul { margin-left: 20px; }
             .footer { margin-top: 40px; border-top: 1px solid #ddd; padding-top: 20px; text-align: center; color: #666; font-size: 12px; }
+            body { background: #fff; color: #111; }
           </style>
-        <link rel="stylesheet" href="fable.css">
 </head>
         <body>
           <div class="header">
@@ -6225,6 +6730,8 @@
       const types = [
         { value: 'wedding', label: 'Wedding', color: '#e91e63' },
         { value: 'quince', label: 'Quince/Sweet 16', color: '#9c27b0' },
+        { value: 'sweet16', label: 'Sweet 16', color: '#9c27b0' },
+        { value: 'mitzvah', label: 'Bar/Bat Mitzvah', color: '#9c27b0' },
         { value: 'corporate', label: 'Corporate', color: '#2196f3' },
         { value: 'gala', label: 'Gala/Fundraiser', color: '#673ab7' },
         { value: 'birthday', label: 'Birthday/Private Party', color: '#ff6f00' },
@@ -6243,6 +6750,7 @@
       document.querySelectorAll('.event-type-tile').forEach(t => t.style.borderColor = 'transparent');
       el.style.borderColor = 'var(--cyan)';
       window.wizardData.type = type;
+      window.wizardData.typeNeedsReview = false;
     }
 
     function renderEventBasicsStep() {
@@ -6384,7 +6892,7 @@
 
     function wizardNextStep() {
       if (window.currentWizardStep === 0) {
-        if (!window.wizardData.type) { showToast('Select event type', 'error'); return; }
+        if (!window.wizardData.type || window.wizardData.typeNeedsReview) { showToast('Select event type', 'error'); return; }
       }
       if (window.currentWizardStep === 1) {
         window.wizardData.name = document.getElementById('wizardEventName').value;
@@ -6909,7 +7417,7 @@
       if (!inv) return;
       const lines = (inv.lines||[]).map(l => `<tr><td style="padding:8px;border-bottom:1px solid #eee;">${l.desc}</td><td style="padding:8px;border-bottom:1px solid #eee;text-align:right;">\$${l.amount.toFixed(2)}</td></tr>`).join('');
       const w = window.open('', '_blank');
-      w.document.write(`<html><head><title>${inv.invoiceNum}</title><style>body{font-family:Arial,sans-serif;margin:40px;color:#111;}h1{color:#1585b8;}table{width:100%;border-collapse:collapse;}th{background:#f5f5f5;padding:8px;text-align:left;}</style><link rel="stylesheet" href="fable.css">
+      w.document.write(`<html><head><title>${inv.invoiceNum}</title><style>body{font-family:Arial,sans-serif;margin:40px;color:#111;background:#fff;}h1{color:#1585b8;}table{width:100%;border-collapse:collapse;}th{background:#f5f5f5;padding:8px;text-align:left;}</style>
 </head>
       <body>
         <div style="display:flex;justify-content:space-between;margin-bottom:30px;">
@@ -7079,7 +7587,7 @@
         lineHtml += `<tr><td style="padding:8px;border-bottom:1px solid #eee;">${desc}</td><td style="padding:8px;border-bottom:1px solid #eee;text-align:right;">\$${amt.toLocaleString()}</td></tr>`;
       });
       const w = window.open('', '_blank');
-      w.document.write(`<html><head><title>Quote — ${client}</title><style>body{font-family:Arial,sans-serif;margin:40px;color:#111;}h1{color:#1585b8;}table{width:100%;border-collapse:collapse;}th{background:#f5f5f5;padding:8px;}</style><link rel="stylesheet" href="fable.css">
+      w.document.write(`<html><head><title>Quote — ${client}</title><style>body{font-family:Arial,sans-serif;margin:40px;color:#111;background:#fff;}h1{color:#1585b8;}table{width:100%;border-collapse:collapse;}th{background:#f5f5f5;padding:8px;}</style>
 </head>
       <body>
         <div style="display:flex;justify-content:space-between;margin-bottom:30px;">
@@ -7258,6 +7766,8 @@
     }
 
     function _injectAddenda(docHTML, ev) {
+      // Contracts built from the standard templates already carry service sections for every booked service.
+      if (typeof BSContracts !== 'undefined' && BSContracts.hasModules(docHTML)) return docHTML;
       const descs = _detectEventServices(ev);
       if (!descs.length) return docHTML;
       const matched = [];
@@ -7340,81 +7850,18 @@
     //  SMART PAYMENT TERMS (used in doc preview and placeholder fill)
     // ─────────────────────────────────────────────────────────────────
     function computeSmartPaymentTerms(eventDateStr) {
-      const today = new Date();
-      const fmt = (d) => d.toLocaleDateString('en-US',{month:'long',day:'numeric',year:'numeric'});
-      if (!eventDateStr) {
-        const dep = new Date(today); dep.setDate(dep.getDate()+3);
-        return {
-          paymentTerms: 'A required deposit of 50% is due within 3 business days of signing. The remaining balance is due 14 days before your event.',
-          depositDueDate: fmt(dep),
-          balanceDueDate: '14 days before event'
-        };
-      }
-      const eventDate = new Date(eventDateStr + 'T12:00:00');
-      const daysUntil = Math.floor((eventDate - today) / (1000*60*60*24));
-      if (daysUntil <= 14) {
-        return {
-          paymentTerms: 'Due to the proximity of your event date, full payment is due upon signing of this agreement.',
-          depositDueDate: 'Upon signing',
-          balanceDueDate: 'Upon signing'
-        };
-      }
-      const depositDue = new Date(today); depositDue.setDate(depositDue.getDate()+3);
-      const balanceDue = new Date(eventDate); balanceDue.setDate(balanceDue.getDate()-14);
-      return {
-        paymentTerms: `A required deposit of 50% is due within 3 business days of signing. The remaining balance is due no later than ${fmt(balanceDue)} — 14 days before your event.`,
-        depositDueDate: fmt(depositDue),
-        balanceDueDate: fmt(balanceDue)
-      };
+      // Terms (deposit percent, balance days) come from Settings > Contract terms via BSContracts.
+      const r = BSContracts.paymentTermsFor(eventDateStr, BSContracts.getTerms(getDB('settings')), {});
+      return { paymentTerms: r.paymentTerms, depositDueDate: r.depositDueDate, balanceDueDate: r.balanceDueDate };
     }
 
-    // Resolve {{placeholder}} tokens in document HTML with real event data.
-    // Pass ev = an event object, or null to show generic fallback labels.
+    // Resolve {{placeholder}} tokens in document HTML with real event data (preview).
+    // Pass ev = an event object, or null to show generic fallback labels. Same engine as the saved contracts.
     function resolveDocPlaceholders(html, ev) {
-      const today = new Date();
-      const todayStr = today.toLocaleDateString('en-US',{month:'long',day:'numeric',year:'numeric'});
-
-      const terms = computeSmartPaymentTerms(ev?.date || null);
-
-      // Services list
-      let servicesList = '';
-      if (ev?.services?.length) {
-        servicesList = ev.services.map(s =>
-          `${s.category}: ${s.service}${s.subOption ? ' — '+s.subOption : ''}`
-        ).join('\n');
-      } else { servicesList = 'Services to be confirmed'; }
-
-      // Find linked invoice for price data
-      const invoices = getDB('invoices') || [];
-      const linked = ev ? invoices.find(i => i.eventId === ev.id) : null;
-      const rawTotal = linked?.total ?? ev?.basePrice ?? 0;
-      const totalStr  = rawTotal ? `$${rawTotal.toLocaleString()}` : '[Total TBD]';
-      const depositStr = rawTotal ? `$${Math.round(rawTotal*.5).toLocaleString()}` : '[Deposit TBD]';
-
-      const eventDateFull = ev?.date
-        ? new Date(ev.date+'T12:00:00').toLocaleDateString('en-US',{weekday:'long',year:'numeric',month:'long',day:'numeric'})
-        : '[Event Date]';
-
-      const replacements = {
-        '{{client_name}}':      ev?.clientName   || '[Client Name]',
-        '{{event_date}}':       eventDateFull,
-        '{{event_type}}':       ev?.type         || '[Event Type]',
-        '{{venue_name}}':       ev?.venueName    || '[Venue Name]',
-        '{{services_list}}':    servicesList,
-        '{{total_price}}':      totalStr,
-        '{{deposit_amount}}':   depositStr,
-        '{{current_date}}':     todayStr,
-        '{{payment_terms}}':    terms.paymentTerms,
-        '{{deposit_due_date}}': terms.depositDueDate,
-        '{{balance_due_date}}': terms.balanceDueDate,
-      };
-
-      for (const [token, val] of Object.entries(replacements)) {
-        // Escape regex-special chars in the token ({{ and }})
-        const escaped = token.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-        html = html.replace(new RegExp(escaped, 'g'), `<span style="background:rgba(31,163,224,0.15);color:#1FA3E0;border-radius:3px;padding:0 3px;">${val}</span>`);
-      }
-      return html;
+      if (typeof BSContracts === 'undefined') return html;
+      return BSContracts.mergeForEvent(html, ev, _contractEnv(), {
+        wrap: (val, key, isHtml) => isHtml ? val : `<span style="background:rgba(31,163,224,0.15);color:#0b4f6c;border-radius:3px;padding:0 3px;">${val}</span>`
+      });
     }
 
     // Open a preview window showing the current document with placeholders filled.
@@ -8012,6 +8459,67 @@
       _applyToggle('notifyTimeline',ns.timeline);
       _applyToggle('notifyVendors', ns.vendors);
       _updateSubToggleVisibility(ns.enabled);
+      try { renderContractTerms(); } catch (e) { console.warn('[contract terms]', e); }
+    }
+
+    // ── Contract terms panel (Settings). One object: settings.contractTerms. Read by contract-templates.js. ──
+    function renderContractTerms() {
+      const el = document.getElementById('contractTermsCard');
+      if (!el || typeof BSContracts === 'undefined') return;
+      const t = BSContracts.getTerms(getDB('settings'));
+      const u = BSPortal.getCurrentUser() || {};
+      const locked = u.role === 'dj';
+      const rows = BSContracts.TERM_FIELDS.map(f => `
+        <label for="ct_${f.key}" style="display:flex;align-items:center;justify-content:space-between;gap:12px;font-size:13px;color:var(--text-1);">
+          <span>${esc(f.label)}</span>
+          <span style="display:flex;align-items:center;gap:6px;flex-shrink:0;">
+            <input type="number" class="form-input" id="ct_${f.key}" value="${esc(t[f.key])}" min="${f.min}" max="${f.max}" step="${f.step}" oninput="_contractTermsPreview()" ${locked ? 'disabled' : ''} style="width:90px;padding:6px 8px;text-align:right;">
+            <span style="width:34px;font-size:12px;color:var(--text-2);">${esc(f.unit)}</span>
+          </span>
+        </label>`).join('');
+      el.innerHTML = `
+        <div style="font-family:'Anton',sans-serif;font-size:15px;letter-spacing:0.06em;text-transform:uppercase;margin-bottom:4px;color:var(--text-1);">Contract terms</div>
+        <div style="font-size:12px;color:var(--text-2);margin-bottom:16px;">These numbers fill every new contract. Contracts already created keep the terms they were created with.</div>
+        <div style="display:flex;flex-direction:column;gap:10px;">${rows}</div>
+        <div id="ctPreview" style="font-size:12px;line-height:1.6;color:var(--text-2);border-top:1px solid var(--border-ui);margin-top:16px;padding-top:12px;"></div>
+        ${locked ? '' : `<div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:16px;">
+          <button class="btn btn-primary" onclick="saveContractTerms()">Save contract terms</button>
+          <button class="btn btn-secondary" onclick="resetContractTerms()">Fill in defaults</button>
+        </div>`}`;
+      _contractTermsPreview();
+    }
+
+    function _contractTermsRaw() {
+      const raw = {};
+      BSContracts.TERM_FIELDS.forEach(f => { const i = document.getElementById('ct_' + f.key); raw[f.key] = i ? i.value : ''; });
+      return raw;
+    }
+
+    function _contractTermsPreview() {
+      const el = document.getElementById('ctPreview');
+      if (!el) return;
+      const v = BSContracts.validateTerms(_contractTermsRaw());
+      if (!v.ok) { el.style.color = 'var(--warning)'; el.textContent = v.errors[0]; return; }
+      el.style.color = 'var(--text-2)';
+      const t = v.terms;
+      el.innerHTML = 'What clients will read: ' + t.depositPercent + '% deposit, non-refundable, due at signing. Balance due ' + t.balanceDueDays + ' days before the event. '
+        + 'Cancel ' + t.cancelFarDays + '+ days out: deposit only. ' + t.cancelNearDays + ' to ' + (t.cancelFarDays - 1) + ' days: deposit plus ' + t.cancelMidPercent + '% of the remaining balance. Under ' + t.cancelNearDays + ' days: full balance. '
+        + 'Overtime: $' + t.overtimeDjRate + '/hr for a DJ with sound, plus $' + t.overtimeCrewRate + '/hr for each additional crew member, in ' + t.overtimeBlockMinutes + '-minute blocks.';
+    }
+
+    function saveContractTerms() {
+      const v = BSContracts.validateTerms(_contractTermsRaw());
+      if (!v.ok) { showToast(v.errors[0], 'error'); return; }
+      const st = getDB('settings') || {};
+      st.contractTerms = v.terms;
+      setDB('settings', st);
+      showToast('Contract terms saved. New contracts use them.', 'success');
+    }
+
+    function resetContractTerms() {
+      BSContracts.TERM_FIELDS.forEach(f => { const i = document.getElementById('ct_' + f.key); if (i) i.value = BSContracts.DEFAULT_TERMS[f.key]; });
+      _contractTermsPreview();
+      showToast('Defaults filled in. Press Save to keep them.', 'info');
     }
 
     function _applyToggle(id, on) {
@@ -8094,6 +8602,7 @@
         if (overlay) overlay.style.display = 'none';
 
         initData();
+        _contractsBoot();
         const currentUser = BSPortal.getCurrentUser();
         if (!currentUser) { window.location.href = 'login.html'; return; }
 
@@ -8112,6 +8621,8 @@
 
         try { applyRoleBasedAccess(); } catch(e) { console.warn('[roleAccess]', e); }
         try { renderDashboard(); } catch(e) { console.warn('[dashboard]', e); }
+        // Open the view named by the URL hash (refresh / shared link) instead of staying on the dashboard
+        if (location.hash) { try { await _routeApply(_routeParse(location.hash), { initial: true }); } catch(e) { console.warn('[route]', e); } }
       } catch (err) {
         console.error('[Portal init error]', err);
         const overlay = document.getElementById('sb-loading');
@@ -8215,12 +8726,8 @@
       else if (activeSection === 'vendors') renderVendors();
       else if (activeSection === 'detail') {
         // Re-render whatever detail page is open
-        const hash = location.hash;
-        const m = hash.match(/^#(event|client)=(.+)$/);
-        if (m) {
-          if (m[1] === 'event') showEventPage(m[2]);
-          else if (m[1] === 'client') showClientPage(m[2]);
-        }
+        if (_route && _route.type === 'event') showEventPage(_route.id);
+        else if (_route && _route.type === 'client') showClientPage(_route.id);
       }
     });
 
@@ -8248,7 +8755,6 @@
       const existing = getDB('templates');
       if (existing && existing.length > 0) return;
       const T = [
-        { id: genId(), name: 'DJ Services Agreement', category: 'client', contentHTML: `<h1>DJ Services Agreement</h1><p>This Agreement is made as of <strong>{{current_date}}</strong>, between <strong>Baseline Studio</strong> ("Company") and <strong>{{client_name}}</strong> ("Client").</p><h2>1. Event Details</h2><p><strong>Event Date:</strong> {{event_date}}<br><strong>Event Type:</strong> {{event_type}}<br><strong>Venue:</strong> {{venue_name}}<br><strong>Services:</strong> {{services_list}}</p><h2>2. Compensation</h2><p>Total contract price: <strong>{{total_price}}</strong>. A non-refundable deposit of <strong>{{deposit_amount}}</strong> is due upon signing to hold the date. Remaining balance is due 14 days before the event.<br>{{payment_terms}}</p><h2>3. Services</h2><p>Baseline Studio will provide professional DJ and entertainment services as listed above. Setup begins at least 90 minutes before the event start time unless otherwise agreed in writing.</p><h2>4. Cancellation</h2><p>Cancellations made more than 90 days before the event: deposit is forfeited, no further payment owed. Within 90 days: 50% of remaining balance due. Within 30 days: full remaining balance due.</p><h2>5. Liability</h2><p>Baseline Studio is not liable for circumstances beyond our control. In such cases we will work with the client to reschedule or provide a credit.</p><h2>6. Agreement</h2><p>Both parties have read and agree to these terms.</p><br><table style="width:100%;border-collapse:collapse;"><tr><td style="width:50%;padding-right:20px;vertical-align:top;"><p><strong>Client Signature</strong></p><div style="border-bottom:2px solid #333;height:50px;margin-bottom:8px;"></div><p style="font-size:12px;">Printed Name: ______________________________</p><p style="font-size:12px;">Date: ______________</p></td><td style="width:50%;padding-left:20px;vertical-align:top;"><p><strong>Baseline Studio</strong></p><div style="border-bottom:2px solid #333;height:50px;margin-bottom:8px;"></div><p style="font-size:12px;">Authorized Signature</p><p style="font-size:12px;">Date: ______________</p></td></tr></table>` },
         { id: genId(), name: 'Cancellation Agreement', category: 'client', contentHTML: `<h1>Event Cancellation Agreement</h1><p>Date: <strong>{{current_date}}</strong></p><p>This agreement is between <strong>Baseline Studio</strong> and <strong>{{client_name}}</strong> regarding the event originally scheduled for <strong>{{event_date}}</strong> at <strong>{{venue_name}}</strong>.</p><h2>Cancellation Terms</h2><p>The parties agree that the DJ Services Agreement for the above event is hereby cancelled effective today.</p><h2>Financial Settlement</h2><ul><li>Original contract total: {{total_price}}</li><li>Deposit previously paid: {{deposit_amount}}</li><li>Additional amount owed by Client: $____________</li><li>Refund to be issued by Baseline Studio: $____________</li></ul><h2>Release</h2><p>Upon settlement of any amounts owed, both parties release each other from all claims arising from the original agreement.</p><br><table style="width:100%;border-collapse:collapse;"><tr><td style="width:50%;padding-right:20px;vertical-align:top;"><p><strong>Client Signature</strong></p><div style="border-bottom:2px solid #333;height:50px;margin-bottom:8px;"></div><p style="font-size:12px;">Printed Name: ______________________________</p><p style="font-size:12px;">Date: ______________</p></td><td style="width:50%;padding-left:20px;vertical-align:top;"><p><strong>Baseline Studio</strong></p><div style="border-bottom:2px solid #333;height:50px;margin-bottom:8px;"></div><p style="font-size:12px;">Date: ______________</p></td></tr></table>` },
         { id: genId(), name: 'Services Adjustment Agreement', category: 'client', contentHTML: `<h1>Services Adjustment Agreement</h1><p>Date: <strong>{{current_date}}</strong></p><p>This agreement modifies the original DJ Services Agreement between <strong>Baseline Studio</strong> and <strong>{{client_name}}</strong> for the event on <strong>{{event_date}}</strong>.</p><h2>Original Agreement</h2><p>Original Services: [list from original contract]<br>Original Total: [original amount]</p><h2>Modifications</h2><p><strong>Services Added:</strong></p><ul><li>___________________________________________</li></ul><p><strong>Services Removed:</strong></p><ul><li>___________________________________________</li></ul><h2>Revised Pricing</h2><p>Revised Total: {{total_price}}<br>Additional Balance Due: $____________<br>Due Date: {{balance_due_date}}</p><h2>All Other Terms Unchanged</h2><p>All other terms from the original agreement remain in full force.</p><br><table style="width:100%;border-collapse:collapse;"><tr><td style="width:50%;padding-right:20px;vertical-align:top;"><p><strong>Client Signature</strong></p><div style="border-bottom:2px solid #333;height:50px;margin-bottom:8px;"></div><p style="font-size:12px;">Date: ______________</p></td><td style="width:50%;padding-left:20px;vertical-align:top;"><p><strong>Baseline Studio</strong></p><div style="border-bottom:2px solid #333;height:50px;margin-bottom:8px;"></div><p style="font-size:12px;">Date: ______________</p></td></tr></table>` },
         { id: genId(), name: 'Photo & Video Release', category: 'client', contentHTML: `<h1>Photo &amp; Video Release Form</h1><p>Date: <strong>{{current_date}}</strong> &nbsp;&bull;&nbsp; Event: <strong>{{event_type}}</strong> on <strong>{{event_date}}</strong></p><p>I, <strong>{{client_name}}</strong>, grant Baseline Studio permission to use photos and video from the above event for marketing purposes (website, social media, portfolio). No names or personal details will be shared without additional written consent.</p><p><strong>Optional social media tag permission:</strong><br>[ ] I consent to being tagged in posts featuring my event.<br>Preferred handle: ___________________________</p><br><table style="width:100%;border-collapse:collapse;"><tr><td style="width:50%;vertical-align:top;"><p><strong>Client Signature</strong></p><div style="border-bottom:2px solid #333;height:50px;margin-bottom:8px;"></div><p style="font-size:12px;">Printed Name: ______________________________<br>Date: ______________</p></td><td style="width:50%;"></td></tr></table>` },
@@ -8349,6 +8855,7 @@
       const template = templates.find(t => t.id === tid);
       if (!template) return;
       let recipientEmail = '', recipientName = '', recipientRole = '', recipientType = targetType;
+      let mergedHtml = null;
       if (targetType === 'client') {
         const evId = document.getElementById('sendDocClientEvent')?.value;
         if (!evId) { showToast('Select a client event', 'error'); return; }
@@ -8357,6 +8864,7 @@
         recipientEmail = ev.clientEmail || ev.portalEmail || '';
         recipientName = ev.clientName || 'Client';
         recipientRole = 'client';
+        if (typeof BSContracts !== 'undefined') mergedHtml = BSContracts.mergeForEvent(template.contentHTML || template.content || '', ev, _contractEnv());
       } else {
         const empVal = document.getElementById('sendDocEmployee')?.value;
         if (!empVal) { showToast('Select a team member', 'error'); return; }
@@ -8369,7 +8877,7 @@
       const inst = {
         id: genId(), templateId: tid, templateName: template.name, category: template.category || '',
         recipientEmail, recipientName, recipientRole, recipientType,
-        htmlContent: template.contentHTML || template.content || '',
+        htmlContent: mergedHtml !== null ? mergedHtml : (template.contentHTML || template.content || ''),
         message, status: 'pending', sentAt: Date.now(), documentHash: hash,
         signedAt: null, signatureData: null
       };
@@ -8426,13 +8934,16 @@
       const inst = (getDB('document_instances') || []).find(i => i.id === instanceId);
       if (!inst || !inst.signatureData) { showToast('No signature on file', 'error'); return; }
       const sig = inst.signatureData;
-      document.getElementById('sigViewImg').src = sig.signatureDataUrl || '';
+      const img = document.getElementById('sigViewImg');
+      img.style.filter = 'none';
+      img.src = _sigSrc(sig.signatureDataUrl);
+      _sigDetectInk(img);
       document.getElementById('sigViewMeta').innerHTML =
-        `Signed by: <strong>${sig.typedName || 'Unknown'}</strong><br>
-         Email: ${inst.recipientEmail}<br>
-         Signed: ${new Date(sig.signedAt).toLocaleString()}<br>
-         Document: ${inst.templateName}<br>
-         Hash: <code style="font-size:12px;">${inst.documentHash || 'N/A'}</code>`;
+        `Signed by: <strong>${esc(sig.typedName || 'Unknown')}</strong><br>
+         Email: ${esc(inst.recipientEmail)}<br>
+         Signed: ${esc(_sigWhen(sig.signedAt))}<br>
+         Document: ${esc(inst.templateName)}<br>
+         Hash: <code style="font-size:12px;">${esc(inst.documentHash || 'N/A')}</code>`;
       openModal('sigViewModal');
     }
 
