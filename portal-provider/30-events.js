@@ -19,13 +19,21 @@
 
       try {
         if (type === 'team') {
-          // Create a real Supabase Auth provider account
-          const acct = await BSPortal.createProviderUser(person.email, pw, person.name, person.role || 'staff');
+          // Create or link a real Supabase Auth provider account. mode 'create' never changes an existing login's password.
+          const mode = person.mode === 'reset' ? 'reset' : 'create';
+          const acct = await BSPortal.createProviderUser(person.email, pw, person.name, person.role || 'staff', { mode });
           if (!acct.ok) {
-            showToast('Could not create the account: ' + (acct.error || 'unknown error'), 'error');
+            showToast(mode === 'reset' ? 'Could not reset the password: ' + (acct.error || 'unknown error') : 'Could not create the account: ' + (acct.error || 'unknown error'), 'error');
             return;
           }
-          showToast('Provider account created for ' + person.email, 'success');
+          if (typeof _teamLinkLogin === 'function') _teamLinkLogin(person.id, person.email, acct.userId);
+          if (mode === 'create' && acct.existing) {
+            // The email already had a login. It was linked and nothing about it changed, so no password goes out.
+            showToast('Already has a login. Linked.', 'success');
+            return;
+          }
+          showToast(mode === 'reset' ? 'Password reset for ' + person.email : 'Provider account created for ' + person.email, 'success');
+          if (mode === 'create' && acct.created !== true) return;
           // Single provider_invite send; its result is reported separately from account creation
           const inviteRes = await BSPortal.sendEmail('provider_invite', {
             email: person.email,
@@ -36,7 +44,7 @@
           if (inviteRes.ok) {
             showToast('Invite email sent to ' + person.email, 'success');
           } else {
-            showToast('Account created, but the invite email did not send: ' + (inviteRes.error || 'unknown error'), 'warning');
+            showToast((mode === 'reset' ? 'Password reset' : 'Account created') + ', but the email did not send: ' + (inviteRes.error || 'unknown error'), 'warning');
           }
         } else if (type === 'client') {
           // Clients get portal-client.html access via client_invite

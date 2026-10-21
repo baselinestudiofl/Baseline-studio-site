@@ -362,7 +362,9 @@
       reader.onload = function(e) {
         const users = getDB('users');
         const currentUser = BSPortal.getCurrentUser();
-        const user = users.find(u => u.id === currentUser.id);
+        // Team rows keep a local id; the sign-in id only matches a linked row, so fall back to the email.
+        const myEmail = String(currentUser.email || '').trim().toLowerCase();
+        const user = users.find(u => u.id === currentUser.id) || users.find(u => myEmail && String(u.email || '').trim().toLowerCase() === myEmail);
         if (user) {
           user.profilePic = e.target.result;
           BSPortal.updateProfilePic(e.target.result);

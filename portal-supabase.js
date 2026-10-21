@@ -1,5 +1,6 @@
 /**
  * portal-supabase.js — Baseline Studio Portal Data Layer
+ * v15 — createProviderUser(email, password, name, role, opts) passes opts.mode ('create' default, or 'reset') to invite-provider and returns {ok, userId, created, existing, membership}. An existing login is linked, never overwritten, in create mode.
  * v14 (+1C client magic links) — clients can sign in with an emailed link (Supabase Auth OTP). Their session holds a JWT (authMode 'magic'); every client call goes to the authenticated twin RPC (*_jwt) with no email or password in the request. completeMagicLink() consumes the redirect hash. The password session path is unchanged and stays for the 30 day fallback.
  * v13 (+0D staff access) — provider data is read and written under ownerId (org_members lookup at initProvider; own uid when master / no membership / lookup fails).
  * v13 — client signDocument (RPC client_sign_document), refreshClientEvent, client save payload whitelisted (no money/identity fields), provider alert via send-email internal_client_update (old form-service call removed), client RPCs no longer return portalPassword.
@@ -899,16 +900,18 @@ window.BSPortal = {
     return { ok: true };
   },
 
-  async createProviderUser(email, password, name, role) {
+  async createProviderUser(email, password, name, role, opts) {
     // Creates / updates the Supabase auth user via the invite-provider edge function.
     // Authenticated with the signed-in user's JWT (master role required server-side), NOT the anon key.
     // Does NOT send the invite email; callers send provider_invite themselves and report that result separately.
+    // opts.mode: 'create' (default; an email that already has a login is linked and its password is left alone, result.existing) or 'reset' (replaces the password).
+    const mode = opts && opts.mode === 'reset' ? 'reset' : 'create';
     if (!_token) return { ok: false, error: 'Not signed in. Sign in again and retry.' };
     try {
       const r = await fetch(INVITE_FN_URL, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'apikey': SUPABASE_ANON, 'Authorization': `Bearer ${_token}` },
-        body: JSON.stringify({ email, password, name, role })
+        body: JSON.stringify({ email, password, name, role, mode })
       });
       let data = null;
       try { data = await r.json(); } catch (e) { data = null; }
@@ -916,7 +919,7 @@ window.BSPortal = {
       if (!r.ok || data.ok === false || data.error) {
         return { ok: false, error: data.error || data.message || data.msg || ('HTTP ' + r.status), detail: data.detail };
       }
-      return { ok: true, userId: data.userId };
+      return { ok: true, userId: data.userId, created: data.created === true, existing: data.existing === true, membership: data.membership };
     } catch (e) {
       return { ok: false, error: String(e) };
     }

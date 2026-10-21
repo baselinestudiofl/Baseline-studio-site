@@ -23,8 +23,29 @@
       return `<span class="pill ${x[0]}" data-ui="pill">${esc(x[1])}</span>`;
     }
 
+    // The signed-in owner's own Team row, matched by email (case-insensitive). The row id is local; the sign-in id is the auth user.
+    function _teamIsMe(u) {
+      const me = (window.BSPortal && BSPortal.getCurrentUser && BSPortal.getCurrentUser()) || {};
+      const a = String((u && u.email) || '').trim().toLowerCase();
+      return !!a && a === String(me.email || '').trim().toLowerCase();
+    }
+    function _teamHasLogin(u) { return !!(u && (u.supabaseId || _teamIsMe(u))); }
+    function _teamYouPill(u) { return _teamIsMe(u) ? ' <span class="pill pill-info pill-sm" data-ui="pill">This is you</span>' : ''; }
+
+    // Saves the sign-in id on the Team row after a create, link or reset, then repaints.
+    function _teamLinkLogin(userId, email, supabaseId) {
+      if (!supabaseId) return;
+      const users = _teamStripPasswords(getDB('users') || []);
+      const em = String(email || '').trim().toLowerCase();
+      const u = users.find(x => x.id === userId) || users.find(x => em && String(x.email || '').trim().toLowerCase() === em);
+      if (!u) return;
+      u.supabaseId = supabaseId;
+      setDB('users', users);
+      if (typeof renderAccounts === 'function' && document.getElementById('accounts')) renderAccounts();
+    }
+
     function _teamLoginPill(u) {
-      return u.supabaseId
+      return _teamHasLogin(u)
         ? `<span class="pill pill-ok pill-sm" data-ui="pill">CRM login</span>`
         : `<span class="pill pill-neutral pill-sm" data-ui="pill">Local only</span>`;
     }
@@ -112,7 +133,7 @@
 
     function _teamTable(users) {
       const rows = users.map(u => `<tr class="is-click" data-user="${esc(u.id)}" onclick="openTeamMemberDetail('${esc(u.id)}')">
-        <td><div class="team-who">${_teamAvatar(u, 'avatar-32')}<div><div class="team-name" data-user-content>${esc(u.name)}</div><a class="team-mail" href="mailto:${esc(u.email)}" onclick="event.stopPropagation()" data-user-content>${esc(u.email)}</a></div></div></td>
+        <td><div class="team-who">${_teamAvatar(u, 'avatar-32')}<div><div class="team-name" data-user-content>${esc(u.name)}${_teamYouPill(u)}</div><a class="team-mail" href="mailto:${esc(u.email)}" onclick="event.stopPropagation()" data-user-content>${esc(u.email)}</a></div></div></td>
         <td>${_teamRolePill(u.role)}</td>
         <td onclick="event.stopPropagation()">${_teamSwitchHtml(u)}</td>
         <td>${_teamLoginPill(u)}${u.lastLogin ? `<div class="t-meta">Last login ${esc(new Date(u.lastLogin).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }))}</div>` : ''}</td>
@@ -126,7 +147,7 @@
         <button type="button" class="team-card-main" onclick="openTeamMemberDetail('${esc(u.id)}')">
           ${_teamAvatar(u, 'avatar-40')}
           <span class="team-card-text">
-            <span class="team-name" data-user-content>${esc(u.name)}</span>
+            <span class="team-name" data-user-content>${esc(u.name)}${_teamYouPill(u)}</span>
             <span class="team-card-pills">${_teamRolePill(u.role)}${_teamLoginPill(u)}</span>
           </span>
           ${_p7Icon('chevron-right', 20)}
@@ -145,9 +166,9 @@
       const u = (getDB('users') || []).find(x => x.id === userId);
       if (!u || !window.CRMUI || !CRMUI.menu) return;
       CRMUI.menu(btn, [
-        { label: 'Change photo', icon: 'pencil', onSelect: () => editUserProfile(userId) },
-        u.supabaseId ? { label: 'Send sign-in link', icon: 'send', onSelect: () => _teamSendSignIn(userId) } : { label: 'Create CRM login', icon: 'send', onSelect: () => _teamSendLogin(userId) },
-        u.supabaseId ? { label: 'Reset password', icon: 'lock', onSelect: () => _teamResetPassword(userId) } : null,
+        { label: 'Edit details', icon: 'pencil', onSelect: () => editUserProfile(userId) },
+        _teamIsMe(u) ? null : (u.supabaseId ? { label: 'Send sign-in link', icon: 'send', onSelect: () => _teamSendSignIn(userId) } : { label: 'Create CRM login', icon: 'send', onSelect: () => _teamSendLogin(userId) }),
+        _teamIsMe(u) || !u.supabaseId ? null : { label: 'Reset password', icon: 'lock', onSelect: () => _teamResetPassword(userId) },
         { label: u.active ? 'Make unavailable for events' : 'Make available for events', icon: 'ban', onSelect: () => toggleUserActive(userId) },
         { label: 'Delete', icon: 'trash-2', danger: true, onSelect: () => deleteUser(userId) }
       ].filter(Boolean), { align: 'right' });
@@ -156,7 +177,9 @@
     // Creates the CRM login and emails a new password. Only for people who have no login yet.
     function _teamSendLogin(userId) {
       const u = (getDB('users') || []).find(x => x.id === userId);
-      if (u) sendLoginInfo('team', { name: u.name, email: u.email, role: u.role });
+      if (!u) return;
+      if (_teamIsMe(u)) { showToast('This is your own login. Nothing to create.', 'info'); return; }
+      sendLoginInfo('team', { id: u.id, name: u.name, email: u.email, role: u.role, mode: 'create' });
     }
 
     // Existing login: a note with the sign-in address. Nothing about their password changes.
@@ -172,8 +195,9 @@
     async function _teamResetPassword(userId) {
       const u = (getDB('users') || []).find(x => x.id === userId);
       if (!u) return;
+      if (_teamIsMe(u)) { showToast('Use Forgot password on the login page to change your own password.', 'info'); return; }
       const ok = await CRMUI.confirm({ title: 'Reset password for ' + (u.name || 'this person') + '?', body: 'This replaces their current password. They get an email with a new one.', confirmLabel: 'Reset password', danger: true });
-      if (ok) sendLoginInfo('team', { name: u.name, email: u.email, role: u.role });
+      if (ok) sendLoginInfo('team', { id: u.id, name: u.name, email: u.email, role: u.role, mode: 'reset' });
     }
 
     // Staff passwords are used once, for the invite call. They are not kept in the synced users record.
@@ -264,25 +288,28 @@
       const first = String(u.name || '').split(' ')[0] || 'them';
       document.getElementById('clientDetailContent').innerHTML = `<div class="team-detail">
         <div class="modal-title" data-user-content>${esc(u.name)}</div>
-        <div class="team-detail-pills">${_teamRolePill(u.role)}<span class="pill ${u.active ? 'pill-ok' : 'pill-neutral'}" data-ui="pill">${u.active ? 'Available for events' : 'Not available for events'}</span></div>
+        <div class="team-detail-pills">${_teamRolePill(u.role)}${_teamYouPill(u)}<span class="pill ${u.active ? 'pill-ok' : 'pill-neutral'}" data-ui="pill">${u.active ? 'Available for events' : 'Not available for events'}</span></div>
         <p class="t-meta">Availability only controls event assignment. It does not sign them out.</p>
         <dl class="team-dl">
           <dt>Email</dt><dd><a class="team-link" href="mailto:${esc(u.email)}" data-user-content>${esc(u.email)}</a></dd>
           <dt>Phone</dt><dd>${u.phone ? `<a class="team-link" href="tel:${esc(String(u.phone).replace(/[^\d+]/g, ''))}" data-user-content>${esc(CRMUI.fmt.phone(u.phone))}</a>` : '<span class="t-meta">Not added</span>'}</dd>
-          <dt>CRM login</dt><dd>${u.supabaseId ? '<span class="pill pill-ok pill-sm" data-ui="pill">Account created</span>' : '<span class="pill pill-neutral pill-sm" data-ui="pill">Not set up yet</span>'}</dd>
+          <dt>CRM login</dt><dd>${_teamHasLogin(u) ? '<span class="pill pill-ok pill-sm" data-ui="pill">Account created</span>' : '<span class="pill pill-neutral pill-sm" data-ui="pill">Not set up yet</span>'}</dd>
         </dl>
-        <p class="t-meta">${u.supabaseId ? 'This person can sign in to the provider CRM at <code>baselinestudiofl.com/login.html</code>.' : 'Once you create their login, they get an email with their sign-in details.'}</p>
+        <p class="t-meta">${_teamIsMe(u) ? 'This is your own login. To change your password, use Forgot password on the login page.' : _teamHasLogin(u) ? 'This person can sign in to the provider CRM at <code>baselinestudiofl.com/login.html</code>.' : 'Once you create their login, they get an email with their sign-in details.'}</p>
         <div class="team-detail-actions">
-          ${u.supabaseId
+          ${_teamIsMe(u) ? ''
+            : u.supabaseId
             ? `<button type="button" class="btn btn-primary" onclick="_teamSendSignIn('${esc(u.id)}')">Send sign-in link</button><button type="button" class="btn btn-secondary" onclick="_teamResetPassword('${esc(u.id)}')">Reset password</button>`
             : `<button type="button" class="btn btn-primary" onclick="_teamSendLogin('${esc(u.id)}')">Create CRM login</button>`}
           ${u.email ? `<a class="btn btn-secondary" href="mailto:${esc(u.email)}">Email ${esc(first)}</a>` : ''}
-          <button type="button" class="btn btn-secondary" onclick="closeModal('clientDetailModal');editUserProfile('${esc(u.id)}')">Change photo</button>
+          <button type="button" class="btn btn-secondary" onclick="closeModal('clientDetailModal');editUserProfile('${esc(u.id)}')">Edit details</button>
         </div>
       </div>`;
       openModal('clientDetailModal');
     }
 
+    // Edit a Team row: name, phone, role and photo. Email stays fixed because it is how the row matches the sign-in.
+    // The role here is the label on the Team list and event assignment; it does not change what the person's login can open.
     function editUserProfile(userId) {
       const users = getDB('users');
       const user = users.find(u => u.id === userId);
@@ -290,7 +317,15 @@
 
       window.editingUserId = userId;
       window.newUserPhoto = null;
+      const me = _teamIsMe(user);
+      const roles = [['master', 'Master: full access'], ['admin', 'Admin: full access'], ['dj', 'DJ: events and timeline only'], ['event-architect', 'Event architect: events and documents']];
+      if (user.role && !roles.some(r => r[0] === user.role)) roles.push([user.role, String(user.role)]);
+      const opts = roles.map(r => `<option value="${esc(r[0])}"${r[0] === user.role ? ' selected' : ''}>${esc(r[1])}</option>`).join('');
       document.getElementById('editAccountForm').innerHTML = `
+        <div class="field"><label class="field-label" for="editAcctName">Full name</label><input type="text" class="form-input" id="editAcctName" required autocomplete="off" value="${esc(user.name)}"></div>
+        <div class="field"><span class="field-label">Email</span><div class="t-meta" data-user-content>${esc(user.email)}</div></div>
+        <div class="field"><label class="field-label" for="editAcctPhone">Phone (optional)</label><input type="tel" class="form-input" id="editAcctPhone" autocomplete="off" data-norm="phone" value="${esc(user.phone || '')}"></div>
+        <div class="field"><label class="field-label" for="editAcctRole">Role</label><select class="form-select" id="editAcctRole"${me ? ' disabled' : ''}>${opts}</select>${me ? '<p class="field-hint">This is your own account, so the role stays as it is.</p>' : ''}</div>
         <div class="field"><span class="field-label">Profile photo</span><div id="editAvatarPreview">${_teamAvatar(user, 'avatar-40')}</div></div>
         <div class="field"><label class="field-label" for="accountPhotoInput">Choose a photo</label><input type="file" class="form-input" id="accountPhotoInput" accept="image/*" onchange="previewAccountPhoto(event)"></div>
         <button type="submit" class="btn btn-primary">Save</button>`;
@@ -311,16 +346,25 @@
 
     function updateUserProfile(event) {
       event.preventDefault();
-      const users = getDB('users');
+      const users = _teamStripPasswords(getDB('users'));
       const user = users.find(u => u.id === window.editingUserId);
-      if (user && !window.newUserPhoto) { showToast('Choose a photo first.', 'warning'); return; }
-      if (user && window.newUserPhoto) {
-        user.profilePic = window.newUserPhoto;
-        setDB('users', users);
-        closeModal('editAccountModal');
-        renderAccounts();
-        showToast('Profile updated', 'success');
-      }
+      if (!user) return;
+      const val = id => { const el = document.getElementById(id); return el ? el.value : null; };
+      const name = String(val('editAcctName') == null ? user.name : val('editAcctName')).trim();
+      if (!name) { showToast('Add a name first.', 'warning'); return; }
+      const phone = val('editAcctPhone') == null ? user.phone : String(val('editAcctPhone')).trim();
+      const roleEl = document.getElementById('editAcctRole');
+      const role = roleEl && !roleEl.disabled && roleEl.value ? roleEl.value : user.role;
+      const changed = name !== user.name || (phone || '') !== (user.phone || '') || role !== user.role || !!window.newUserPhoto;
+      if (!changed) { closeModal('editAccountModal'); return; }
+      user.name = name;
+      user.phone = phone;
+      user.role = role;
+      if (window.newUserPhoto) user.profilePic = window.newUserPhoto;
+      setDB('users', users);
+      closeModal('editAccountModal');
+      renderAccounts();
+      showToast('Saved', 'success');
     }
 
     async function saveAccount(e) {
@@ -334,8 +378,8 @@
       const submitBtn = e.target.querySelector('[type="submit"]');
       if (submitBtn) { submitBtn.disabled = true; submitBtn.textContent = 'Creating'; }
 
-      // Try creating in Supabase Auth so the new user can log in
-      const result = await BSPortal.createProviderUser(email, password, name, role);
+      // Try creating in Supabase Auth so the new user can log in. Create mode never changes an existing login's password.
+      const result = await BSPortal.createProviderUser(email, password, name, role, { mode: 'create' });
 
       const users = _teamStripPasswords(getDB('users'));
       users.push({
@@ -349,7 +393,9 @@
       document.getElementById('addAccountForm').reset();
       if (submitBtn) { submitBtn.disabled = false; submitBtn.textContent = 'Create account'; }
 
-      if (result.ok) {
+      if (result.ok && result.existing) {
+        showToast('Already has a login. Linked.', 'success');
+      } else if (result.ok) {
         showToast('Account created. Sending invite email.', 'success');
         const emailResult = await BSPortal.sendEmail('provider_invite', { email, name, role, password });
         if (emailResult.ok) {
