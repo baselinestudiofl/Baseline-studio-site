@@ -475,6 +475,7 @@
               ${doc.contentHTML ? `<button type="button" class="btn btn-secondary btn-sm" onclick="viewEventDoc('${eid}','${doc.id}')">View</button>` : ''}
               ${doc.contentHTML && isSigned ? `<button type="button" class="btn btn-secondary btn-sm" onclick="downloadEventDoc('${eid}','${doc.id}')">Download</button>` : ''}
               ${!isSigned ? `<button type="button" class="btn btn-secondary btn-sm" onclick="openSignatureModal('${eid}','${doc.id}')">Sign</button>` : `<button type="button" class="btn btn-secondary btn-sm" onclick="viewEventDocSignature('${eid}','${doc.id}')">View Sig</button>`}
+              ${clientSigned && !doc.signedAt ? `<button type="button" class="btn btn-primary btn-sm" onclick="openSignatureModal('${eid}','${doc.id}')">Countersign</button>` : ''}
               <button type="button" class="btn btn-ghost btn-icon btn-sm evdoc-kebab" aria-label="More actions for ${esc(doc.name)}" aria-haspopup="menu" onclick="openEventDocMenu(this,'${eid}','${doc.id}')">${ic('ellipsis', 20)}</button>
             </div>
             ${_clientSigBlock(doc)}
