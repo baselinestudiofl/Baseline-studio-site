@@ -108,3 +108,12 @@ tr.is-click { cursor: pointer; }
 /* Toasts sit bottom-right (desktop) or bottom-center (phone); lift them clear of the Save bar while it is showing. */
 body:has(#settings.active #setSaveBar:not([hidden])) #toastContainer { transform: translateY(-80px); }
 @media (min-width: 768px) { .set-savebar { grid-column: 2; } }
+
+.pay-m { margin: 0 0 var(--sp-4); padding: var(--sp-4); background: var(--surface-2); border: 1px solid var(--border); border-radius: var(--r-lg); }
+.pay-m.is-off { opacity: 0.75; }
+.pay-m-head { display: flex; align-items: center; justify-content: space-between; gap: var(--sp-3); margin-bottom: var(--sp-3); }
+.pay-m-acts { display: inline-flex; align-items: center; gap: var(--sp-1); flex: none; }
+.pay-add { margin: var(--sp-4) 0; }
+.pay-add-row { display: flex; gap: var(--sp-2); align-items: center; }
+.pay-add-row .form-select { flex: 1; min-width: 0; }
+.pay-fee .form-input { max-width: 120px; }

@@ -1921,10 +1921,87 @@
       return { empty: false, head, pay, schedule, invoices, foot: `<p class="cp-meta" style="text-align:center">Questions about a payment? Call or text <a href="tel:${STUDIO_PHONE_TEL}">${STUDIO_PHONE}</a>.</p>` };
     }
 
+    // Payment methods (Settings > Payment methods on the provider side). Same rules as the provider helpers in 50-money.js.
+    function _payRequired(t) { return t !== 'cash'; }
+    function _paySafeUrl(v) {
+      let s = String(v == null ? '' : v).trim();
+      if (!s) return '';
+      if (/^(www\.)?paypal\.me\//i.test(s)) s = 'https://' + s;
+      if (!/^https:\/\/[a-z0-9]([a-z0-9.-]*[a-z0-9])?(:\d+)?([\/?#][^\s<>"'`\\]*)?$/i.test(s)) return '';
+      return /^https:\/\/[^\/?#:]*\./i.test(s) ? s : '';
+    }
+    function _payMethods(p) {
+      p = p || {};
+      let l;
+      if (Array.isArray(p.methods)) l = p.methods.filter(m => m && typeof m === 'object');
+      else l = [];
+      l = l.map(m => ({ id: String(m.id || ''), type: String(m.type || 'other'), label: String(m.label || '').trim() || 'Pay', details: String(m.details == null ? '' : m.details).trim(), note: String(m.note == null ? '' : m.note).trim(), enabled: m.enabled !== false }));
+      return l;
+    }
+    function _payEnabled(p) {
+      const l = _payMethods(p).filter(m => m.enabled && (m.details || !_payRequired(m.type)));
+      return l.filter(m => m.type === 'zelle').concat(l.filter(m => m.type !== 'zelle'));
+    }
+    function _payFeeNote(p, m) {
+      const raw = p && p.cardFeePercent;
+      const n = (raw === '' || raw == null) ? 0 : Number(raw);
+      return (isFinite(n) && n > 0 && n <= 20 && m && m.type === 'card_link') ? 'A ' + (Math.round(n * 100) / 100) + '% card fee applies.' : '';
+    }
+    function _payLinkOf(m) {
+      if (m.type === 'card_link' || m.type === 'paypal') return _paySafeUrl(m.details);
+      if (m.type === 'venmo') { const u = _paySafeUrl(m.details); return /^https:\/\/([a-z0-9-]+\.)*venmo\.com([\/?#:]|$)/i.test(u) ? u : ''; }
+      return '';
+    }
+    function _payLineText(m) { return m.type === 'check' ? 'Make checks payable to ' + m.details : m.details; }
+    function _payMethodHtml(p, m, i) {
+      const link = _payLinkOf(m), fee = _payFeeNote(p, m);
+      return `<div class="pay-method" data-pay-method="${i}" style="padding:12px 0;border-top:1px solid var(--border)">
+        <p class="cp-text" style="margin:0"><strong>${esc(m.label)}</strong></p>
+        ${m.details && !link ? `<p class="cp-text" style="margin:4px 0 0">${esc(_payLineText(m))}</p>` : ''}
+        ${m.note ? `<p class="cp-meta" style="margin:4px 0 0">${esc(m.note)}</p>` : ''}
+        ${fee ? `<p class="cp-meta" style="margin:4px 0 0">${esc(fee)}</p>` : ''}
+        <div class="cp-actions" style="margin-top:8px">
+          ${link ? `<a class="btn btn-primary btn-sm" href="${esc(link)}" target="_blank" rel="noopener">${ico('external-link', 16)}${m.type === 'venmo' ? 'Open Venmo' : 'Open payment link'}</a>` : ''}
+          ${m.details ? `<button type="button" class="btn btn-secondary btn-sm" data-pay-copy="${i}" onclick="copyPayMethod(${i})">${ico('copy', 16)}Copy ${esc(m.label)} info</button>` : ''}
+        </div></div>`;
+    }
+    function copyPayMethod(i) {
+      const m = _payEnabled(_paymentSettings())[i];
+      if (!m) return;
+      const r = _unpaidSorted(_invoiceRows(currentEvent, new Date()))[0];
+      const text = m.label + ': ' + _payLineText(m) + (r ? '\nAmount: ' + fmtMoney(r.amount) : '') + '\nMemo: ' + (currentEvent.name || 'My Event');
+      _copyText(text);
+    }
+    function _copyText(text) {
+      const done = () => showToast('Copied. Paste it into your banking app.', 'success');
+      const fallback = () => {
+        const ta = document.createElement('textarea');
+        ta.value = text; ta.setAttribute('readonly', ''); ta.style.position = 'fixed'; ta.style.opacity = '0';
+        document.body.appendChild(ta); ta.select();
+        let ok = false;
+        try { ok = document.execCommand('copy'); } catch (e) {}
+        document.body.removeChild(ta);
+        if (ok) done(); else showToast('Copy did not work. The details are on this page.', 'warning');
+      };
+      if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(text).then(done, fallback);
+      else fallback();
+    }
+
     function _howToPayHtml(r) {
       const pr = (currentEvent.clientNotes || {}).paymentReported;
       const reported = !!(pr && String(pr.invoice || '') === _invKey(r));
       const p = _paymentSettings();
+      const ms = _payEnabled(p);
+      if (Array.isArray(p.methods) && p.methods.length) {
+        return `<div class="card" id="howToPay">
+        <h2 class="card-title">How to pay</h2>
+        <p class="cp-text">${ms.length ? 'Send ' + fmtMoney(r.amount) + ' any of these ways. Put your event name in the memo.' : 'Call or text ' + STUDIO_PHONE + ' to arrange your payment of ' + fmtMoney(r.amount) + '.'}</p>
+        ${ms.map((m, i) => _payMethodHtml(p, m, i)).join('')}
+        ${reported
+          ? `<p class="cp-fb" style="margin-top:12px" role="status">Thanks. Saul will confirm it within a day.</p>`
+          : `<div class="cp-actions" style="margin-top:12px"><button type="button" class="btn btn-primary" id="paySent" onclick="reportPayment()">I sent it</button></div>`}
+        <p class="cp-meta" style="margin-top:12px">Prefer to talk it through? Call or text <a href="tel:${STUDIO_PHONE_TEL}">${STUDIO_PHONE}</a>.</p></div>`;
+      }
       const link = (p.enabled === true && typeof p.link === 'string' && /^https:\/\//i.test(p.link)) ? p.link : '';
       return `<div class="card" id="howToPay">
         <h2 class="card-title">How to pay</h2>

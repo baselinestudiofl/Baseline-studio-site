@@ -1003,6 +1003,8 @@ body{margin:0;background:#e6e8eb;color:#111;font-family:Georgia,'Times New Roman
       const ev = events.find(e => e.id === _sigEventId);
       const doc = ev && ev.docs && ev.docs.find(d => d.id === _sigDocId);
       if (!doc) return;
+      // Countersigning: the client already signed in their portal, so they already have access. No new invite.
+      const countersign = _docClientSigned(doc);
       doc.signature = sig; doc.signedAt = Date.now(); doc.signedBy = BSPortal.getCurrentUser()?.name || 'Authorized Signatory';
 
       // Auto-advance pipeline stage when a contract is signed
@@ -1015,10 +1017,10 @@ body{margin:0;background:#e6e8eb;color:#111;font-family:Georgia,'Times New Roman
       closeModal('signatureModal');
       window.currentEvent = ev;
       document.getElementById('tabDocuments').innerHTML = renderEventDocuments(ev);
-      showToast('Document signed and saved.', 'success');
+      showToast(countersign ? 'Countersigned. Both signatures are on the contract.' : 'Document signed and saved.', 'success');
 
-      // If this is a contract AND client has an email, create their portal account + send invite
-      if (isContract && ev && ev.clientEmail) {
+      // If this is a contract AND client has an email, create their portal account + send invite (not when countersigning)
+      if (isContract && ev && ev.clientEmail && !countersign) {
         const clientEmail = ev.clientEmail;
         const clientName  = ev.clientName || 'Client';
         // Generate portal password if not already set, then sync via single write path

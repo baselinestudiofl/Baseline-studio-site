@@ -473,7 +473,7 @@
 
     // What changed on screen compared with what is saved. { notify, business, inventory, terms, count }
     function _setDiff() {
-      const out = { notify: 0, business: 0, inventory: 0, terms: 0, assistant: 0, count: 0 };
+      const out = { notify: 0, business: 0, inventory: 0, terms: 0, assistant: 0, payments: 0, count: 0 };
       if (!document.getElementById('setLayout')) return out;
       const s = _setStored(), ns = _setReadNotify();
       Object.keys(_NOTIFY_SWITCHES).forEach(k => { if (!!ns[k] !== !!s.notify[k]) out.notify++; });
@@ -487,7 +487,8 @@
         BSContracts.TERM_FIELDS.forEach(f => { if (String(raw[f.key]).trim() === '' || Number(raw[f.key]) !== Number(t[f.key])) out.terms++; });
       }
       if (document.getElementById('setAiUrl') && _setVal('setAiUrl').trim() !== s.contractAiUrl) out.assistant++;
-      out.count = out.notify + out.business + out.inventory + out.terms + out.assistant;
+      if (_payDraft && document.getElementById('payMethodsCard') && _payKey(_payDraft) !== _payKey(_payFromStored())) out.payments++;
+      out.count = out.notify + out.business + out.inventory + out.terms + out.assistant + out.payments;
       return out;
     }
 
@@ -523,7 +524,7 @@
       const u = BSPortal.getCurrentUser() || {};
       const admin = ['master', 'admin'].includes(u.role);
       const chev = _p7Icon('chevron-right', 20);
-      const items = [['business', 'Business'], ['notifications', 'Notifications'], ['contract', 'Contract terms'], ['assistant', 'Contract assistant']]
+      const items = [['business', 'Business'], ['notifications', 'Notifications'], ['contract', 'Contract terms'], ['payments', 'Payment methods'], ['assistant', 'Contract assistant']]
         .concat(admin ? [['team', 'Team']] : []).concat([['inventory', 'Inventory']]);
       sec.innerHTML = `
         <div class="set-layout" id="setLayout" data-view="list" data-active="business">
@@ -544,6 +545,7 @@
                 ${_setSwitchRow('notifyVendorsTrack', 'notifyVendorsLabel', 'Vendor and enhancement additions', 'When a client adds a preferred vendor or service.', "toggleNotify('vendors')")}
               </div>`)}
             ${_setSection('contract', 'Contract terms', '', `<div id="contractTermsCard"></div>`)}
+            ${_setSection('payments', 'Payment methods', 'How clients can pay you. They see the ones that are switched on, on their portal and on invoices. Zelle always shows first.', `<div id="payMethodsCard"></div>`)}
             ${_setSection('assistant', 'Contract assistant', 'Optional. Suggests wording changes inside the contract editor. Leave it empty to turn it off.', `
               <div class="field"><label class="field-label" for="setAiUrl">Assistant link</label><input type="url" class="form-input" id="setAiUrl" autocomplete="off" inputmode="url" placeholder="https://contract-ai.your-name.workers.dev"><span class="field-hint">Paste the link of your Cloudflare Worker. It uses the free plan, so it stops for the day when the free limit is used and never bills. Nothing is sent until you press Suggest changes in a contract.</span></div>`)}
             ${admin ? _setSection('team', 'Team', 'Logins and your crew roster live on the Team screen.', `<button type="button" class="btn btn-secondary" onclick="switchSection('accounts')">Open Team</button>`) : ''}
@@ -594,6 +596,8 @@
       set('setInvNextTag', s.inventory.nextTag);
       const nt = document.getElementById('setInvNextTag'); if (nt) nt.min = s.inventory.nextTag;
       try { renderContractTerms(); } catch (e) { console.warn('[contract terms]', e); }
+      _payDraft = _payFromStored();
+      try { renderPayMethods(); } catch (e) { console.warn('[payment methods]', e); }
     }
 
     // force = true on Save and Discard. Opening the screen again keeps changes that were not saved yet.
@@ -686,6 +690,148 @@
       if (typeof _setRecount === 'function') _setRecount();
     }
 
+    // ── Payment methods panel (Settings). Editing happens on a draft; the Save bar writes it (_paySave). ──
+    let _payDraft = null;
+
+    function _payFromStored() {
+      const st = getDB('settings') || {};
+      const p = st.payments || {};
+      const fee = (p.cardFeePercent === '' || p.cardFeePercent == null) ? '' : String(p.cardFeePercent);
+      return { methods: _payMethodsOf(p), fee };
+    }
+    function _payKey(d) { return JSON.stringify([d.methods.map(m => [m.id, m.type, m.label, m.details, m.note, !!m.enabled]), String(d.fee).trim()]); }
+    function _payLocked() { const u = BSPortal.getCurrentUser() || {}; return u.role === 'dj'; }
+
+    function renderPayMethods() {
+      const el = document.getElementById('payMethodsCard');
+      if (!el) return;
+      if (!_payDraft) _payDraft = _payFromStored();
+      const locked = _payLocked();
+      const dis = locked ? ' disabled' : '';
+      const ms = _payDraft.methods;
+      const list = ms.map((m, i) => {
+        const t = _payType(m.type);
+        const last = i === ms.length - 1;
+        return `<div class="pay-m${m.enabled ? '' : ' is-off'}" data-pay-i="${i}">
+          <div class="pay-m-head">
+            <div class="set-row-text"><div class="set-row-title">${esc(m.label)}</div><div class="set-row-sub">${esc(t.name)}${m.enabled ? '' : '. Hidden from clients'}</div></div>
+            <div class="pay-m-acts">
+              <button type="button" class="btn btn-ghost btn-icon btn-sm" aria-label="Move ${esc(m.label)} up" onclick="_payMove(${i},-1)"${i === 0 ? ' disabled' : dis}>${_p7Icon('chevron-up', 18)}</button>
+              <button type="button" class="btn btn-ghost btn-icon btn-sm" aria-label="Move ${esc(m.label)} down" onclick="_payMove(${i},1)"${last ? ' disabled' : dis}>${_p7Icon('chevron-down', 18)}</button>
+              <button type="button" class="btn btn-ghost btn-icon btn-sm" aria-label="Delete ${esc(m.label)}" onclick="_payDelete(${i})"${dis}>${_p7Icon('trash-2', 18)}</button>
+              <button type="button" class="switch" role="switch" id="payOn${i}" aria-checked="${m.enabled ? 'true' : 'false'}" aria-label="Show ${esc(m.label)} to clients" onclick="_payToggle(${i})"${dis}></button>
+            </div>
+          </div>
+          <div class="field"><label class="field-label" for="payLabel${i}">Name clients see</label><input type="text" class="form-input" id="payLabel${i}" value="${esc(m.label)}" maxlength="40" oninput="_payEdit(${i},'label',this.value)"${dis}></div>
+          <div class="field"><label class="field-label" for="payDetails${i}">${esc(t.detailsLabel)}</label><input type="text" class="form-input" id="payDetails${i}" value="${esc(m.details)}" placeholder="${esc(t.placeholder)}" autocomplete="off" oninput="_payEdit(${i},'details',this.value)"${dis}>${t.hint ? `<span class="field-hint">${esc(t.hint)}</span>` : ''}</div>
+          <div class="field"><label class="field-label" for="payNote${i}">Note for clients (optional)</label><input type="text" class="form-input" id="payNote${i}" value="${esc(m.note)}" maxlength="120" autocomplete="off" oninput="_payEdit(${i},'note',this.value)"${dis}></div>
+        </div>`;
+      }).join('');
+      const opts = _payTypes().map(t => `<option value="${t.type}">${esc(t.name)}</option>`).join('');
+      el.innerHTML = `
+        ${ms.length ? list : `<p class="set-sub">No payment methods yet. Until you add one, clients are told to pay by Zelle.</p>`}
+        <div class="pay-add">
+          <label class="field-label" for="payAddType">Add a way to pay</label>
+          <div class="pay-add-row"><select class="form-select" id="payAddType"${dis}>${opts}</select><button type="button" class="btn btn-secondary" onclick="_payAdd()"${dis}>${_p7Icon('plus', 16)} Add</button></div>
+        </div>
+        <div class="field pay-fee"><label class="field-label" for="payFee">Card fee percent (optional)</label>
+          <input type="number" class="form-input" id="payFee" min="0" max="20" step="0.1" inputmode="decimal" value="${esc(_payDraft.fee)}" placeholder="3" oninput="_payFeeEdit(this.value)"${dis}>
+          <span class="field-hint">Shown next to card payment links as "A 3% card fee applies." Leave empty for no fee note.</span></div>`;
+    }
+
+    function _payEdit(i, key, v) {
+      const m = _payDraft && _payDraft.methods[i];
+      if (!m) return;
+      m[key] = String(v);
+      if (typeof _setRecount === 'function') _setRecount();
+    }
+    function _payFeeEdit(v) { if (_payDraft) _payDraft.fee = String(v); if (typeof _setRecount === 'function') _setRecount(); }
+    function _payToggle(i) {
+      const m = _payDraft && _payDraft.methods[i];
+      if (!m) return;
+      m.enabled = !m.enabled;
+      renderPayMethods();
+      if (typeof _setRecount === 'function') _setRecount();
+    }
+    function _payMove(i, dir) {
+      const ms = _payDraft && _payDraft.methods, j = i + dir;
+      if (!ms || j < 0 || j >= ms.length) return;
+      const x = ms[i]; ms[i] = ms[j]; ms[j] = x;
+      renderPayMethods();
+      if (typeof _setRecount === 'function') _setRecount();
+      const b = document.querySelector('[data-pay-i="' + j + '"] .pay-m-acts button:nth-child(' + (dir < 0 ? 1 : 2) + ')');
+      if (b && !b.disabled) b.focus();
+    }
+    function _payAddMethod(type) {
+      if (!_payDraft) _payDraft = _payFromStored();
+      const m = _payNormMethod({ type, enabled: true });
+      m.label = _payType(type).name;
+      _payDraft.methods.push(m);
+      return m;
+    }
+    function _payAdd() {
+      const sel = document.getElementById('payAddType');
+      _payAddMethod(sel ? sel.value : 'other');
+      renderPayMethods();
+      if (typeof _setRecount === 'function') _setRecount();
+      const last = _payDraft.methods.length - 1, d = document.getElementById('payDetails' + last);
+      if (d) d.focus();
+    }
+    function _payDelete(i) {
+      const ms = _payDraft && _payDraft.methods;
+      if (!ms || !ms[i]) return;
+      const gone = ms.splice(i, 1)[0];
+      renderPayMethods();
+      if (typeof _setRecount === 'function') _setRecount();
+      showUndoToast(gone.label + ' removed. Press Save to keep that.', function () { _payUndoDelete(gone, i); });
+    }
+    function _payUndoDelete(m, i) {
+      if (!_payDraft || _payDraft.methods.some(x => x.id === m.id)) return;
+      _payDraft.methods.splice(Math.min(i, _payDraft.methods.length), 0, m);
+      renderPayMethods();
+      if (typeof _setRecount === 'function') _setRecount();
+    }
+
+    // Checks the draft and returns what to save, or { error }. Writes nothing.
+    function _payBuildSave() {
+      const d = _payDraft || _payFromStored();
+      const methods = d.methods.map(m => _payNormMethod(m));
+      for (const m of methods) {
+        if (!m.enabled) continue;
+        const t = _payType(m.type);
+        if (t.required && !m.details) return { error: 'Add the details for ' + m.label + ', or switch it off.' };
+        if (m.type === 'card_link' && !_paySafeUrl(m.details)) return { error: 'The card payment link must start with https://.' };
+      }
+      const feeRaw = String(d.fee == null ? '' : d.fee).trim();
+      let fee = '';
+      if (feeRaw !== '') {
+        const n = Number(feeRaw);
+        if (!isFinite(n) || n < 0 || n > 20) return { error: 'The card fee must be a number from 0 to 20.' };
+        fee = n;
+      }
+      return { methods, fee };
+    }
+
+    // Writes settings.payments.methods and cardFeePercent, keeps settings.payments.zelle in step (old readers use it),
+    // and copies the payments settings onto each event so the client portal can read them (same way notify choices travel).
+    function _paySave(out) {
+      const st = getDB('settings') || {};
+      const p = Object.assign({}, st.payments || {});
+      p.methods = out.methods;
+      p.cardFeePercent = out.fee;
+      const z = out.methods.find(m => m.enabled && m.type === 'zelle' && m.details);
+      p.zelle = z ? z.details : '';
+      st.payments = p;
+      setDB('settings', st);
+      const copy = { methods: p.methods, cardFeePercent: p.cardFeePercent, zelle: p.zelle };
+      if (p.enabled === true) copy.enabled = true;
+      if (p.link) copy.link = p.link;
+      const events = getDB('events') || [];
+      events.forEach(ev => { ev.settings = Object.assign({}, ev.settings || {}, { payments: copy }); });
+      setDB('events', events);
+      showToast('Payment methods saved.', 'success');
+    }
+
     function _applyToggle(id, on) {
       const track = document.getElementById(id + 'Track');
       if (!track) return;
@@ -760,6 +906,11 @@
           return;
         }
       }
+      let payOut = null;
+      if (d.payments) {
+        payOut = _payBuildSave();
+        if (payOut.error) { showToast(payOut.error, 'error'); return; }
+      }
       const btn = document.getElementById('saveSettingsBtn');
       if (btn) { btn.setAttribute('aria-busy', 'true'); btn.setAttribute('aria-disabled', 'true'); btn.disabled = true; }
       try {
@@ -770,9 +921,10 @@
           if (d.inventory) st.inventory = Object.assign({}, st.inventory || {}, { enabled: _setSwitchOn('setInvEnabled'), scan: _setSwitchOn('setInvScan'), nextTag });
           setDB('settings', st);
         }
+        if (d.payments) _paySave(payOut);
         if (d.terms) saveContractTerms();
         if (d.notify) await saveNotifySettings();
-        else if (!d.terms) showToast('Settings saved', 'success');
+        else if (!d.terms && !d.payments) showToast('Settings saved', 'success');
       } finally {
         if (btn) { btn.removeAttribute('aria-busy'); btn.removeAttribute('aria-disabled'); btn.disabled = false; }
       }

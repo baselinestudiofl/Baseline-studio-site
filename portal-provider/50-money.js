@@ -152,6 +152,91 @@
       const s = getDB('settings');
       return !(s && s.payments && s.payments.enabled === true);
     }
+    // ── Payment methods. Settings > Payment methods writes settings.payments.methods = [{id, type, label, details, note, enabled}]. ──
+    // These helpers are pure (no DOM, no storage). The client portal carries the same names for the same rules.
+    function _payTypes() {
+      return [
+        { type: 'zelle', name: 'Zelle', detailsLabel: 'Zelle email or phone', placeholder: 'name@email.com or (305) 555-0142', required: true },
+        { type: 'venmo', name: 'Venmo', detailsLabel: 'Venmo @handle or venmo.com link', placeholder: '@yourhandle or a venmo.com link', required: true },
+        { type: 'cashapp', name: 'Cash App', detailsLabel: 'Cash App $cashtag', placeholder: '$yourcashtag', required: true },
+        { type: 'paypal', name: 'PayPal', detailsLabel: 'PayPal link or email', placeholder: 'https://paypal.me/yourname', required: true },
+        { type: 'check', name: 'Check', detailsLabel: 'Make checks payable to', placeholder: 'Baseline Studio', required: true },
+        { type: 'cash', name: 'Cash', detailsLabel: 'Cash instructions (optional)', placeholder: 'Hand it to your DJ or crew lead at the event.', required: false },
+        { type: 'card_link', name: 'Card, Apple Pay or Google Pay', detailsLabel: 'Card payment link (Stripe or Square)', placeholder: 'https://', hint: 'Stripe and Square payment links show Apple Pay and Google Pay automatically on phones that support them.', required: true },
+        { type: 'bank', name: 'Bank transfer (ACH)', detailsLabel: 'Bank transfer details', placeholder: 'Bank name, routing number, account number', required: true },
+        { type: 'other', name: 'Other', detailsLabel: 'How to pay', placeholder: 'Tell clients what to do', required: true }
+      ];
+    }
+    function _payType(t) { const l = _payTypes(); return l.find(x => x.type === t) || l[l.length - 1]; }
+    // https links only. Anything else (javascript:, data:, http:, spaces, quotes) comes back empty.
+    function _paySafeUrl(v) {
+      let s = String(v == null ? '' : v).trim();
+      if (!s) return '';
+      if (/^(www\.)?paypal\.me\//i.test(s)) s = 'https://' + s;
+      if (!/^https:\/\/[a-z0-9]([a-z0-9.-]*[a-z0-9])?(:\d+)?([\/?#][^\s<>"'`\\]*)?$/i.test(s)) return '';
+      return /^https:\/\/[^\/?#:]*\./i.test(s) ? s : '';
+    }
+    // The https link a method can open, or '' (card link and PayPal links; Venmo only when the link is on venmo.com).
+    function _payLinkOf(m) {
+      if (!m) return '';
+      if (m.type === 'card_link' || m.type === 'paypal') return _paySafeUrl(m.details);
+      if (m.type === 'venmo') { const u = _paySafeUrl(m.details); return /^https:\/\/([a-z0-9-]+\.)*venmo\.com([\/?#:]|$)/i.test(u) ? u : ''; }
+      return '';
+    }
+    function _payNewId() { return 'pm_' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6); }
+    function _payNormMethod(m) {
+      m = m || {};
+      const t = _payType(m.type);
+      return { id: String(m.id || _payNewId()), type: t.type, label: String(m.label == null ? '' : m.label).trim() || t.name,
+        details: String(m.details == null ? '' : m.details).trim(), note: String(m.note == null ? '' : m.note).trim(), enabled: m.enabled !== false };
+    }
+    // The methods as saved. Settings saved before this existed have no list: seed Zelle (and the old card link) from the old fields.
+    function _payMethodsOf(p) {
+      p = p || {};
+      if (Array.isArray(p.methods)) return p.methods.filter(m => m && typeof m === 'object').map(m => _payNormMethod(m));
+      const out = [];
+      const z = typeof p.zelle === 'string' ? p.zelle.trim() : '';
+      if (z) out.push({ id: 'pm_zelle', type: 'zelle', label: 'Zelle', details: z, note: '', enabled: true });
+      const link = p.enabled === true ? _paySafeUrl(p.link) : '';
+      if (link) out.push({ id: 'pm_card', type: 'card_link', label: 'Card', details: link, note: '', enabled: true });
+      return out;
+    }
+    // What clients and invoices show: enabled methods that have what they need, Zelle first, the rest in the saved order.
+    function _payEnabled(p) {
+      const l = _payMethodsOf(p).filter(m => m.enabled && (m.details || !_payType(m.type).required));
+      return l.filter(m => m.type === 'zelle').concat(l.filter(m => m.type !== 'zelle'));
+    }
+    function _payFeePct(p) {
+      const raw = p && p.cardFeePercent;
+      if (raw === '' || raw == null) return 0;
+      const n = Number(raw);
+      return (isFinite(n) && n > 0 && n <= 20) ? n : 0;
+    }
+    function _payFeeNote(p, m) {
+      const f = _payFeePct(p);
+      return (f && m && m.type === 'card_link') ? 'A ' + (Math.round(f * 100) / 100) + '% card fee applies.' : '';
+    }
+    // One line of plain text for a method, used on the invoice print.
+    function _payLineText(m) {
+      if (m.type === 'check') return 'Make checks payable to ' + m.details;
+      return m.details;
+    }
+    // The "How to pay" box on an invoice print. Enabled methods when any are set up, otherwise the old Zelle line.
+    function _mnyHowToPay(inv) {
+      const st = getDB('settings');
+      const p = (st && st.payments) || {};
+      const total = _mnyUSD(_mnyCents(inv.total));
+      const ms = _payEnabled(p);
+      if (!ms.length) {
+        if (Array.isArray(p.methods) && p.methods.length) return `<div class="box"><strong>How to pay.</strong> Call or text (786) 302-6056 to arrange payment of ${total}. Put ${esc(inv.invoiceNum)} in the memo.</div>`;
+        return `<div class="box"><strong>How to pay.</strong> Send ${total} by Zelle to ${esc(_mnyZelle())}. Put ${esc(inv.invoiceNum)} in the memo.</div>`;
+      }
+      const rows = ms.map(m => {
+        const fee = _payFeeNote(p, m);
+        return `<div><strong>${esc(m.label)}:</strong> ${m.details ? esc(_payLineText(m)) : ''}${m.note ? ' ' + esc(m.note) : ''}${fee ? ' ' + esc(fee) : ''}</div>`;
+      }).join('');
+      return `<div class="box"><strong>How to pay.</strong> Pay ${total} any of these ways. Put ${esc(inv.invoiceNum)} in the memo.${rows}</div>`;
+    }
     function _mnyZelle() {
       const s = getDB('settings');
       const z = s && s.payments && typeof s.payments.zelle === 'string' ? s.payments.zelle.trim() : '';
@@ -937,7 +1022,7 @@
         </div>
         <table><thead><tr><th>Description</th><th class="r">Amount</th></tr></thead><tbody>${lines}</tbody></table>
         <div class="tot"><div>Subtotal ${_mnyUSD(_mnyCents(inv.subtotal))}</div>${inv.taxPct ? `<div>Tax (${esc(inv.taxPct)}%) ${_mnyUSD(_mnyCents(inv.total) - _mnyCents(inv.subtotal))}</div>` : ''}<div class="big">${paid ? 'Paid' : 'Total due'} ${_mnyUSD(_mnyCents(inv.total))}</div></div>
-        ${paid ? '' : `<div class="box"><strong>How to pay.</strong> Send ${_mnyUSD(_mnyCents(inv.total))} by Zelle to ${esc(_mnyZelle())}. Put ${esc(inv.invoiceNum)} in the memo.</div>`}
+        ${paid ? '' : _mnyHowToPay(inv)}
         ${inv.notes ? `<div class="box"><strong>Notes.</strong> ${esc(inv.notes)}</div>` : ''}`));
       w.document.close();
       w.print();
