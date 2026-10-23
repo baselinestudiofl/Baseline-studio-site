@@ -397,14 +397,18 @@
       txs.push(tx);
       setDB('transactions', txs);
       setDB('events', events);
+      const syncRes = typeof syncEvent === 'function' ? syncEvent(ev.id, { source: 'payment', refresh: false }) : null;
       _mnyRefreshViews();
-      showUndoToast('Marked paid: ' + row.label.toLowerCase() + ', ' + _mnyUSD(row.amountC) + '.', function () {
+      if (typeof _syncRefreshViews === 'function') _syncRefreshViews(ev.id);
+      showUndoToast('Marked paid: ' + row.label.toLowerCase() + ', ' + _mnyUSD(row.amountC) + '.' + (syncRes && syncRes.changed && syncRes.note ? ' ' + syncRes.note : ''), function () {
+        if (syncRes && typeof syncRes.undo === 'function') { try { syncRes.undo(); } catch (e) {} }
         const evs = getDB('events') || [];
         const e2 = evs.find(e => e && e.id === eventId);
         if (e2) { e2[flag] = prev.flag === undefined ? false : prev.flag; const p2 = _mnyReport(e2) || (e2.clientNotes && e2.clientNotes.paymentReported); if (p2 && opts && opts.fromReport) { if (prev.confirmed) p2.confirmedAt = prev.confirmed; else delete p2.confirmedAt; } }
         setDB('transactions', (getDB('transactions') || []).filter(t => t.id !== tx.id));
         setDB('events', evs);
         _mnyRefreshViews();
+        if (typeof _syncRefreshViews === 'function') _syncRefreshViews(eventId);
         showToast('Back to unpaid.', 'info');
       });
     }
@@ -909,18 +913,23 @@
         if (pr && (!pr.invoice || String(pr.invoice) === String(inv.invoiceNum || '') || String(pr.invoice) === String(inv.id))) { pr.confirmedAt = new Date().toISOString(); snapshot.confirmed = true; touched = true; }
         if (touched) setDB('events', events);
       }
+      // One place decides the event stage from payments and signatures (45-sync.js).
+      let syncRes = null;
+      if (ev && typeof syncEvent === 'function') { syncRes = syncEvent(ev.id, { source: 'payment', refresh: false }); snapshot.sync = syncRes; }
       window._mnyUndo = window._mnyUndo || {};
       window._mnyUndo[invoiceId] = snapshot;
-      if (opts.refresh !== false) _mnyRefreshViews();
+      if (opts.refresh !== false) { _mnyRefreshViews(); if (typeof _syncRefreshViews === 'function' && ev) _syncRefreshViews(ev.id); }
       const res = { ok: true, invoice: inv, payment, status: inv.status, paidC: newPaidC, remainingC: Math.max(0, totalC - newPaidC), snapshot, undo: () => _undoRecordPayment(snapshot) };
       if (opts.toast) {
         const who = inv.clientName || 'invoice';
-        showUndoToast(full ? 'Marked paid: ' + who + ', ' + _mnyUSD(amtC) + '.' : 'Recorded ' + _mnyUSD(amtC) + ' from ' + who + '. ' + _mnyUSD(res.remainingC) + ' still due.', res.undo);
+        const syncNote = syncRes && syncRes.changed && syncRes.note ? ' ' + syncRes.note : '';
+        showUndoToast((full ? 'Marked paid: ' + who + ', ' + _mnyUSD(amtC) + '.' : 'Recorded ' + _mnyUSD(amtC) + ' from ' + who + '. ' + _mnyUSD(res.remainingC) + ' still due.') + syncNote, res.undo);
       }
       return res;
     }
     function _undoRecordPayment(snapshot) {
       if (!snapshot) return;
+      if (snapshot.sync && typeof snapshot.sync.undo === 'function') { try { snapshot.sync.undo(); } catch (e) {} }
       const id = snapshot.invoiceId;
       if (window._mnyUndo && window._mnyUndo[id] === snapshot) delete window._mnyUndo[id];
       const invoices = getDB('invoices') || [];
@@ -940,6 +949,7 @@
         setDB('events', events);
       }
       _mnyRefreshViews();
+      if (typeof _syncRefreshViews === 'function' && ev) _syncRefreshViews(ev.id);
       showToast('Back to what it was.', 'info');
     }
 
@@ -970,6 +980,7 @@
         setDB('events', events);
       }
       _mnyRefreshViews();
+      if (typeof _syncRefreshViews === 'function' && ev) _syncRefreshViews(ev.id);
       showToast('Marked unpaid.', 'info');
     }
 
@@ -984,7 +995,9 @@
         const cur = getDB('invoices') || [];
         cur.splice(Math.min(idx, cur.length), 0, inv);
         setDB('invoices', cur);
+        if (typeof syncEvent === 'function' && inv.eventId) syncEvent(inv.eventId, { source: 'payment', refresh: false });
         _mnyRefreshViews();
+        if (typeof _syncRefreshViews === 'function' && inv.eventId) _syncRefreshViews(inv.eventId);
       });
     }
 
@@ -1033,13 +1046,11 @@
       const ev = events.find(e => e.id === eventId);
       if (!ev) return;
       ev.depositPaid = paid;
-      // Auto-advance to confirmed when deposit is received and event is still in booked stage
-      if (paid && ev.status === 'booked') {
-        ev.status = 'confirmed';
-        showToast('Deposit received. Stage moved to Confirmed.', 'success');
-      }
       setDB('events', events);
       if (paid) {
+        // Stage follows payments and signatures through syncEvent (45-sync.js): a deposit books the event, it does not confirm it.
+        const r = typeof syncEvent === 'function' ? syncEvent(eventId, { source: 'payment' }) : null;
+        if (r && r.changed && r.note) showUndoToast('Deposit received. ' + r.note, r.undo);
         // Non-blocking card with an inline "Send invite" action
         const old = document.getElementById('depositInviteCard');
         if (old) old.remove();
@@ -1065,7 +1076,9 @@
       if (!ev) return;
       ev.balancePaid = paid;
       setDB('events', events);
-      showToast(paid ? 'Balance marked paid. Fully collected.' : 'Balance marked unpaid.', paid ? 'success' : 'info');
+      const r = paid && typeof syncEvent === 'function' ? syncEvent(eventId, { source: 'payment' }) : null;
+      if (r && r.changed && r.note) showUndoToast('Balance marked paid. ' + r.note, r.undo);
+      else showToast(paid ? 'Balance marked paid. Fully collected.' : 'Balance marked unpaid.', paid ? 'success' : 'info');
       if (typeof renderEvents === 'function') renderEvents();
     }
 
@@ -1596,6 +1609,7 @@
       } else {
         showToast('Quote sent to ' + q.email + '.', 'success');
       }
+      if (typeof syncEvent === 'function') syncEvent(ev.id, { source: 'quote', refresh: false });
       closeModal('quoteBuilderModal');
       _mnyRefreshViews();
       if (needsEvent && typeof renderPipeline === 'function') { try { renderPipeline(); } catch (e) { /* pipeline owns its errors */ } }
@@ -1711,8 +1725,10 @@
       q.sentAt = Date.now();
       if (ev.status === 'lead') ev.status = 'proposal';
       setDB('events', events);
+      if (typeof syncEvent === 'function') syncEvent(ev.id, { source: 'quote', refresh: false });
       showToast('Quote sent to ' + email + '.', 'success');
       _mnyRefreshViews();
+      if (typeof _syncRefreshViews === 'function') _syncRefreshViews(ev.id);
     }
 
     // ─────────────────────────────────────────────────────────────────

@@ -1007,17 +1007,15 @@ body{margin:0;background:#e6e8eb;color:#111;font-family:Georgia,'Times New Roman
       const countersign = _docClientSigned(doc);
       doc.signature = sig; doc.signedAt = Date.now(); doc.signedBy = BSPortal.getCurrentUser()?.name || 'Authorized Signatory';
 
-      // Auto-advance pipeline stage when a contract is signed
+      // Stage follows the client's signature, not this one: syncEvent (45-sync.js) decides, a provider-only signature does not book.
       const isContract = doc.name && /agreement|contract/i.test(doc.name);
-      if (isContract && ev && !['booked','confirmed','completed'].includes(ev.status)) {
-        ev.status = 'booked';
-      }
 
       setDB('events', events);
+      const syncRes = typeof syncEvent === 'function' ? syncEvent(ev.id, { source: 'signature', refresh: false }) : null;
       closeModal('signatureModal');
-      window.currentEvent = ev;
-      document.getElementById('tabDocuments').innerHTML = renderEventDocuments(ev);
-      showToast(countersign ? 'Countersigned. Both signatures are on the contract.' : 'Document signed and saved.', 'success');
+      window.currentEvent = (getDB('events') || []).find(e => e.id === ev.id) || ev;
+      document.getElementById('tabDocuments').innerHTML = renderEventDocuments(window.currentEvent);
+      showToast((countersign ? 'Countersigned. Both signatures are on the contract.' : 'Document signed and saved.') + (syncRes && syncRes.changed && syncRes.note ? ' ' + syncRes.note : ''), 'success');
 
       // If this is a contract AND client has an email, create their portal account + send invite (not when countersigning)
       if (isContract && ev && ev.clientEmail && !countersign) {

@@ -309,6 +309,8 @@
     window._sbDataReady && window._sbDataReady.then(() => {
       setTimeout(() => _runAutomationEngine(), 3000);
       setInterval(() => _runAutomationEngine(), 5 * 60 * 1000);
+      // Catch events up to their payments and signatures (a date passing, a client signature). Real changes fire automations.
+      setInterval(() => { try { if (typeof reconcileAllEvents === 'function') reconcileAllEvents({ silent: false }); } catch (e) { console.warn('[sync]', e); } }, 5 * 60 * 1000);
     });
 
     window.addEventListener('DOMContentLoaded', async function() {
@@ -338,6 +340,14 @@
 
         // Re-apply after data loaded (in case name changed)
         renderUserChrome(currentUser);
+
+        // Silent catch-up: events that already match their payments and signatures on paper but not in the pipeline. No automations, no emails.
+        try {
+          if (typeof reconcileAllEvents === 'function') {
+            const rec = reconcileAllEvents({ silent: true, refresh: false });
+            if (rec && rec.n > 0) showToast('Updated ' + rec.n + (rec.n === 1 ? ' event' : ' events') + ' to match ' + (rec.n === 1 ? 'its' : 'their') + ' payments.', 'success');
+          }
+        } catch (e) { console.warn('[sync]', e); }
 
         // Set up event listeners BEFORE anything that could crash
         document.getElementById('eventsSearch')?.addEventListener('input', renderEvents);
@@ -380,6 +390,7 @@
       try {
         const ok = await BSPortal.reloadDB();
         if (!ok) return;
+        try { if (typeof reconcileAllEvents === 'function') reconcileAllEvents({ silent: false, refresh: false }); } catch (e) { console.warn('[sync]', e); }
         // Refresh whichever section is currently visible
         const activeSection = document.querySelector('.section.active')?.id;
         if (activeSection === 'dashboard') renderDashboard();
@@ -403,6 +414,7 @@
 
     // Re-render when background poll detects server-side changes (other tabs/devices)
     document.addEventListener('bs:data-synced', function() {
+      try { if (typeof reconcileAllEvents === 'function') reconcileAllEvents({ silent: false, refresh: false }); } catch (e) { console.warn('[sync]', e); }
       const activeSection = document.querySelector('.section.active')?.id;
       if (activeSection === 'dashboard') renderDashboard();
       else if (activeSection === 'pipeline') { renderPipeline(); loadInquiries(); }

@@ -848,6 +848,7 @@
 
     // Payment status pill: always a word, never color alone.
     function _payStatus(ev, ctx) {
+      if (ev.paidInFull === true) return { label: 'Paid in full', tone: 'ok' };
       const rows = _invoiceRows(ev, ctx.now);
       if (rows.length) {
         const unpaid = _unpaidSorted(rows);
