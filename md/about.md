@@ -3,7 +3,7 @@
 **URL:** https://www.baselinestudiofl.com/about
 **Phone:** (786) 302-6056
 
-Baseline Studio is a Miami-based event production company founded by Saul. We started as a DJ company and built from there — adding live sound, lighting, LED video walls, and special effects because clients kept needing them, and needing them done right under one roof.
+Baseline Studio is a Miami-based event production company. We started as a DJ company and built from there — adding live sound, lighting, LED video walls, and special effects because clients kept needing them, and needing them done right under one roof.
 
 ---
 
