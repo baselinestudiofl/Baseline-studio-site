@@ -10,6 +10,10 @@ https://baselinestudiofl.com/* https://www.baselinestudiofl.com/:splat 301
 /services-store/* /services 301
 /blog/portfolio.html /portfolio 301
 /blog/service-cold-spark.html /service-cold-spark 301
+/blog/service-live-musicians.html /service-live-musicians 301
+/blog/service-dancing-on-cloud.html /service-dancing-on-cloud 301
+/blog/service-audio.html /service-audio 301
+/bistro-string-lighting-miami /service-lighting 301
 /home / 301
 /weddings-lighting /services-lighting 301
 /corporateeventsfl /corporate 301
@@ -19,6 +23,8 @@ https://baselinestudiofl.com/* https://www.baselinestudiofl.com/:splat 301
 /blog/2026-07-corporate-event-production-miami.html /blog/corporate-event-production-miami 301
 /blog/2026-07-live-musicians-for-weddings-miami /blog/live-musicians-for-weddings-miami 301
 /blog/2026-07-live-musicians-for-weddings-miami.html /blog/live-musicians-for-weddings-miami 301
+/blog/how-to-start-event-production-business /blog 301
+/blog/how-to-start-event-production-business.html /blog 301
 
 # ── Main pages ────────────────────────────────────────────────────────────────
 /about.html /about 301
@@ -77,7 +83,6 @@ https://baselinestudiofl.com/* https://www.baselinestudiofl.com/:splat 301
 /blog/why-live-sound-quality-makes-or-breaks-your-event.html /blog/why-live-sound-quality-makes-or-breaks-your-event 301
 /blog/best-wedding-venues-miami-production.html /blog/best-wedding-venues-miami-production 301
 /blog/how-to-become-a-wedding-dj.html /blog/how-to-become-a-wedding-dj 301
-/blog/how-to-start-event-production-business.html /blog/how-to-start-event-production-business 301
 /blog/how-to-choose-the-right-dj-for-your-miami-wedding.html /blog/how-to-choose-the-right-dj-for-your-miami-wedding 301
 /blog/labor-day-party-planning-miami.html /blog/labor-day-party-planning-miami 301
 /blog/dancing-on-cloud-effect-miami.html /blog/dancing-on-cloud-effect-miami 301
