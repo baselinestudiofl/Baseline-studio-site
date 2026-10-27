@@ -123,6 +123,7 @@
         // store for the detail sheet and for Home's Needs-me rules
         window._inquiries = rows;
         window._inqLoadedAt = Date.now();
+        try { if (typeof _askLeadWatch === 'function') _askLeadWatch(); } catch (e) { /* Ask is optional */ }
         container.removeAttribute('aria-busy');
         container.innerHTML = rows.length
           ? _pipeInbox(rows)
@@ -288,6 +289,7 @@
             ? (linked ? `<button type="button" class="btn btn-primary" onclick="_leadOpenEvent('${esc(linked.id)}')">Open event</button>` : `<button type="button" class="btn btn-primary" onclick="_leadCloseSilent();switchSection('events')">Open Events</button>`)
             : `<button type="button" class="btn btn-primary" onclick="_leadQuote('${esc(id)}')">Quote</button>
           <button type="button" class="btn btn-secondary" onclick="convertInquiryToEvent('${esc(id)}')">Convert to event</button>`}
+          ${typeof _askLeadButton === 'function' && !converted ? _askLeadButton(id) : ''}
           <button type="button" class="btn btn-secondary btn-icon lead-more" aria-label="Move to" aria-haspopup="menu" onclick="openLeadMoveMenu(this,'${esc(id)}')">${ico('ellipsis-vertical', 20)}</button>
         </div>`;
 
@@ -678,11 +680,13 @@
       const eventDate = ev.date ? new Date(ev.date + 'T12:00:00').toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' }) : 'your event date';
       const body = `Hey ${firstName},\n\nJust wanted to follow up on the quote I sent over for your ${ev.type || 'event'} on ${eventDate}.\n\nHappy to answer any questions or adjust anything. What's your timeline for deciding?\n\nSaul\nBaseline Studio\n(786) 302-6056`;
       if (!(await _pipeConfirmEmail('Send the follow-up?', email, `Following up on ${ev.name || 'your event'}`, body))) return;
-      const result = await BSPortal.sendEmail('generic', { email, clientName: ev.clientName || 'there', body, subject: `Following up on ${ev.name || 'your event'}` });
-      if (result.ok) {
+      const result = await BSPortal.sendEmail('generic', { email, clientName: ev.clientName || 'there', body, subject: `Following up on ${ev.name || 'your event'}`, marketing: true });
+      if (result.ok && result.skipped === 'opted_out') {
+        showToast(email + ' opted out of marketing email, so nothing was sent.', 'warning');
+      } else if (result.ok) {
         showToast('Follow-up sent to ' + email, 'success');
       } else {
-        showEmailFallback(email, `Following up on ${ev.name || 'your event'}`, body, 'Could not send. Use this fallback:');
+        showToast('The follow-up was not sent, so nothing went out. Try again in a moment.', 'error'); // fail closed: no manual fallback for marketing email
       }
     }
 
@@ -737,11 +741,13 @@
       if (!email) { showToast('No client email. Add one in event details first.', 'warning'); return; }
       const body = `Hey ${firstName},\n\nReally glad we got to be part of your ${ev.type || 'event'}. Hope the night was everything you wanted it to be.\n\nIf you have a minute, leaving us a Google review would mean a lot. It takes about 60 seconds and helps other clients find us:\n\nhttps://g.page/r/baselinestudiofl/review\n\nThanks for trusting us with your night.\n\nSaul\nBaseline Studio\n(786) 302-6056`;
       if (!(await _pipeConfirmEmail('Send the review request?', email, 'Thank you from Baseline Studio', body))) return;
-      const result = await BSPortal.sendEmail('generic', { email, clientName: ev.clientName || 'there', body, subject: `Thank you from Baseline Studio` });
-      if (result.ok) {
+      const result = await BSPortal.sendEmail('generic', { email, clientName: ev.clientName || 'there', body, subject: `Thank you from Baseline Studio`, marketing: true });
+      if (result.ok && result.skipped === 'opted_out') {
+        showToast(email + ' opted out of marketing email, so nothing was sent.', 'warning');
+      } else if (result.ok) {
         showToast('Review request sent to ' + email, 'success');
       } else {
-        showEmailFallback(email, `Thank you from Baseline Studio`, body, 'Could not send. Use this fallback:');
+        showToast('The review request was not sent, so nothing went out. Try again in a moment.', 'error'); // fail closed: no manual fallback for marketing email
       }
     }
     // ─────────────────────────────────────────────────────────────────

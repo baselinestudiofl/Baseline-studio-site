@@ -360,6 +360,7 @@
         try { applyRoleBasedAccess(); } catch(e) { console.warn('[roleAccess]', e); }
         try { _registerPalette(); } catch(e) { console.warn('[palette]', e); }
         try { _syncNav('dashboard'); } catch(e) { console.warn('[nav]', e); }
+        try { if (typeof loadOptouts === 'function') loadOptouts(); } catch(e) { console.warn('[optouts]', e); } // marketing opt-out list (sql/p3-optout.sql); stays empty until that SQL is run
         try { renderDashboard(); } catch(e) { console.warn('[dashboard]', e); }
         try { if (typeof invBindRoutes === 'function') invBindRoutes(); } catch (e) {} // inventory routes (scan) must exist before the first route is resolved
         // Open the view named by the URL hash (refresh / shared link) instead of staying on the dashboard

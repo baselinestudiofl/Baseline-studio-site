@@ -65,6 +65,8 @@
             emailBody: 'Your event is coming up and we love this part. Take a few minutes to look over the timeline, the music, and the vendor list, and send me anything that has changed. You enjoy the build-up. We will handle the rest.' }
         ]);
       }
+      // One-time: switch off seed rule auto1 (the website already sends the thank-you). Guarded, idempotent, owner and admin only.
+      try { if (typeof _askMigrateAuto1 === 'function') _askMigrateAuto1(); } catch (e) { console.warn('[ask migration]', e); }
     }
 
     // Titles for the page head and the phone app bar. Labels follow UI-PLAN 2.1.
@@ -318,6 +320,7 @@
 
     // Registers the palette provider once. Called from the boot code after the data has loaded.
     function _registerPalette() {
+      try { if (typeof _askInit === 'function') _askInit(); } catch (e) { console.warn('[ask]', e); }
       if (window._palRegistered || !(window.CRMUI && CRMUI.palette)) return;
       window._palRegistered = true;
       CRMUI.palette.register(_searchRows);

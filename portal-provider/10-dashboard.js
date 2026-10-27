@@ -530,6 +530,7 @@
         if (statEl) statEl.innerHTML = _homeMoneyCard(_homeMoneyStats(invoices, getDB('transactions') || [], now));
         if (pillEl) pillEl.innerHTML = _homePipelineCard(events, inquiries, _homeFirstReply(inquiries, (typeof _stageMap === 'function' ? _stageMap() : {}), now));
       }
+      try { if (typeof _askHomeHook === 'function') _askHomeHook(); } catch (e) { /* Ask is optional */ }
     }
 
     // Reload the inquiries the Needs-me rules read. They normally only load on the Pipeline page. Retries after 60 s, never loops.
@@ -540,6 +541,7 @@
       window._homeInqBusy = true;
       _fetchInquiryRows(50).then(rows => { window._inquiries = rows; }, () => {}).then(function() {
         window._inqLoadedAt = Date.now();
+        try { if (typeof _askLeadWatch === 'function') _askLeadWatch(); } catch (e) { /* Ask is optional */ }
         window._homeInqBusy = false;
         if (_homeActive()) renderDashboard();
       });

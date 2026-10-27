@@ -450,8 +450,7 @@
       return {
         notify: _getNotifySettings(),
         business: Object.assign({ name: '', address: '' }, st.business || {}),
-        inventory: Object.assign({ enabled: true, scan: true, nextTag: 1 }, st.inventory || {}),
-        contractAiUrl: String(st.contractAiUrl || '').trim()
+        inventory: Object.assign({ enabled: true, scan: true, nextTag: 1 }, st.inventory || {})
       };
     }
 
@@ -486,9 +485,9 @@
         const t = BSContracts.getTerms(getDB('settings')), raw = _contractTermsRaw();
         BSContracts.TERM_FIELDS.forEach(f => { if (String(raw[f.key]).trim() === '' || Number(raw[f.key]) !== Number(t[f.key])) out.terms++; });
       }
-      if (document.getElementById('setAiUrl') && _setVal('setAiUrl').trim() !== s.contractAiUrl) out.assistant++;
       if (_payDraft && document.getElementById('payMethodsCard') && _payKey(_payDraft) !== _payKey(_payFromStored())) out.payments++;
-      out.count = out.notify + out.business + out.inventory + out.terms + out.assistant + out.payments;
+      out.ask = (typeof _askSettingsDiff === 'function') ? _askSettingsDiff() : 0;
+      out.count = out.notify + out.business + out.inventory + out.terms + out.assistant + out.payments + out.ask;
       return out;
     }
 
@@ -524,8 +523,8 @@
       const u = BSPortal.getCurrentUser() || {};
       const admin = ['master', 'admin'].includes(u.role);
       const chev = _p7Icon('chevron-right', 20);
-      const items = [['business', 'Business'], ['notifications', 'Notifications'], ['contract', 'Contract terms'], ['payments', 'Payment methods'], ['assistant', 'Contract assistant']]
-        .concat(admin ? [['team', 'Team']] : []).concat([['inventory', 'Inventory']]);
+      const items = [['business', 'Business'], ['notifications', 'Notifications'], ['contract', 'Contract terms'], ['payments', 'Payment methods'], ['optouts', 'Email opt-outs'], ['assistant', 'Contract assistant']]
+        .concat(u.role === 'master' ? [['ask', 'Ask assistant']] : []).concat(admin ? [['team', 'Team']] : []).concat([['inventory', 'Inventory']]);
       sec.innerHTML = `
         <div class="set-layout" id="setLayout" data-view="list" data-active="business">
           <nav class="set-nav" aria-label="Settings sections">
@@ -546,8 +545,10 @@
               </div>`)}
             ${_setSection('contract', 'Contract terms', '', `<div id="contractTermsCard"></div>`)}
             ${_setSection('payments', 'Payment methods', 'How clients can pay you. They see the ones that are switched on, on their portal and on invoices. Zelle always shows first.', `<div id="payMethodsCard"></div>`)}
-            ${_setSection('assistant', 'Contract assistant', 'Optional. Suggests wording changes inside the contract editor. Leave it empty to turn it off.', `
-              <div class="field"><label class="field-label" for="setAiUrl">Assistant link</label><input type="url" class="form-input" id="setAiUrl" autocomplete="off" inputmode="url" placeholder="https://contract-ai.your-name.workers.dev"><span class="field-hint">Paste the link of your Cloudflare Worker. It uses the free plan, so it stops for the day when the free limit is used and never bills. Nothing is sent until you press Suggest changes in a contract.</span></div>`)}
+            ${_setSection('optouts', 'Email opt-outs', 'People who asked not to get marketing email. Campaigns skip them. Messages about an event someone booked, like invoices and contracts, are never blocked.', `<div id="optoutsCard"></div>`)}
+            ${_setSection('assistant', 'Contract assistant', 'Optional. Suggests wording changes inside the contract editor. It stays hidden until a link is set in ai-config.js.', `
+              <div class="field"><span class="field-label">Assistant link</span><p class="set-sub" id="setAiUrl">Not set</p><span class="field-hint">Set in ai-config.js. It is part of the site files, so nobody can change it from inside the CRM. It uses the free plan, so it stops for the day when the free limit is used and never bills. Nothing is sent until you press Suggest changes in a contract.</span></div>`)}
+            ${u.role === 'master' ? _setSection('ask', 'Ask assistant', 'Optional. Ask answers questions about your events, money and leads, and drafts replies. Set who can use it and how many questions a day.', `<div id="askSettingsCard"></div>`) : ''}
             ${admin ? _setSection('team', 'Team', 'Logins and your crew roster live on the Team screen.', `<button type="button" class="btn btn-secondary" onclick="switchSection('accounts')">Open Team</button>`) : ''}
             ${_setSection('inventory', 'Inventory', 'Gear catalog, pull lists and check-out.', `
               ${_setSwitchRow('setInvEnabled', 'setInvEnabledLabel', 'Use inventory', 'Shows Inventory in the menu and on events.', '_setInvToggle(this)')}
@@ -591,13 +592,15 @@
       Object.keys(_NOTIFY_SWITCHES).forEach(k => _applyToggle(_NOTIFY_SWITCHES[k], s.notify[k]));
       _updateSubToggleVisibility(s.notify.enabled);
       const set = (id, v) => { const el = document.getElementById(id); if (el) el.value = v; };
-      set('setBizName', s.business.name || ''); set('setBizAddress', s.business.address || ''); set('setAiUrl', s.contractAiUrl || '');
+      set('setBizName', s.business.name || ''); set('setBizAddress', s.business.address || ''); { const ai = document.getElementById('setAiUrl'); if (ai) ai.textContent = (typeof _aiUrl === 'function' && _aiUrl()) || 'Not set'; }
       _applyInvSwitch('setInvEnabled', s.inventory.enabled); _applyInvSwitch('setInvScan', s.inventory.scan);
       set('setInvNextTag', s.inventory.nextTag);
       const nt = document.getElementById('setInvNextTag'); if (nt) nt.min = s.inventory.nextTag;
       try { renderContractTerms(); } catch (e) { console.warn('[contract terms]', e); }
       _payDraft = _payFromStored();
       try { renderPayMethods(); } catch (e) { console.warn('[payment methods]', e); }
+      try { renderOptoutsCard(true); } catch (e) { console.warn('[email opt-outs]', e); }
+      try { if (typeof renderAskSettings === 'function') renderAskSettings(); } catch (e) { console.warn('[ask settings]', e); }
     }
 
     // force = true on Save and Discard. Opening the screen again keeps changes that were not saved yet.
@@ -620,6 +623,75 @@
       switchSection('equipment');
       try { history.replaceState(history.state, '', '#/equipment/defaults'); } catch (e) { /* ignore */ }
       if (typeof renderEquipment === 'function') renderEquipment();
+    }
+
+    // ── Email opt-outs panel (Settings). Add and Remove act right away (an opt-out must not wait for the Save bar). ──
+    // The list lives in Supabase (sql/p3-optout.sql) and in window._optouts. loadOptouts and _optoutRpc are in 75-marketing.js.
+    const _OPTOUT_SOURCES = { link: 'Unsubscribe link', reply: 'Replied UNSUBSCRIBE', phone: 'Asked by phone', manual: 'Added by hand' };
+    // Only the owner and admins may add or remove opt-outs. Everyone else sees the list read-only. Checked in the actions too, not just by hiding buttons.
+    function _optoutCanEdit() { const u = (typeof BSPortal !== 'undefined' && BSPortal.getCurrentUser && BSPortal.getCurrentUser()) || {}; return u.role === 'master' || u.role === 'admin'; }
+    function _optoutSourceLabel(s) { return _OPTOUT_SOURCES[s] || (s ? String(s) : 'Not recorded'); }
+
+    function renderOptoutsCard(reload) {
+      const el = document.getElementById('optoutsCard');
+      if (!el) return;
+      const state = window._optoutsState;
+      if (reload && typeof loadOptouts === 'function') {
+        if (!state) el.innerHTML = '<p class="set-sub">Loading the list.</p>';
+        loadOptouts().then(() => renderOptoutsCard(false), () => {});
+        if (!state) return;
+      }
+      if (state === 'missing') {
+        el.innerHTML = '<p class="set-sub" style="color:var(--text-2);">Not set up yet. The opt-out list has not been turned on for this account, so campaigns cannot check it. Hold marketing email until it is set up.</p>';
+        return;
+      }
+      if (state === 'error' && !Array.isArray(window._optouts)) {
+        el.innerHTML = '<p class="set-sub" style="color:var(--text-2);">The list could not be loaded. Check your connection and open Settings again.</p>';
+        return;
+      }
+      const locked = !_optoutCanEdit();
+      const rows = (Array.isArray(window._optouts) ? window._optouts : []).slice().sort((a, b) => String(b.opted_out_at || '').localeCompare(String(a.opted_out_at || '')));
+      const fmt = d => { const t = d ? new Date(d) : null; return t && !isNaN(t) ? t.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : ''; };
+      const list = rows.length
+        ? `<div class="optout-list" role="list">${rows.map(o => `
+            <div class="set-row optout-row" role="listitem">
+              <div class="set-row-text"><div class="set-row-title" data-user-content>${esc(o.email)}</div><div class="set-row-sub">${esc(fmt(o.opted_out_at))}${o.opted_out_at ? ' · ' : ''}${esc(_optoutSourceLabel(o.source))}</div></div>
+              ${locked ? '' : `<button type="button" class="btn btn-ghost" data-email="${esc(o.email)}" onclick="optoutRemove(this.getAttribute('data-email'))">Remove</button>`}
+            </div>`).join('')}</div>`
+        : '<p class="set-sub" style="color:var(--text-2);">No one has opted out yet.</p>';
+      const add = locked ? '' : `
+        <div class="field"><label class="field-label" for="optoutEmail">Add an opt-out</label>
+          <input type="email" class="form-input" id="optoutEmail" autocomplete="off" inputmode="email" placeholder="name@example.com">
+          <span class="field-hint">Use this when someone replies UNSUBSCRIBE or asks you by phone.</span></div>
+        <div class="field"><label class="field-label" for="optoutSource">How they asked</label>
+          <select class="form-input" id="optoutSource"><option value="reply">Replied UNSUBSCRIBE</option><option value="phone">Asked by phone</option><option value="manual">Other</option></select></div>
+        <button type="button" class="btn btn-secondary" id="optoutAddBtn" onclick="optoutAdd()">Add opt-out</button>`;
+      el.innerHTML = `${add}<div style="margin-top:var(--sp-5, 24px);">${list}</div>`;
+    }
+
+    async function optoutAdd() {
+      if (!_optoutCanEdit()) { showToast('Only the owner and admins can change the opt-out list.', 'warning'); return; }
+      const inp = document.getElementById('optoutEmail'), src = document.getElementById('optoutSource'), btn = document.getElementById('optoutAddBtn');
+      const email = String(inp ? inp.value : '').trim().toLowerCase();
+      if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) { showToast('Enter a valid email address.', 'error'); return; }
+      if (btn) btn.disabled = true;
+      const r = await _optoutRpc('add_optout', { p_email: email, p_source: src ? src.value : 'manual' });
+      if (btn) btn.disabled = false;
+      if (!r.ok) { showToast('Could not add that opt-out. Check your connection and try again.', 'error'); return; }
+      await loadOptouts();
+      renderOptoutsCard(false);
+      showToast(email + ' will not get marketing email.', 'success');
+    }
+
+    async function optoutRemove(email) {
+      if (!_optoutCanEdit()) { showToast('Only the owner and admins can change the opt-out list.', 'warning'); return; }
+      const ok = await CRMUI.confirm({ title: 'Remove ' + email + '?', body: 'Only remove someone if they asked to receive marketing email again.', confirmLabel: 'Remove', danger: true });
+      if (!ok) return;
+      const r = await _optoutRpc('remove_optout', { p_email: email });
+      if (!r.ok) { showToast('Could not remove that opt-out. Check your connection and try again.', 'error'); return; }
+      await loadOptouts();
+      renderOptoutsCard(false);
+      showToast(email + ' can get marketing email again.', 'success');
     }
 
     // ── Contract terms panel (Settings). One object: settings.contractTerms. Read by contract-templates.js. ──
@@ -885,19 +957,12 @@
     async function saveSettingsAll() {
       const d = _setDiff();
       if (!d.count) return;
+      if (d.ask && typeof _askSettingsCheck === 'function') { const askErr = _askSettingsCheck(); if (askErr) { showToast(askErr, 'error'); return; } }
       if (d.terms) {
         const v = BSContracts.validateTerms(_contractTermsRaw());
         if (!v.ok) { showToast(v.errors[0], 'error'); return; }
       }
       const stored = _setStored();
-      let aiUrl = '';
-      if (d.assistant) {
-        aiUrl = _setVal('setAiUrl').trim();
-        if (aiUrl && !(/^https:\/\/[^\s]+$/i.test(aiUrl) || /^http:\/\/localhost(:\d+)?(\/\S*)?$/i.test(aiUrl))) {
-          showToast('The assistant link must start with https://.', 'error');
-          return;
-        }
-      }
       let nextTag = null;
       if (d.inventory) {
         nextTag = parseInt(_setVal('setInvNextTag'), 10);
@@ -914,9 +979,8 @@
       const btn = document.getElementById('saveSettingsBtn');
       if (btn) { btn.setAttribute('aria-busy', 'true'); btn.setAttribute('aria-disabled', 'true'); btn.disabled = true; }
       try {
-        if (d.business || d.inventory || d.assistant) {
+        if (d.business || d.inventory) {
           const st = getDB('settings') || {};
-          if (d.assistant) st.contractAiUrl = aiUrl;
           if (d.business) st.business = { name: _setVal('setBizName').trim(), address: _setVal('setBizAddress').trim() };
           if (d.inventory) st.inventory = Object.assign({}, st.inventory || {}, { enabled: _setSwitchOn('setInvEnabled'), scan: _setSwitchOn('setInvScan'), nextTag });
           setDB('settings', st);
@@ -924,7 +988,8 @@
         if (d.payments) _paySave(payOut);
         if (d.terms) saveContractTerms();
         if (d.notify) await saveNotifySettings();
-        else if (!d.terms && !d.payments) showToast('Settings saved', 'success');
+        else if (!d.terms && !d.payments && !d.ask) showToast('Settings saved', 'success');
+        if (d.ask && typeof _askSettingsSave === 'function') await _askSettingsSave();
       } finally {
         if (btn) { btn.removeAttribute('aria-busy'); btn.removeAttribute('aria-disabled'); btn.disabled = false; }
       }

@@ -32,7 +32,7 @@
     function _mktBlocked() { return !String(_mktBiz().address || '').trim(); }
     function _mktFooter() {
       const b = _mktBiz();
-      return '\n\n--\n' + (String(b.name || '').trim() ? String(b.name).trim() + '\n' : '') + String(b.address || '').trim() + '\nTo stop getting these emails, reply with the word UNSUBSCRIBE and we will remove you.';
+      return '\n\n--\n' + (String(b.name || '').trim() ? String(b.name).trim() + '\n' : '') + String(b.address || '').trim() + '\nTo stop getting these emails, use the unsubscribe link at the bottom of this email, or reply with the word UNSUBSCRIBE and we will remove you.';
     }
     function _mktOpenBusiness() {
       _p7CloseSheet('campaignSheet');
@@ -70,7 +70,7 @@
           const sentDate = c.sentAt ? new Date(c.sentAt).toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'}) : null;
           const failed = Array.isArray(c.failures) ? c.failures : [];
           const sendInfo = (c.status === 'sent' && !legacySent)
-            ? ` · Sent ${sentDate || ''} · ${c.sentCount} delivered${c.failedCount ? ', ' + c.failedCount + ' failed' : ''}`
+            ? ` · Sent ${sentDate || ''} · ${c.sentCount} delivered${c.failedCount ? ', ' + c.failedCount + ' failed' : ''}${c.skippedCount ? ', ' + c.skippedCount + ' skipped because they opted out' : ''}`
             : (legacySent ? ' · Marked sent earlier, but nothing was emailed' : '');
           const count = (c.status !== 'sent' || legacySent) && typeof _mktAudienceCount === 'function' ? _mktAudienceCount(c.audience) : null;
           const countText = count === null ? '' : ` · ${count} ${count === 1 ? 'person' : 'people'}`;
@@ -174,6 +174,53 @@
       else showToast('Campaign saved as draft', 'success');
     }
 
+    // ── Email opt-out list (sql/p3-optout.sql) ───────────────────────────────
+    // window._optouts = [{ email, opted_out_at, source }] once loaded. window._optoutsState: 'ok' | 'missing' (SQL not run yet) | 'error' | undefined.
+    // The server (send-email) is the real gate. This list only lets the CRM tell you the count before you confirm.
+    function _optoutNorm(e) { return String(e || '').trim().toLowerCase(); }
+    function _optoutSet() {
+      const set = new Set();
+      const list = (typeof window !== 'undefined' && Array.isArray(window._optouts)) ? window._optouts : [];
+      list.forEach(o => { const em = _optoutNorm(o && o.email); if (em) set.add(em); });
+      return set;
+    }
+    function _optoutIs(email) { return _optoutSet().has(_optoutNorm(email)); }
+    // Splits recipients [{email,...}] into { keep, skipped }. Pure.
+    function _optoutSplit(recipients) {
+      const set = _optoutSet();
+      const keep = [], skipped = [];
+      (recipients || []).forEach(r => (set.has(_optoutNorm(r && r.email)) ? skipped : keep).push(r));
+      return { keep, skipped };
+    }
+    function _optoutHeaders() {
+      return { 'apikey': SUPABASE_ANON, 'Authorization': 'Bearer ' + (window._sbToken || SUPABASE_ANON), 'Content-Type': 'application/json' };
+    }
+    // Calls one of the opt-out functions with the signed-in user's JWT. Never throws. { ok, status, data }
+    async function _optoutRpc(name, body) {
+      try {
+        const r = await fetch(SUPABASE_URL + '/rest/v1/rpc/' + name, { method: 'POST', headers: _optoutHeaders(), body: JSON.stringify(body || {}) });
+        let data = null; try { data = await r.json(); } catch (e) { data = null; }
+        return { ok: r.ok && !(data && data.ok === false), status: r.status, data };
+      } catch (e) { return { ok: false, status: 0, data: null }; }
+    }
+    // Loads the list with the signed-in user's JWT. Never throws. A missing table or function is "missing", not an error.
+    async function loadOptouts() {
+      try {
+        const r = await fetch(SUPABASE_URL + '/rest/v1/rpc/list_optouts', { method: 'POST', headers: _optoutHeaders(), body: '{}' });
+        if (r.ok) {
+          const rows = await r.json();
+          window._optouts = Array.isArray(rows) ? rows : [];
+          window._optoutsState = 'ok';
+        } else if (r.status === 404 || r.status === 403) {
+          // 404: SQL not run yet. 403/42501 permission denied: this login is not an owner of the list yet (optout_owners). Both are the calm "Not set up yet" note.
+                    window._optoutsState = 'missing';
+        } else {
+          window._optoutsState = 'error';
+        }
+      } catch (e) { window._optoutsState = 'error'; }
+      return window._optoutsState;
+    }
+
     // ── Campaign send (P0.6) ─────────────────────────────────────────────────
     // Real sends only: one BSPortal.sendEmail('generic') per recipient, max 100, per-recipient results.
     const CAMPAIGN_MAX_RECIPIENTS = 100;
@@ -233,11 +280,11 @@
     }
 
     // Sends to every recipient and counts results. send(type, payload) defaults to BSPortal.sendEmail.
-    // Returns { sent:[recipient], failed:[{email,name,error}] }. Never throws.
+    // Returns { sent:[recipient], failed:[{email,name,error}], skipped:[recipient opted out] }. Never throws.
     async function _campaignDeliver(c, recipients, send, gapMs) {
       send = send || ((t, p) => BSPortal.sendEmail(t, p));
       const gap = (gapMs === undefined) ? CAMPAIGN_CHUNK_GAP_MS : gapMs;
-      const sent = [], failed = [];
+      const sent = [], failed = [], skipped = [];
       let dry = 0;
       for (let i = 0; i < recipients.length; i += CAMPAIGN_CHUNK) {
         const chunk = recipients.slice(i, i + CAMPAIGN_CHUNK);
@@ -247,17 +294,19 @@
               email: r.email,
               clientName: r.name || '',
               subject: _campaignFill(c.subject, r),
-              body: _campaignFill(c.message, r) + (typeof _mktFooter === 'function' ? _mktFooter() : '')
+              body: _campaignFill(c.message, r) + (typeof _mktFooter === 'function' ? _mktFooter() : ''),
+              marketing: true   // the server checks the opt-out list and adds the unsubscribe link
             });
           } catch (err) { return { ok: false, error: String(err && err.message || err) }; }
         }));
         results.forEach((res, k) => {
-          if (res && res.ok) { sent.push(chunk[k]); if (res.dryRun) dry++; }
+          if (res && res.ok && res.skipped === 'opted_out') skipped.push(chunk[k]);
+          else if (res && res.ok) { sent.push(chunk[k]); if (res.dryRun) dry++; }
           else failed.push({ email: chunk[k].email, name: chunk[k].name, error: (res && res.error) || 'unknown error' });
         });
         if (gap && i + CAMPAIGN_CHUNK < recipients.length) await new Promise(r => setTimeout(r, gap));
       }
-      return { sent, failed, dry };
+      return { sent, failed, skipped, dry };
     }
 
     // Records the outcome on the campaign. Only marks it sent when at least one email went out.
@@ -270,8 +319,11 @@
         c.sentAt = Date.now();
         c.sentCount = outcome.sent.length;
         c.failedCount = outcome.failed.length;
+        c.skippedCount = (outcome.skipped || []).length;
         c.failures = outcome.failed.slice(0, 100).map(f => ({ email: f.email, error: String(f.error).slice(0, 200) }));
         delete c.lastSendError;
+      } else if (!outcome.failed.length) {
+        delete c.lastSendError; // nobody failed: everyone left had opted out, so there is nothing to retry
       } else {
         c.lastSendError = 'None of ' + outcome.failed.length + ' emails sent (' + String((outcome.failed[0] || {}).error || 'unknown error').slice(0, 120) + ')';
       }
@@ -292,8 +344,13 @@
         try { inquiries = await _fetchInquiryRows(200); }
         catch (e) { note = 'Website inquiries could not be loaded, so they are not included.'; }
       }
+      if (typeof loadOptouts === 'function') { try { await loadOptouts(); } catch (e) {} }
       const found = _campaignRecipientsFrom({ clients: getDB('clients') || [], events: getDB('events') || [], inquiries }, c.audience);
       if (!found.list.length) { showToast('No one with an email address matches this audience.', 'warning'); return; }
+      const split = (typeof _optoutSplit === 'function') ? _optoutSplit(found.list) : { keep: found.list, skipped: [] };
+      if (!split.keep.length) { showToast('Everyone in this audience has opted out of marketing email, so nothing can be sent.', 'warning'); return; }
+      found.list = split.keep;
+      found.optedOut = split.skipped.length;
       if (found.list.length > CAMPAIGN_MAX_RECIPIENTS) {
         showToast('This audience has ' + found.list.length + ' people. The limit is ' + CAMPAIGN_MAX_RECIPIENTS + ' per send. Pick a narrower audience.', 'error');
         return;
@@ -304,8 +361,9 @@
       document.getElementById('campaignSendBody').innerHTML = `
         <p class="mk-send-p"><strong data-user-content>${esc(c.name)}</strong><br><span class="t-meta">Subject: <span data-user-content>${esc(c.subject)}</span></span></p>
         <p class="mk-send-p">This sends a real email to <strong>${found.list.length}</strong> ${found.list.length === 1 ? 'person' : 'people'} right now. It cannot be undone.</p>
-        ${typeof _mktBiz === 'function' ? `<p class="t-meta">Every email ends with your business address and an unsubscribe line: <span data-user-content>${esc(String(_mktBiz().address || '').replace(/\s+/g, ' '))}</span></p>` : ''}
+        ${typeof _mktBiz === 'function' ? `<p class="t-meta">Every email ends with your business address and an unsubscribe link: <span data-user-content>${esc(String(_mktBiz().address || '').replace(/\s+/g, ' '))}</span></p>` : ''}
         <ul class="mk-send-list">${shown}${found.list.length > 8 ? `<li>and ${found.list.length - 8} more</li>` : ''}</ul>
+        ${found.optedOut ? `<p class="t-meta">${found.optedOut} skipped because they opted out.</p>` : ''}
         ${found.noEmail ? `<p class="t-meta">${found.noEmail} matching ${found.noEmail === 1 ? 'record has' : 'records have'} no valid email and ${found.noEmail === 1 ? 'is' : 'are'} skipped.</p>` : ''}
         ${note ? `<p class="t-meta">${esc(note)}</p>` : ''}`;
       document.getElementById('campaignSendActions').innerHTML = `
@@ -332,13 +390,16 @@
       document.getElementById('campaignSendTitle').textContent = marked ? 'Campaign sent' : 'Campaign not sent';
       document.getElementById('campaignSendBody').innerHTML = `
         <p class="mk-send-p"><strong>${outcome.sent.length}</strong> of ${n} sent${outcome.failed.length ? `, <strong class="mk-send-bad">${outcome.failed.length} failed</strong>` : ''}.</p>
+        ${(outcome.skipped || []).length ? `<p class="mk-send-p t-meta">${outcome.skipped.length} skipped because they opted out.</p>` : ''}
         ${outcome.dry ? '<p class="mk-send-p"><span class="pill pill-warn pill-sm" data-ui="pill">Dry run</span> <span class="t-meta">Email is in test mode, so nothing was delivered.</span></p>' : ''}
         ${outcome.failed.length ? `<div class="t-meta">Did not send to:</div><ul class="mk-send-list mk-send-fails">${failList}</ul>` : ''}
-        ${marked ? '' : '<p class="t-meta">Nothing went out, so the campaign is still a draft. You can try again.</p>'}`;
+        ${marked ? '' : (outcome.failed.length ? '<p class="t-meta">Nothing went out, so the campaign is still a draft. You can try again.</p>' : '<p class="t-meta">Nothing went out because everyone left had opted out, so the campaign is still a draft.</p>')}`;
       document.getElementById('campaignSendActions').innerHTML = `<button type="button" class="btn btn-secondary" onclick="closeModal('campaignSendModal')">Close</button>`;
       renderMarketing();
-      if (marked && !outcome.failed.length) showToast('Campaign sent to ' + outcome.sent.length, 'success');
-      else if (marked) showToast('Campaign sent to ' + outcome.sent.length + ', ' + outcome.failed.length + ' failed', 'warning');
+      const skipNote = (outcome.skipped || []).length ? ', ' + outcome.skipped.length + ' skipped because they opted out' : '';
+      if (marked && !outcome.failed.length) showToast('Campaign sent to ' + outcome.sent.length + skipNote, 'success');
+      else if (marked) showToast('Campaign sent to ' + outcome.sent.length + ', ' + outcome.failed.length + ' failed' + skipNote, 'warning');
+      else if (!outcome.failed.length) showToast('Nobody was emailed: everyone left had opted out.', 'warning');
       else showToast('Campaign not sent: ' + String((outcome.failed[0] || {}).error || 'unknown error'), 'error');
     }
 

@@ -1,0 +1,169 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+    <meta name="robots" content="noindex, nofollow">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Unsubscribe | Baseline Studio</title>
+  <link rel="preload" as="font" type="font/woff2" crossorigin href="fonts/1Ptgg87LROyAm3Kz-C8CSKlv.woff2">
+<link rel="stylesheet" href="fonts/fonts.css">
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  :root {
+    --black: #000; --black-2: #0a0a0a; --black-3: #111;
+    --white: #fff; --cyan: #1FA3E0; --cyan-dark: #1585b8; --cyan-dim: rgba(31,163,224,0.1);
+    --gray: #888; --border: rgba(255,255,255,0.1);
+    --font-head: 'Anton', Impact, sans-serif;
+    --font-body: 'Barlow', system-ui, sans-serif;
+    --font-cond: 'Barlow Condensed', sans-serif;
+  }
+  html, body { height: 100%; }
+  body { background: var(--black); color: var(--white); font-family: var(--font-body); display: flex; min-height: 100vh; }
+
+  .l-panel {
+    width: 45%; background: linear-gradient(160deg, #071e28 0%, #04121a 50%, #020a10 100%);
+    display: flex; flex-direction: column; justify-content: space-between;
+    padding: 3rem; position: relative; overflow: hidden;
+  }
+  .l-panel::before {
+    content: ''; position: absolute; inset: 0;
+    background: radial-gradient(ellipse at 30% 70%, rgba(31,163,224,0.12) 0%, transparent 60%);
+  }
+  .l-logo { display: flex; align-items: center; gap: 10px; position: relative; z-index: 2; }
+  .l-hero { position: relative; z-index: 2; }
+  .l-tagline { font-family: var(--font-head); font-size: clamp(2.5rem, 5vw, 4.5rem); text-transform: uppercase; line-height: 0.95; margin-bottom: 2rem; }
+  .l-sub { font-size: 0.9rem; color: rgba(255,255,255,0.55); line-height: 1.7; }
+  .l-back { position: relative; z-index: 2; font-size: 0.75rem; color: rgba(255,255,255,0.4); letter-spacing: 0.08em; }
+  .l-back a { color: var(--cyan); text-decoration: none; }
+
+  .r-panel { flex: 1; display: flex; align-items: center; justify-content: center; padding: 3rem; background: var(--black); }
+  .box { width: 100%; max-width: 420px; }
+  .box-title { font-family: var(--font-head); font-size: 2.2rem; text-transform: uppercase; margin-bottom: 0.5rem; }
+  .box-sub { font-size: 0.85rem; color: var(--gray); margin-bottom: 2.5rem; }
+
+  .form-group { margin-bottom: 1.2rem; }
+  label { display: block; font-size: 0.75rem; font-weight: 600; letter-spacing: 0.1em; text-transform: uppercase; color: rgba(255,255,255,0.5); margin-bottom: 0.5rem; }
+  input[type="password"] {
+    width: 100%; padding: 0.85rem 1rem; background: var(--black-3); border: 1px solid var(--border);
+    color: var(--white); font-family: var(--font-body); font-size: 0.95rem; border-radius: 6px;
+    transition: border-color 0.2s; outline: none;
+  }
+  input[type="password"]:focus { border-color: var(--cyan); }
+  .hint { font-size: 0.75rem; color: var(--gray); margin-top: 0.4rem; }
+
+  .btn {
+    width: 100%; padding: 0.9rem; background: var(--cyan); color: var(--white);
+    border: none; border-radius: 6px; font-family: var(--font-body); font-size: 0.9rem;
+    font-weight: 600; letter-spacing: 0.05em; text-transform: uppercase; cursor: pointer;
+    transition: background 0.2s; margin-top: 0.5rem;
+  }
+  .btn:hover { background: var(--cyan-dark); }
+  .btn:disabled { opacity: 0.5; cursor: not-allowed; }
+
+  .msg { padding: 0.85rem 1rem; border-radius: 6px; font-size: 0.85rem; margin-bottom: 1.2rem; display: none; }
+  .msg.error { background: rgba(220,53,69,0.12); border: 1px solid rgba(220,53,69,0.3); color: #ff6b6b; display: block; }
+  .msg.success { background: rgba(31,163,224,0.1); border: 1px solid rgba(31,163,224,0.3); color: var(--cyan); display: block; }
+
+  .alt-state { text-align: center; display: none; }
+  .alt-icon { font-size: 3rem; margin-bottom: 1rem; }
+  .alt-title { font-family: var(--font-head); font-size: 1.8rem; text-transform: uppercase; margin-bottom: 0.75rem; }
+  .alt-body { font-size: 0.9rem; color: var(--gray); line-height: 1.7; margin-bottom: 2rem; }
+  .alt-link { display: inline-block; padding: 0.85rem 2rem; background: var(--cyan); color: var(--white); border-radius: 6px; font-weight: 600; font-size: 0.9rem; text-decoration: none; text-transform: uppercase; letter-spacing: 0.05em; }
+
+  @media (max-width: 768px) {
+    body { flex-direction: column; }
+    .l-panel { width: 100%; min-height: 200px; padding: 2rem; }
+    .l-hero { display: none; }
+    .r-panel { padding: 2rem 1.5rem; }
+  }
+</style>
+<link rel="icon" href="favicon.ico" sizes="any">
+<link rel="icon" href="favicon-32x32.png" type="image/png" sizes="32x32">
+<link rel="icon" href="favicon-16x16.png" type="image/png" sizes="16x16">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<link rel="stylesheet" href="fable.css">
+</head>
+<body>
+
+<div class="l-panel">
+  <div class="l-logo">
+    <a href="/" class="nav-logo">
+      <img src="logo-full.webp" alt="Baseline Studio" style="height:44px;width:auto;" width="281" height="88">
+    </a>
+  </div>
+  <div class="l-hero">
+    <div class="l-tagline">Email<br>preferences</div>
+    <p class="l-sub">Tell us if you do not want marketing email from Baseline Studio. It takes one click.</p>
+  </div>
+  <div class="l-back">
+    <a href="/">&#8592; Back to baselinestudiofl.com</a>
+  </div>
+</div>
+
+<div class="r-panel">
+  <div class="box">
+
+    <div id="ask-state" style="display:none;">
+      <div class="box-title">Unsubscribe</div>
+      <p class="box-sub" id="ask-text">Unsubscribe?</p>
+      <button type="button" class="btn" id="unsub-btn">Unsubscribe</button>
+    </div>
+
+    <div class="alt-state" id="done-state">
+      <div class="alt-icon">&#10003;</div>
+      <div class="alt-title">You are unsubscribed</div>
+      <p class="alt-body">You are unsubscribed. We won't send you marketing email. Messages about an event you booked with us, like invoices and contracts, will still reach you.</p>
+      <a href="/" class="alt-link">Back to the site</a>
+    </div>
+
+    <div class="alt-state" id="error-state">
+      <div class="alt-icon">&#9888;</div>
+      <div class="alt-title">That did not work</div>
+      <p class="alt-body" id="error-text">This link is not valid or has been changed. If you still want to stop marketing email, reply to any of our emails with the word UNSUBSCRIBE, or email Baselinestudiofl@gmail.com, and we will remove you.</p>
+      <a href="/" class="alt-link">Back to the site</a>
+    </div>
+
+  </div>
+</div>
+
+<script>
+(function () {
+  var FN = 'https://jkdhkwcxnwpiufeyrnso.supabase.co/functions/v1/unsubscribe';
+  var params = new URLSearchParams(window.location.search);
+  var email = (params.get('e') || '').trim();
+  var token = (params.get('t') || '').trim();
+
+  function show(id) {
+    ['ask-state', 'done-state', 'error-state'].forEach(function (s) {
+      document.getElementById(s).style.display = (s === id) ? 'block' : 'none';
+    });
+  }
+
+  // j***@gmail.com : enough to recognise the address, not enough to read it off a shared screen.
+  function mask(e) {
+    var at = e.lastIndexOf('@');
+    if (at < 1) return e;
+    return e.charAt(0) + '***' + e.slice(at);
+  }
+
+  if (!email || !token || email.indexOf('@') < 1) { show('error-state'); return; }
+
+  document.getElementById('ask-text').textContent = 'Unsubscribe ' + mask(email) + '?';
+  show('ask-state');
+
+  var btn = document.getElementById('unsub-btn');
+  btn.addEventListener('click', function () {
+    btn.disabled = true;
+    btn.textContent = 'Working';
+    fetch(FN + '?e=' + encodeURIComponent(email) + '&t=' + encodeURIComponent(token), { method: 'POST' })
+      .then(function (r) { return r.json().catch(function () { return { ok: false }; }); })
+      .then(function (d) { show(d && d.ok === true ? 'done-state' : 'error-state'); })
+      .catch(function () {
+        document.getElementById('error-text').textContent = 'We could not reach the server. Check your connection and try the link again. If it keeps failing, reply to any of our emails with the word UNSUBSCRIBE and we will remove you.';
+        show('error-state');
+      });
+  });
+})();
+</script>
+</body>
+</html>

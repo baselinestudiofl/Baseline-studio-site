@@ -1,5 +1,6 @@
 /**
  * portal-supabase.js — Baseline Studio Portal Data Layer
+ * v16 — sendEmail passes through { skipped: 'opted_out' } when the server skips a marketing email to an opted-out address.
  * v15 — createProviderUser(email, password, name, role, opts) passes opts.mode ('create' default, or 'reset') to invite-provider and returns {ok, userId, created, existing, membership}. An existing login is linked, never overwritten, in create mode.
  * v14 (+1C client magic links) — clients can sign in with an emailed link (Supabase Auth OTP). Their session holds a JWT (authMode 'magic'); every client call goes to the authenticated twin RPC (*_jwt) with no email or password in the request. completeMagicLink() consumes the redirect hash. The password session path is unchanged and stays for the 30 day fallback.
  * v13 (+0D staff access) — provider data is read and written under ownerId (org_members lookup at initProvider; own uid when master / no membership / lookup fails).
@@ -939,7 +940,7 @@ window.BSPortal = {
         console.warn('[sendEmail] error:', data);
         return { ok: false, error: data.error || ('HTTP ' + r.status), detail: data.detail };
       }
-      return { ok: true, id: data.id };
+      return data.skipped ? { ok: true, id: data.id, skipped: data.skipped } : { ok: true, id: data.id };
     } catch (e) { console.warn('[sendEmail] network error:', e); return { ok: false, error: String(e) }; }
   },
 

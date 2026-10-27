@@ -135,19 +135,21 @@
     function _ceHasText(html) { return String(html || '').replace(/<[^>]*>/g, '').replace(/&nbsp;/g, ' ').trim().length > 0; }
 
     // ── Contract assistant: optional AI suggestions in the contract editor ──
-    // Hidden unless Settings has a Contract assistant link (settings.contractAiUrl). Nothing is sent until the user presses Suggest changes.
-    // Every proposal is shown as a card. Accepted HTML goes through _sanitizeDocHtml before it is written into the editor.
+    // Hidden unless ai-config.js sets window.BS_AI.contractUrl. The link comes from CODE only, never from synced data (provider_data), because any
+    // org member can edit that and this link receives the owner's session token. Second layer: https on *.workers.dev, or localhost.
+    // Nothing is sent until the user presses Suggest changes. Every proposal is shown as a card. Accepted HTML goes through _sanitizeDocHtml.
     function _aiUrl() {
-      const s = (typeof getDB === 'function' && getDB('settings')) || {};
-      const u = String(s.contractAiUrl || '').trim();
-      return (/^https:\/\/[^\s]+$/i.test(u) || /^http:\/\/localhost(:\d+)?(\/\S*)?$/i.test(u)) ? u : '';
+      const c = window.BS_AI;
+      const u = String(c && typeof c === 'object' ? c.contractUrl || '' : '').trim();
+      const ok = /^https:\/\/[a-z0-9-]+(\.[a-z0-9-]+)*\.workers\.dev(\/[^\s?#]*)?$/i.test(u) || /^http:\/\/localhost(:\d+)?(\/[^\s?#]*)?$/i.test(u);
+      return ok ? u.replace(/\/+$/, '') : '';
     }
     function _aiMsg(kind) {
       switch (kind) {
         case 'limit': return 'The free AI limit for today is used up. Edit by hand or try again tomorrow.';
         case 'auth': return 'Sign in again to use suggestions.';
         case 'forbidden': return 'This login is not set up to use suggestions.';
-        case 'network': return 'Could not reach the assistant. Check the link in Settings and your connection.';
+        case 'network': return 'Could not reach the assistant. Check your connection and try again.';
         case 'empty': return 'Describe the change first.';
         case 'long': return 'Keep the description under 600 characters.';
         case 'big': return 'This contract is too long for the assistant. Edit it by hand.';
@@ -253,6 +255,7 @@
     }
     // Posts to the assistant link with the session token. Resolves to { ok: true, data } or { error, message }.
     async function _aiRequest(url, token, payload, fetchFn, signal) {
+      if (!url || String(url).replace(/\/+$/, '') !== _aiUrl()) return { error: 'other', message: _aiMsg('other') }; // the token only ever goes to the configured link
       if (!token) return { error: 'auth', message: _aiMsg('auth') };
       let r;
       try {

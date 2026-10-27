@@ -1206,6 +1206,7 @@
       }
       return `<div class="ev-msgs">
         <div class="ev-thread" id="providerMsgThread" role="log" aria-label="Messages with ${_evA(first)}">${body}</div>
+        ${typeof _askMsgButton === 'function' ? _askMsgButton(event.id) : ''}
         <div class="ev-composer">
           <label class="sr-only" for="providerMsgInput">Message to ${_evA(first)}</label>
           <textarea class="input ev-compose-in" id="providerMsgInput" rows="1" enterkeyhint="send" placeholder="Write to ${_evA(first)}" onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();sendProviderMessage('${_evA(event.id)}')}"></textarea>

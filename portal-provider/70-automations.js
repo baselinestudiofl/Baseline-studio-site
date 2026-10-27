@@ -575,6 +575,24 @@
       return new Date(b.at).getTime();
     }
 
+    // Is this email rule marketing (nurture, follow-up, review request) or transactional (about something they asked for or booked)?
+    // Marketing rules honor the opt-out list. Transactional ones never do. Unsure means marketing, the safe side:
+    //   transactional: only the two seed rules auto1 (acknowledge an inquiry) and auto7 (final details before the event), any rule in the booked
+    //                  stage, the invoice/quote/invite/thank-you templates, and a rule that carries marketing:false on purpose.
+    //   marketing:     everything else, including the quote follow-up (auto3), any new-lead or days-before-event email someone adds later,
+    //                  and every rule Ask creates (those carry marketing:true).
+    // rule.marketing === true or false overrides the guess. Rule keys and seed labels are untouched.
+    function _autoIsMarketing(rule) {
+      if (!rule || rule.action !== 'email') return false;
+      if (rule.marketing === true) return true;
+      if (rule.marketing === false) return false;
+      if (rule.createdBy === 'ask') return true;
+      if (rule.id === 'auto1' || rule.id === 'auto7') return false;
+      if (rule.stage === 'booked') return false;
+      if (['quote', 'invoice', 'client_invite', 'provider_invite', 'contact_thankyou', 'internal_lead'].includes(rule.template)) return false;
+      return true;
+    }
+
     async function _executeAutoAction(rule, lead) {
       const name = lead.name || 'Client';
       if (rule.action === 'email') {
@@ -587,13 +605,19 @@
         const tpl   = rule.template || 'generic';
         const sendType = VALID_TYPES.includes(tpl) ? tpl : 'generic';
         const subj  = rule.subject || AUTO_SUBJECTS[tpl] || 'From Baseline Studio';
+        const marketing = sendType === 'generic' && _autoIsMarketing(rule);
+        if (marketing && typeof _optoutIs === 'function' && _optoutIs(email)) return 'skipped'; // opted out of marketing email: do not send
         try {
           const payload = sendType === 'generic' ? { email, clientName: name, body, subject: subj } : { email, clientName: name, body };
+          if (marketing) payload.marketing = true; // the server re-checks the list and adds the unsubscribe link
           const r = await BSPortal.sendEmail(sendType, payload);
+          if (r?.ok && r.skipped === 'opted_out') return 'skipped';
           if (r?.ok) return 'sent';
+          if (marketing) { showToast('Automation email was not sent (' + (r?.error || 'unknown error') + '). Nothing went out.', 'error'); return 'error'; } // fail closed: no manual fallback for marketing
           showEmailFallback(email, subj, body, 'Automation email failed (' + (r?.error || 'unknown error') + '). Send manually:');
           return 'fallback';
         } catch(e) {
+          if (marketing) { showToast('Automation email was not sent. Nothing went out.', 'error'); return 'error'; }
           showEmailFallback(email, subj, body, 'Automation email failed. Send it manually:');
           return 'fallback';
         }
@@ -667,6 +691,7 @@
       _migrateAutomationRules();
       const rules = (getDB('automations') || []).filter(r => r.enabled);
       if (!rules.length) return;
+      if (typeof loadOptouts === 'function') { try { await loadOptouts(); } catch (e) { /* the server still checks the list */ } }
       // Load leads here instead of relying on the Pipeline tab having been opened.
       let leads;
       try { leads = await _fetchInquiryRows(200); } catch (e) { return; }
