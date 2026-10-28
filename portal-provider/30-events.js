@@ -774,7 +774,9 @@
       if (!event) return;
       // Re-rendering the event that is already open (after a save, or a background sync) keeps its tab.
       if (tab === undefined && _route && _route.type === 'event' && String(_route.id) === String(eventId) && document.getElementById('detail').classList.contains('active')) tab = _route.tab;
-      if (ROUTE_EVENT_TABS.indexOf(tab) < 0) tab = null;
+      // Costs are provider-only (never on the event): the tab exists only when 55-costs.js is loaded and the role may see costs.
+      const costsOn = (typeof costsRenderTab === 'function' && typeof costsCanView === 'function' && costsCanView());
+      if (ROUTE_EVENT_TABS.indexOf(tab) < 0 && !((tab === 'costs' || tab === 'crewpay') && costsOn)) tab = null;
       // A background sync must not wipe what someone is typing.
       if (!(opts && opts.force) && document.activeElement && document.activeElement.closest && document.activeElement.closest('#detailContent') &&
           /^(INPUT|TEXTAREA|SELECT)$/.test(document.activeElement.tagName) && String(window.currentEvent && window.currentEvent.id) === String(eventId) &&
@@ -797,6 +799,7 @@
             <button class="tab-btn" onclick="switchEventTab(this,'plan')" role="tab" aria-selected="false">Plan</button>
             <button class="tab-btn" onclick="switchEventTab(this,'timeline')" role="tab" aria-selected="false">Timeline</button>
             <button class="tab-btn" onclick="switchEventTab(this,'invoices')" role="tab" aria-selected="false">Money</button>
+            ${costsOn ? '<button class="tab-btn" onclick="switchEventTab(this,\'costs\')" role="tab" aria-selected="false">Costs</button><button class="tab-btn" onclick="switchEventTab(this,\'crewpay\')" role="tab" aria-selected="false">Crew pay</button>' : ''}
             <button class="tab-btn" onclick="switchEventTab(this,'documents')" role="tab" aria-selected="false">Documents</button>
             <button class="tab-btn" onclick="switchEventTab(this,'gear')" role="tab" aria-selected="false">Crew &amp; Gear</button>
             <button class="tab-btn" onclick="switchEventTab(this,'portal')" role="tab" aria-selected="false">Portal</button>
@@ -808,6 +811,7 @@
           <div id="tabPlan" class="tab-content" role="tabpanel">${planHtml}</div>
           <div id="tabTimeline" class="tab-content" role="tabpanel">${safe(() => renderEventTimeline(event))}</div>
           <div id="tabInvoices" class="tab-content" role="tabpanel">${safe(() => renderEventInvoices(event))}</div>
+          ${costsOn ? '<div id="tabCosts" class="tab-content" role="tabpanel"></div><div id="tabCrewpay" class="tab-content" role="tabpanel"></div>' : ''}
           <div id="tabDocuments" class="tab-content" role="tabpanel">${safe(() => renderEventDocuments(event))}</div>
           <div id="tabGear" class="tab-content" role="tabpanel">${gearHtml}</div>
           <div id="tabPortal" class="tab-content" role="tabpanel">${safe(() => renderEventPortal(event))}</div>
@@ -855,6 +859,14 @@
         }
         if (tabName === 'gear' && typeof renderEventGear === 'function') {
           document.getElementById('tabGear').innerHTML = renderEventGear(_fresh);
+        }
+        // The Costs tab and its button exist only for owner, admin and event manager.
+        if (tabName === 'costs' && (typeof costsRenderTab === 'function' && typeof costsCanView === 'function' && costsCanView())) {
+          document.getElementById('tabCosts').innerHTML = costsRenderTab(_fresh);
+          if (typeof costsOnTabOpen === 'function') costsOnTabOpen(_fresh.id);
+        }
+        if (tabName === 'crewpay' && (typeof costsCrewRenderTab === 'function' && typeof costsCanView === 'function' && costsCanView())) {
+          document.getElementById('tabCrewpay').innerHTML = costsCrewRenderTab(_fresh);
         }
         // Mark client messages as read when Messages tab is opened. Re-read the stored event and touch only the read flags,
         // so nothing else on a stale window.currentEvent is ever written back. The Unread divider stays until the tab is drawn again.

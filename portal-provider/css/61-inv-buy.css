@@ -1,0 +1,35 @@
+/* Inventory > Purchases and Subscriptions (61-inv-buy.js). Tokens only, so both themes work. */
+.invb-stats { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: var(--sp-3); margin-bottom: var(--sp-4); }
+.invb-stats-4 { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+.invb-stat { background: var(--surface-1); border: 1px solid var(--border); border-radius: var(--r-lg); padding: var(--sp-4); min-width: 0; }
+.invb-stat-label { font: 500 var(--fs-12)/1.3 var(--font-body); color: var(--text-3); }
+.invb-stat-val { margin: var(--sp-1) 0 2px; font: 400 var(--fs-24)/1.15 var(--font-display); color: var(--text-1); letter-spacing: 0.01em; overflow-wrap: anywhere; }
+.invb-stat-sub { font-size: var(--fs-12); color: var(--text-3); overflow-wrap: anywhere; }
+@media (max-width: 1023.98px) { .invb-stats-4 { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (max-width: 767.98px) { .invb-stats { grid-template-columns: repeat(2, minmax(0, 1fr)); } .invb-stats:not(.invb-stats-4) .invb-stat:last-child { grid-column: 1 / -1; } .invb-stat-val { font-size: 22px; } }
+
+.invb-sum { margin: var(--sp-3) 0 var(--sp-2); font-size: var(--fs-13); color: var(--text-3); }
+.invb-money { white-space: nowrap; text-align: right; }
+.invb-each { display: block; }
+.invb-trail { display: flex; flex-direction: column; align-items: flex-end; gap: var(--sp-2); }
+.invb-off { opacity: 0.6; }
+.invb-quick { display: flex; flex-wrap: wrap; gap: var(--sp-2); justify-content: center; }
+@media (max-width: 767.98px) { .invb-quick .btn { width: 100%; } }
+
+/* modals */
+.invb-form { display: flex; flex-direction: column; gap: var(--sp-3); }
+.invb-form .field { margin: 0; }
+.invb-two { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--sp-3); }
+@media (max-width: 767.98px) { .invb-two { grid-template-columns: minmax(0, 1fr); } }
+.invb-newcat { margin-top: var(--sp-2); }
+.invb-prev:empty { display: none; }
+.invb-hist { display: flex; flex-direction: column; gap: 4px; }
+.invb-hist-row { display: flex; justify-content: space-between; gap: var(--sp-3); font-size: var(--fs-13); color: var(--text-2); }
+.invb-foot { margin-top: var(--sp-2); }
+.invb-del { margin-right: auto; color: var(--danger); }
+@media (max-width: 767.98px) { .invb-foot .btn { flex: 1 1 100%; } .invb-del { margin-right: 0; } }
+
+/* long names wrap on a phone instead of pushing the page wide */
+#invbPList .row-main, #invbSList .row-main { min-width: 0; flex: 1 1 auto; }
+#invbPList .row-title, #invbSList .row-title, #invbPList .row-sub, #invbSList .row-sub { white-space: normal; overflow-wrap: anywhere; }
+#invbPList .row-trail { flex: none; }

@@ -470,9 +470,158 @@
 
     function _setVal(id) { const el = document.getElementById(id); return el ? el.value : ''; }
 
+    // ── Costs & travel (settings.costs, provider only). Defaults and storage live in 55-costs.js (costsSettings, costsSaveSettings).
+    // Only master, admin and event-architect see this section (costsRoleOk); other roles never get the markup, so nothing below runs for them.
+    function _setCostsOn() { return typeof costsCanView === 'function' && typeof costsSettings === 'function' && costsCanView(); }
+
+    // Clean up typed values. Bad numbers fall back to the same defaults costsSettings() uses, so a stored value can never be nonsense.
+    function _setCostsNormalize(raw) {
+      const r = raw || {};
+      const num = (v, def, min, max) => {
+        const t = String(v == null ? '' : v).trim();
+        const n = t === '' ? NaN : Number(t);
+        return isFinite(n) && n >= min && (max === undefined || n <= max) ? n : def;
+      };
+      const people = {};
+      const seen = {};
+      (Array.isArray(r.people) ? r.people : []).forEach(p => {
+        const name = String((p && p.name) || '').trim();
+        if (!name || seen[name.toLowerCase()]) return;
+        seen[name.toLowerCase()] = 1;
+        const mpgT = String((p && p.mpg) == null ? '' : p.mpg).trim();
+        const mpg = mpgT === '' ? null : num(mpgT, null, 0.1);
+        const o = { name: name, mpg: mpg, startAddr: String((p && p.startAddr) || '').trim() };
+        if (p && (p.mode === 'gas' || p.mode === 'irs')) o.mode = p.mode;
+        people[name] = o;
+      });
+      return {
+        homeBase: String(r.homeBase || '').trim(),
+        gasPrice: num(r.gasPrice, 3.75, 0),
+        mpg: num(r.mpg, 15, 0.1),
+        mode: r.mode === 'irs' ? 'irs' : 'gas',
+        irsRate: num(r.irsRate, 0.70, 0),
+        wearPerMile: num(r.wearPerMile, 0, 0),
+        minMargin: num(r.minMargin, 30, 0, 100),
+        people: people
+      };
+    }
+    // The first thing wrong with the typed values, or '' when they are fine. Nothing is saved while this returns text.
+    function _setCostsCheck(raw) {
+      const r = raw || {};
+      const bad = (v, min, max) => { const t = String(v == null ? '' : v).trim(); const n = Number(t); return t === '' || !isFinite(n) || n < min || (max !== undefined && n > max); };
+      if (bad(r.gasPrice, 0)) return 'Enter the gas price as a number like 3.75.';
+      if (bad(r.mpg, 0.1)) return 'Enter miles per gallon as a number above 0.';
+      if (bad(r.irsRate, 0)) return 'Enter the IRS rate as a number like 0.70.';
+      if (String(r.wearPerMile == null ? '' : r.wearPerMile).trim() !== '' && bad(r.wearPerMile, 0)) return 'Wear per mile must be a number, or leave it at 0.';
+      if (bad(r.minMargin, 0, 100)) return 'Enter the thin-margin warning as a percent from 0 to 100.';
+      const rows = Array.isArray(r.people) ? r.people : [];
+      for (let i = 0; i < rows.length; i++) {
+        const p = rows[i] || {};
+        const name = String(p.name || '').trim(), mpgT = String(p.mpg == null ? '' : p.mpg).trim();
+        if (!name && (mpgT !== '' || String(p.startAddr || '').trim() !== '')) return 'Give each person a name.';
+        if (mpgT !== '' && bad(mpgT, 0.1)) return 'Miles per gallon for ' + (name || 'a person') + ' must be a number above 0.';
+      }
+      return '';
+    }
+    // Stored people as a list sorted by name, for comparing with what is on screen.
+    function _setCostsPeopleList(people) {
+      const src = (people && typeof people === 'object' && !Array.isArray(people)) ? people : {};
+      return Object.keys(src).map(k => {
+        const p = src[k] || {};
+        const m = Number(p.mpg);
+        return { name: String(p.name || k).trim(), mpg: p.mpg == null || p.mpg === '' || !isFinite(m) ? null : m, startAddr: String(p.startAddr || '').trim() };
+      }).filter(p => p.name).sort((a, b) => a.name.toLowerCase() < b.name.toLowerCase() ? -1 : (a.name.toLowerCase() > b.name.toLowerCase() ? 1 : 0));
+    }
+    // The values as typed on screen (strings), or null when the section is not on the page.
+    function _setCostsRead() {
+      if (!document.getElementById('setCostGas')) return null;
+      const people = [];
+      document.querySelectorAll('#setCostPeople [data-person]').forEach(row => {
+        const f = k => { const el = row.querySelector('[data-f="' + k + '"]'); return el ? el.value : ''; };
+        people.push({ name: f('name'), mpg: f('mpg'), startAddr: f('startAddr') });
+      });
+      return { homeBase: _setVal('setCostHome'), gasPrice: _setVal('setCostGas'), mpg: _setVal('setCostMpg'), mode: _setVal('setCostMode'),
+        irsRate: _setVal('setCostIrs'), wearPerMile: _setVal('setCostWear'), minMargin: _setVal('setCostMin'), people: people };
+    }
+    // How many costs settings differ from what is saved (each field counts one, the people table counts one).
+    function _setCostsDiff(read, stored) {
+      if (!read) return 0;
+      const s = stored || costsSettings();
+      const same = (txt, n) => { const t = String(txt == null ? '' : txt).trim(); return t !== '' && Number(t) === Number(n); };
+      let n = 0;
+      if (String(read.homeBase || '').trim() !== String(s.homeBase || '').trim()) n++;
+      if (!same(read.gasPrice, s.gasPrice)) n++;
+      if (!same(read.mpg, s.mpg)) n++;
+      if ((read.mode === 'irs' ? 'irs' : 'gas') !== s.mode) n++;
+      if (!same(read.irsRate, s.irsRate)) n++;
+      if (!same(read.wearPerMile, s.wearPerMile)) n++;
+      if (!same(read.minMargin, s.minMargin)) n++;
+      const a = (Array.isArray(read.people) ? read.people : []).map(p => ({ name: String(p.name || '').trim(), mpg: String(p.mpg == null ? '' : p.mpg).trim() === '' ? null : Number(p.mpg), startAddr: String(p.startAddr || '').trim() }))
+        .filter(p => p.name || p.startAddr || p.mpg !== null).sort((x, y) => x.name.toLowerCase() < y.name.toLowerCase() ? -1 : (x.name.toLowerCase() > y.name.toLowerCase() ? 1 : 0));
+      if (JSON.stringify(a) !== JSON.stringify(_setCostsPeopleList(s.people))) n++;
+      return n;
+    }
+    // The patch to hand to costsSaveSettings. Keeps a person's own mileage method if one was set elsewhere.
+    function _setCostsBuild(read, stored) {
+      const out = _setCostsNormalize(read);
+      const old = (stored && stored.people) || {};
+      Object.keys(out.people).forEach(k => { const prev = old[k]; if (prev && (prev.mode === 'gas' || prev.mode === 'irs') && !out.people[k].mode) out.people[k].mode = prev.mode; });
+      return out;
+    }
+    function _setCostsPersonRow(i, p) {
+      const v = k => esc(p && p[k] != null ? String(p[k]) : '');
+      return '<div class="set-cost-person" data-person>'
+        + '<div class="field"><label class="field-label" for="setCostPN' + i + '">Name</label><input type="text" class="form-input" id="setCostPN' + i + '" data-f="name" autocomplete="off" value="' + v('name') + '"></div>'
+        + '<div class="field set-cost-mpg"><label class="field-label" for="setCostPM' + i + '">Miles per gallon</label><input type="number" class="form-input" id="setCostPM' + i + '" data-f="mpg" min="0.1" step="0.1" inputmode="decimal" placeholder="Default" value="' + v('mpg') + '"></div>'
+        + '<div class="field set-cost-addr"><label class="field-label" for="setCostPA' + i + '">Usual start address</label><input type="text" class="form-input" id="setCostPA' + i + '" data-f="startAddr" autocomplete="off" placeholder="Same as home base" value="' + v('startAddr') + '"></div>'
+        + '<button type="button" class="btn btn-ghost btn-icon set-cost-del" aria-label="Remove this person" onclick="_setCostsPersonRemove(this)">' + _p7Icon('trash-2', 18) + '</button></div>';
+    }
+    let _setCostsRowSeq = 0;
+    function _setCostsPersonAdd() {
+      const host = document.getElementById('setCostPeople');
+      if (!host) return;
+      const empty = host.querySelector('.set-cost-none'); if (empty) empty.remove();
+      host.insertAdjacentHTML('beforeend', _setCostsPersonRow('n' + (++_setCostsRowSeq), null));
+      const last = host.querySelector('[data-person]:last-of-type input'); if (last && last.focus) last.focus();
+      _setRecount();
+    }
+    function _setCostsPersonRemove(btn) {
+      const row = btn && btn.closest ? btn.closest('[data-person]') : null;
+      if (row) row.remove();
+      const host = document.getElementById('setCostPeople');
+      if (host && !host.querySelector('[data-person]') && !host.querySelector('.set-cost-none')) host.insertAdjacentHTML('afterbegin', '<p class="set-sub set-cost-none">No one added yet. Everyone uses the default miles per gallon and the home base.</p>');
+      _setRecount();
+    }
+    function _setCostsFill() {
+      if (!document.getElementById('setCostGas') || !_setCostsOn()) return;
+      const c = costsSettings();
+      const set = (id, v) => { const el = document.getElementById(id); if (el) el.value = v; };
+      set('setCostHome', c.homeBase); set('setCostGas', c.gasPrice); set('setCostMpg', c.mpg); set('setCostMode', c.mode);
+      set('setCostIrs', c.irsRate); set('setCostWear', c.wearPerMile); set('setCostMin', c.minMargin);
+      const list = _setCostsPeopleList(c.people);
+      const host = document.getElementById('setCostPeople');
+      if (host) host.innerHTML = list.length ? list.map((p, i) => _setCostsPersonRow('s' + i, p)).join('') : '<p class="set-sub set-cost-none">No one added yet. Everyone uses the default miles per gallon and the home base.</p>';
+    }
+    function _setCostsSectionHtml() {
+      return _setSection('costs', 'Costs & travel', 'Used by the Costs tab on each event to estimate gas and show profit. Only the owner and managers can see this.', `
+        <div class="field"><label class="field-label" for="setCostHome">Home base address</label><textarea class="form-textarea" id="setCostHome" rows="2" autocomplete="off" placeholder="Street, city, state, ZIP"></textarea><span class="field-hint">Private. Only used to estimate travel.</span></div>
+        <div class="set-cost-grid">
+          <div class="field"><label class="field-label" for="setCostGas">Gas price a gallon ($)</label><input type="number" class="form-input" id="setCostGas" min="0" step="0.01" inputmode="decimal"></div>
+          <div class="field"><label class="field-label" for="setCostMpg">Default miles per gallon</label><input type="number" class="form-input" id="setCostMpg" min="0.1" step="0.1" inputmode="decimal"></div>
+          <div class="field"><label class="field-label" for="setCostMode">Mileage method</label><select class="form-select" id="setCostMode"><option value="gas">Gas cost</option><option value="irs">IRS rate</option></select></div>
+          <div class="field"><label class="field-label" for="setCostIrs">IRS rate a mile ($)</label><input type="number" class="form-input" id="setCostIrs" min="0" step="0.001" inputmode="decimal"><span class="field-hint">Check irs.gov for the current year's rate.</span></div>
+          <div class="field"><label class="field-label" for="setCostWear">Wear a mile ($)</label><input type="number" class="form-input" id="setCostWear" min="0" step="0.01" inputmode="decimal"><span class="field-hint">Optional. Adds tire and repair wear to each mile. Leave at 0 to skip.</span></div>
+          <div class="field"><label class="field-label" for="setCostMin">Thin-margin warning (%)</label><input type="number" class="form-input" id="setCostMin" min="0" max="100" step="1" inputmode="numeric"><span class="field-hint">Events with a profit margin below this show a Thin margin tag.</span></div>
+        </div>
+        <h4 class="set-cost-h">Drivers</h4>
+        <p class="set-sub">Optional. Give a person their own miles per gallon or a usual start address, like their house.</p>
+        <div id="setCostPeople" class="set-cost-people"></div>
+        <button type="button" class="btn btn-secondary" onclick="_setCostsPersonAdd()">${_p7Icon('plus', 16)} Add a person</button>`);
+    }
+
     // What changed on screen compared with what is saved. { notify, business, inventory, terms, count }
     function _setDiff() {
-      const out = { notify: 0, business: 0, inventory: 0, terms: 0, assistant: 0, payments: 0, count: 0 };
+      const out = { notify: 0, business: 0, inventory: 0, terms: 0, assistant: 0, payments: 0, costs: 0, count: 0 };
       if (!document.getElementById('setLayout')) return out;
       const s = _setStored(), ns = _setReadNotify();
       Object.keys(_NOTIFY_SWITCHES).forEach(k => { if (!!ns[k] !== !!s.notify[k]) out.notify++; });
@@ -487,7 +636,8 @@
       }
       if (_payDraft && document.getElementById('payMethodsCard') && _payKey(_payDraft) !== _payKey(_payFromStored())) out.payments++;
       out.ask = (typeof _askSettingsDiff === 'function') ? _askSettingsDiff() : 0;
-      out.count = out.notify + out.business + out.inventory + out.terms + out.assistant + out.payments + out.ask;
+      if (_setCostsOn()) out.costs = _setCostsDiff(_setCostsRead());
+      out.count = out.notify + out.business + out.inventory + out.terms + out.assistant + out.payments + out.ask + out.costs;
       return out;
     }
 
@@ -522,9 +672,10 @@
       sec.setAttribute('data-p7', '1');
       const u = BSPortal.getCurrentUser() || {};
       const admin = ['master', 'admin'].includes(u.role);
+      const costsOn = _setCostsOn();
       const chev = _p7Icon('chevron-right', 20);
       const items = [['business', 'Business'], ['notifications', 'Notifications'], ['contract', 'Contract terms'], ['payments', 'Payment methods'], ['optouts', 'Email opt-outs'], ['assistant', 'Contract assistant']]
-        .concat(u.role === 'master' ? [['ask', 'Ask assistant']] : []).concat(admin ? [['team', 'Team']] : []).concat([['inventory', 'Inventory']]);
+        .concat(u.role === 'master' ? [['ask', 'Ask assistant']] : []).concat(admin ? [['team', 'Team']] : []).concat([['inventory', 'Inventory']]).concat(costsOn ? [['costs', 'Costs & travel']] : []);
       sec.innerHTML = `
         <div class="set-layout" id="setLayout" data-view="list" data-active="business">
           <nav class="set-nav" aria-label="Settings sections">
@@ -555,6 +706,7 @@
               ${_setSwitchRow('setInvScan', 'setInvScanLabel', 'Scan check-out and check-in', 'Lets crew scan tags to take gear out and bring it back.', '_setInvToggle(this)')}
               <div class="field" style="margin-top:var(--sp-4);"><label class="field-label" for="setInvNextTag">Next tag number</label><input type="number" class="form-input" id="setInvNextTag" min="1" step="1" inputmode="numeric" style="max-width:160px;"><span class="field-hint">Tags look like BL-000123. The number can only go up, so a tag is never used twice.</span></div>
               <button type="button" class="btn btn-secondary" onclick="_setOpenPullDefaults()">Pull list defaults</button>`)}
+            ${costsOn ? _setCostsSectionHtml() : ''}
           </div>
           <div class="set-savebar" id="setSaveBar" role="region" aria-label="Unsaved changes" hidden>
             <span class="set-savebar-text" id="setSaveText" aria-live="polite">0 changes</span>
@@ -596,6 +748,7 @@
       _applyInvSwitch('setInvEnabled', s.inventory.enabled); _applyInvSwitch('setInvScan', s.inventory.scan);
       set('setInvNextTag', s.inventory.nextTag);
       const nt = document.getElementById('setInvNextTag'); if (nt) nt.min = s.inventory.nextTag;
+      try { _setCostsFill(); } catch (e) { console.warn('[costs settings]', e); }
       try { renderContractTerms(); } catch (e) { console.warn('[contract terms]', e); }
       _payDraft = _payFromStored();
       try { renderPayMethods(); } catch (e) { console.warn('[payment methods]', e); }
@@ -971,6 +1124,12 @@
           return;
         }
       }
+      let costsRead = null;
+      if (d.costs) {
+        costsRead = _setCostsRead();
+        const costsErr = _setCostsOn() ? _setCostsCheck(costsRead) : 'Costs settings are only for the owner and managers.';
+        if (costsErr) { showToast(costsErr, 'error'); return; }
+      }
       let payOut = null;
       if (d.payments) {
         payOut = _payBuildSave();
@@ -985,6 +1144,7 @@
           if (d.inventory) st.inventory = Object.assign({}, st.inventory || {}, { enabled: _setSwitchOn('setInvEnabled'), scan: _setSwitchOn('setInvScan'), nextTag });
           setDB('settings', st);
         }
+        if (d.costs && costsRead && typeof costsSaveSettings === 'function') costsSaveSettings(_setCostsBuild(costsRead, costsSettings()));
         if (d.payments) _paySave(payOut);
         if (d.terms) saveContractTerms();
         if (d.notify) await saveNotifySettings();
@@ -1074,6 +1234,30 @@
       return `<span class="pill ${cls}" data-ui="pill">${esc(String(status || 'unknown').replace(/_/g, ' '))}</span>`;
     }
 
+    // Costs and profit for the events in a report range (same event filter as the Events card). Profit is billed minus costs logged,
+    // so it is the "if fully paid" figure. Needs 55-costs.js; returns zeros when it is not loaded. Never writes anything.
+    function _reportCostsSummary(events, from, to) {
+      const out = { costsC: 0, profitC: 0, billedC: 0, events: 0, withCosts: 0, marginPct: null };
+      if (typeof costsGet !== 'function' || typeof costsTotalsFrom !== 'function' || typeof costsRevenue !== 'function') return out;
+      const minMargin = (typeof costsSettings === 'function') ? costsSettings().minMargin : 30;
+      (events || []).forEach(e => {
+        if (!e || !/^(booked|confirmed|completed)$/.test(String(e.status || ''))) return;
+        if (from !== null && from !== undefined) {
+          const t = _reportEventMs(e);
+          if (isNaN(t) || t < from || t >= to) return;
+        }
+        const lines = costsGet(e.id).lines;
+        const t = costsTotalsFrom(lines, costsRevenue(e.id), minMargin);
+        out.events++;
+        if (t.countedC > 0) out.withCosts++;
+        out.costsC += t.countedC;
+        out.billedC += t.billedC;
+        out.profitC += t.profitC;
+      });
+      out.marginPct = out.billedC > 0 ? Math.round(out.profitC / out.billedC * 1000) / 10 : null;
+      return out;
+    }
+
     function renderReports() {
       const events = getDB('events') || [];
       if (typeof _reportsShell === 'function') _reportsShell();
@@ -1093,6 +1277,16 @@
       ].forEach(s => {
         html += `<div class="stat-card"><div class="stat-label">${s.label}</div><div class="stat-value num">${s.value}</div><div class="stat-sub">${s.sub}</div></div>`;
       });
+      // Costs and Profit: provider-only, shown to the owner and managers (costsCanView) and only when 55-costs.js is loaded.
+      if (typeof costsCanView === 'function' && costsCanView() && typeof _reportCostsSummary === 'function') {
+        const cs = _reportCostsSummary(events, b.from, b.to);
+        [
+          { label: 'Costs', value: esc(costsFmtC(cs.costsC)), sub: cs.withCosts + (cs.withCosts === 1 ? ' event' : ' events') + ' with costs' },
+          { label: 'Profit', value: esc(costsFmtC(cs.profitC)), sub: cs.marginPct === null ? 'Billed minus costs' : cs.marginPct + '% margin if fully paid' }
+        ].forEach(s => {
+          html += `<div class="stat-card"><div class="stat-label">${s.label}</div><div class="stat-value num">${s.value}</div><div class="stat-sub">${s.sub}</div></div>`;
+        });
+      }
       document.getElementById('reportsStats').innerHTML = html;
 
       const rows = typeof _reportMonthRows === 'function' ? _reportMonthRows(invoices, tx, events, b) : [];

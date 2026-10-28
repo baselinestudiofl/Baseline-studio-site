@@ -74,7 +74,7 @@
     // Modals are not routes, except the lead modal (it was already deep-linkable).
     let _detailReturnSection = 'events'; // where to go on back
     const ROUTE_SECTIONS = ['dashboard','pipeline','events','clients','vendors','documents','equipment','invoices','marketing','accounts','reports','automations','settings'];
-    const ROUTE_EVENT_TABS = ['overview','plan','timeline','invoices','documents','gear','portal','messages','lighting'];
+    const ROUTE_EVENT_TABS = ['overview','plan','timeline','invoices','documents','gear','portal','messages','lighting','costs','crewpay'];
     let _route = null;              // the route currently shown (or last written)
     let _routeApplying = 0;         // >0 while the router itself changes the view: no history writes
     let _routeSeq = 0;              // newest apply wins when an async apply (lead) is overtaken

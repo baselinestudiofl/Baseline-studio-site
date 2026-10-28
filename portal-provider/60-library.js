@@ -529,7 +529,7 @@
     //  Section 1: data and pure logic (no DOM). Section 2: views. generatePullList(ev) is called by the event Crew & Gear tab.
     // ══════════════════════════════════════════════════════════════════════════
 
-    const INV_CATEGORIES = ['DJ Gear', 'Audio', 'Lighting', 'Visual', 'Special Effects', 'Staging', 'Cables & Power', 'Other'];
+    const INV_CATEGORIES = ['DJ Gear', 'Audio', 'Speakers', 'Subwoofers', 'Microphones', 'Lighting', 'Visual', 'Special Effects', 'Staging', 'Tripods & Stands', 'Generators', 'Cables & Power', 'Cases & Transport', 'Other'];
 
     // Generic industry defaults, one entry per service. Owner decision: ship defaults, label them, let the owner replace them later.
     // A service is booked when any `match` keyword appears (word start) in the event's service names, sub-options or quote/invoice line descriptions.
@@ -741,6 +741,109 @@
       try { const u = BSPortal.getCurrentUser(); by = (u && (u.name || u.email)) || ''; } catch (e) {}
       it.history.unshift({ at: Date.now(), action: action, eventId: evId || null, by: by, note: note || '' });
       if (it.history.length > 50) it.history.length = 50;
+    }
+    // ── Purchase info (item.purchase). Lives on the inventory item only: saving it never creates an event cost line.
+    // Items bought through the Costs tab (costsRecordGearPurchase in 55-costs.js) already carry item.purchase with an eventId.
+    function invFmtC(c) {
+      if (typeof costsFmtC === 'function') return costsFmtC(c);
+      const v = Math.round(Number(c)) || 0, a = Math.abs(v);
+      return (v < 0 ? '-' : '') + '$' + (a / 100).toLocaleString('en-US', { minimumFractionDigits: a % 100 === 0 ? 0 : 2, maximumFractionDigits: 2 });
+    }
+    // "25", "$25.50", "1,200" -> cents. Blank -> 0. Anything else -> null.
+    function invParsePriceC(v) {
+      if (typeof costsParseC === 'function') return costsParseC(v);
+      const t = String(v == null ? '' : v).replace(/[$,\s]/g, '');
+      if (t === '') return 0;
+      if (!/^\d*\.?\d+$|^\d+\.$/.test(t)) return null;
+      return Math.round(parseFloat(t) * 100);
+    }
+    // How many units the purchase covered: the recorded qty, else what is on hand now, else 1.
+    function invPurchaseQty(it) {
+      const q = Math.round(Number(it && it.purchase && it.purchase.qty));
+      if (q > 0) return q;
+      const n = Math.round(Number(it && it.qty));
+      return n > 0 ? n : 1;
+    }
+    // One item's total paid in cents (price each times units), 0 when there is no price.
+    function invPurchaseItemC(it) {
+      const p = it && it.purchase;
+      const each = Math.round(Number(p && p.priceC));
+      return each > 0 ? each * invPurchaseQty(it) : 0;
+    }
+    // Total spent on gear across a list of items, in cents. Retired items still count: the money was spent.
+    function invPurchaseTotalC(items) {
+      return (items || []).reduce((s, it) => s + invPurchaseItemC(it), 0);
+    }
+    function invPurchaseCount(items) { return (items || []).filter(it => invPurchaseItemC(it) > 0).length; }
+    // Validate typed purchase fields and merge them onto an existing purchase. Returns { ok, purchase } (purchase null = none) or { ok:false, error }.
+    // raw = { date, price, vendor, orderNo, receiptNote }. Clearing every field removes the purchase unless it is linked to an event.
+    function invPurchaseBuild(raw, existing, qty) {
+      const r = raw || {};
+      const priceC = invParsePriceC(r.price);
+      if (priceC === null) return { ok: false, error: 'Enter the price like 25 or 25.50' };
+      const date = String(r.date || '').trim(), vendor = String(r.vendor || '').trim(), orderNo = String(r.orderNo || '').trim(), receiptNote = String(r.receiptNote || '').trim();
+      const ex = (existing && typeof existing === 'object') ? existing : null;
+      const any = !!(date || priceC > 0 || vendor || orderNo || receiptNote);
+      if (!any && !(ex && ex.eventId)) return { ok: true, purchase: null };
+      const p = Object.assign({}, ex || {}, { date: date, priceC: priceC, vendor: vendor, orderNo: orderNo, receiptNote: receiptNote });
+      if (!(Math.round(Number(p.qty)) > 0)) p.qty = Math.max(1, Math.round(Number(qty)) || 1);
+      if (p.eventId === undefined) p.eventId = '';
+      if (p.eventName === undefined) p.eventName = '';
+      if (!p.source) p.source = 'inventory';
+      return { ok: true, purchase: p };
+    }
+    function invPurchaseFieldsHtml(pre, p, canEdit) {
+      const v = k => esc(p && p[k] != null ? String(p[k]) : '');
+      const price = p && Math.round(Number(p.priceC)) > 0 ? (Math.round(Number(p.priceC)) / 100).toFixed(2) : '';
+      return '<div class="field"><label class="field-label" for="' + pre + 'Date">Date bought</label><input id="' + pre + 'Date" class="input" type="date" value="' + v('date') + '"></div>'
+        + '<div class="field"><label class="field-label" for="' + pre + 'Price">Price each ($)</label><input id="' + pre + 'Price" class="input" type="text" inputmode="decimal" autocomplete="off" placeholder="0.00" value="' + esc(price) + '"></div>'
+        + '<div class="field"><label class="field-label" for="' + pre + 'Vendor">Vendor</label><input id="' + pre + 'Vendor" class="input" type="text" autocomplete="off" placeholder="Where you bought it" value="' + v('vendor') + '"></div>'
+        + '<div class="field"><label class="field-label" for="' + pre + 'Order">Order number</label><input id="' + pre + 'Order" class="input" type="text" autocomplete="off" value="' + v('orderNo') + '"></div>';
+    }
+    function invPurchaseReadFields(pre) {
+      const g = k => { const el = document.getElementById(pre + k); return el ? el.value : ''; };
+      return { date: g('Date'), price: g('Price'), vendor: g('Vendor'), orderNo: g('Order'), receiptNote: g('Note') };
+    }
+    function invPurchOpenEvent(evId) {
+      if (window.CRMUI && CRMUI.closeAll) CRMUI.closeAll();
+      if (typeof navigateToEvent === 'function') navigateToEvent(evId);
+    }
+    function invPurchShow() {
+      const f = document.getElementById('invFPFields'), e = document.getElementById('invFPEmpty');
+      if (f) f.hidden = false;
+      if (e) e.hidden = true;
+      const d = document.getElementById('invFPDate'); if (d && d.focus) d.focus();
+    }
+    // The Purchase block in the item drawer. Editors see fields (or an "Add purchase info" link); everyone else reads a summary.
+    function invPurchaseBlockHtml(it, events, canEdit) {
+      const p = it.purchase && typeof it.purchase === 'object' ? it.purchase : null;
+      const has = !!(p && (p.date || Math.round(Number(p.priceC)) > 0 || p.vendor || p.orderNo || p.receiptNote || p.eventId));
+      const head = '<legend class="section-label">Purchase</legend>';
+      if (!canEdit) return '';   // what gear cost is owner and manager information; crew never see it
+      if (!has) {
+        return '<fieldset class="form-section inv-fs">' + head
+          + '<div id="invFPEmpty"><p class="t-meta">No purchase info. <button type="button" class="btn btn-ghost btn-sm inv-purch-add" onclick="invPurchShow()">Add purchase info</button></p></div>'
+          + '<div id="invFPFields" hidden>' + invPurchaseFieldsHtml('invFP', null, true)
+          + '<div class="field"><label class="field-label" for="invFPNote">Receipt note</label><input id="invFPNote" class="input" type="text" autocomplete="off" placeholder="Where the receipt is kept"></div>'
+          + '<p class="t-meta">Saved on this item only. It does not add a cost to any event.</p></div></fieldset>';
+      }
+      const qty = invPurchaseQty(it), each = Math.round(Number(p.priceC)) || 0;
+      let evRow = '';
+      if (p.eventId) {
+        const ev = (events || []).find(e => String(e.id) === String(p.eventId));
+        const name = (ev && ev.name) || p.eventName || 'an event';
+        evRow = '<div class="inv-purch-ev">Bought for ' + (ev ? '<button type="button" class="btn btn-ghost btn-sm inv-purch-link" onclick="invPurchOpenEvent(\'' + invQ(p.eventId) + '\')">' + esc(name) + '</button>' : '<strong>' + esc(name) + '</strong>') + '</div>';
+      }
+      const total = each > 0 && qty > 1 ? '<p class="t-meta">' + qty + ' bought, ' + esc(invFmtC(each * qty)) + ' in all.</p>' : '';
+      return '<fieldset class="form-section inv-fs">' + head + evRow + invPurchaseFieldsHtml('invFP', p, true)
+        + '<div class="field"><label class="field-label" for="invFPNote">Receipt note</label><input id="invFPNote" class="input" type="text" autocomplete="off" placeholder="Where the receipt is kept" value="' + esc(p.receiptNote || '') + '"></div>'
+        + total + (p.eventId ? '<p class="t-meta">Changing the price here does not change that event\'s costs.</p>' : '') + '</fieldset>';
+    }
+    function invSpentHtml(items) {
+      const n = invPurchaseCount(items);
+      if (!n) return '';
+      return '<div class="inv-spent" role="status"><span class="inv-spent-label">Spent on gear</span><span class="inv-spent-val num">' + esc(invFmtC(invPurchaseTotalC(items))) + '</span>'
+        + '<span class="t-meta">across ' + n + (n === 1 ? ' item' : ' items') + ' with purchase info</span></div>';
     }
     function invFindItemByCode(items, raw) {
       let c = String(raw == null ? '' : raw).trim();
@@ -1089,6 +1192,8 @@
       else if (/^pull(-?list)?s?$/.test(v)) view = 'pulllist';
       else if (v === 'scan') view = 'scan';
       else if (v === 'maintenance' || v === 'work-orders') view = 'maintenance';
+      else if (v === 'purchases') view = 'purchases';
+      else if (v === 'subscriptions') view = 'subscriptions';
       let arg = '';
       if (m[2]) { try { arg = decodeURIComponent(m[2]); } catch (e) { arg = m[2]; } }
       return { view: view, arg: arg };
@@ -1100,6 +1205,8 @@
       if (view === 'scan') return '#/equipment/scan' + a;
       if (view === 'maintenance') return '#/equipment/maintenance';
       if (view === 'defaults') return '#/equipment/defaults';
+      if (view === 'purchases') return '#/equipment/purchases';
+      if (view === 'subscriptions') return '#/equipment/subscriptions';
       return '#/equipment';
     }
     // The router leaves #/equipment/<view> alone (it ignores hashes it cannot parse), so this file listens for it.
@@ -1152,7 +1259,7 @@
     function invNavHtml(view) {
       const cur = view === 'scan' ? 'pulllist' : view;
       const tabs = [['catalog', 'Catalog'], ['availability', 'Availability'], ['pulllist', 'Pull lists'], ['maintenance', 'Maintenance']];
-      if (invCanEdit()) tabs.push(['defaults', 'Defaults']);
+      if (invCanEdit()) { tabs.push(['purchases', 'Purchases']); tabs.push(['subscriptions', 'Subscriptions']); tabs.push(['defaults', 'Defaults']); }
       return '<div class="tabs inv-tabs" role="tablist" aria-label="Inventory views">' + tabs.map(t =>
         '<button type="button" class="tab-btn' + (cur === t[0] ? ' active' : '') + '" role="tab" aria-selected="' + (cur === t[0]) + '" data-inv-view="' + t[0] + '" onclick="invGo(\'' + t[0] + '\')">' + t[1] + '</button>').join('') + '</div>';
     }
@@ -1166,7 +1273,7 @@
       const st = invGetSettings();
       if (!st.enabled) { invActions(''); root.innerHTML = invOffHtml(); return; }
       const r = invParseHash(location.hash);
-      if (r.view === 'defaults' && !invCanEdit()) { r.view = 'catalog'; r.arg = ''; }
+      if ((r.view === 'defaults' || r.view === 'purchases' || r.view === 'subscriptions') && !invCanEdit()) { r.view = 'catalog'; r.arg = ''; }
       _invUI.view = r.view;
       _invUI.arg = r.arg;
       if (r.view !== 'scan') _invUI.scanFor = '';   // the next visit to the scan screen picks Out or In from the list status again
@@ -1184,6 +1291,8 @@
         else if (v === 'scan') invViewScan(b, _invUI.arg);
         else if (v === 'maintenance') invViewMaintenance(b);
         else if (v === 'defaults') invViewDefaults(b);
+        else if (v === 'purchases' && typeof invViewPurchases === 'function') invViewPurchases(b);
+        else if (v === 'subscriptions' && typeof invViewSubscriptions === 'function') invViewSubscriptions(b);
         else invViewCatalog(b);
       } catch (e) {
         console.warn('[inventory]', e);
@@ -1216,8 +1325,9 @@
         + cats.map((c, i) => '<button type="button" class="chip' + (_invUI.cat === c ? ' is-selected' : '') + '" aria-pressed="' + (_invUI.cat === c) + '" onclick="invSetCat(' + i + ')">' + esc(c) + '</button>').join('') + '</div>';
       _invUI.cats = cats;
       b.innerHTML = banner
+        + (canEdit ? invSpentHtml(items) : '')
         + '<div class="inv-toolbar">' + seg
-        + '<div class="input-wrap input-search inv-search">' + invIcon('search', 18) + '<input id="invSearch" class="input" type="search" placeholder="Search name, tag or serial" aria-label="Search inventory" value="' + esc(_invUI.q) + '" oninput="invOnSearch(this.value)" autocomplete="off"></div></div>'
+        + '<div class="input-wrap input-search inv-search">' + invIcon('search', 18) + '<input id="invSearch" class="input" type="search" placeholder="Search name, tag, serial, vendor or order number" aria-label="Search inventory" value="' + esc(_invUI.q) + '" oninput="invOnSearch(this.value)" autocomplete="off"></div></div>'
         + chips + '<div id="invList"></div>';
       invRenderList();
     }
@@ -1230,7 +1340,8 @@
       if (_invUI.cat) list = list.filter(i => (i.category || 'Other') === _invUI.cat);
       if (_invUI.q) {
         const f = invFold(_invUI.q);
-        list = list.filter(i => [i.name, i.tag, i.serial, i.category, i.notes].some(x => invFold(x).indexOf(f) > -1));
+        const canBuy = invCanEdit();   // vendor and order number are searchable by owner and managers only
+        list = list.filter(i => [i.name, i.tag, i.serial, i.category, i.notes, canBuy && i.purchase && i.purchase.vendor, canBuy && i.purchase && i.purchase.orderNo].some(x => invFold(x).indexOf(f) > -1));
       }
       list.sort((a, b) => String(a.category || 'Other').localeCompare(String(b.category || 'Other')) || String(a.name).localeCompare(String(b.name)));
       return list;
@@ -1401,6 +1512,7 @@
         + '<div class="field"><label class="field-label" for="invFKit">Kit</label><select id="invFKit" class="input"' + dis + '>' + invKitOptions(it) + '</select></div>'
         + '<div class="field"><label class="field-label" for="invFNotes">Notes</label><textarea id="invFNotes" class="input" rows="3"' + ro + '>' + esc(it.notes || '') + '</textarea></div>'
         + '</fieldset>'
+        + invPurchaseBlockHtml(it, events, canEdit)
         + '<div class="section-label">Status</div><div id="invDrStatus">' + invDrStatusHtml(it, canEdit) + '</div>'
         + '<div class="section-label">Events using this item</div><div id="invDrAssign">' + invDrAssignHtml(it, events) + '</div>'
         + '<div class="section-label">Maintenance</div><div id="invDrMaint">' + invDrMaintHtml(it, canEdit) + '</div>'
@@ -1473,6 +1585,12 @@
       const name = v('invFName').trim();
       if (!name) { showToast('Give the item a name', 'error'); return false; }
       const track = v('invFTrack') || it.tracking;
+      // Purchase info is checked first so a bad price changes nothing. It never touches an event's costs.
+      let pb = null;
+      if (document.getElementById('invFPPrice')) {
+        pb = invPurchaseBuild(invPurchaseReadFields('invFP'), it.purchase, track === 'serialized' ? 1 : Math.max(1, Math.round(invNum(v('invFQty'))) || 1));
+        if (!pb.ok) { showToast(pb.error, 'error'); return false; }
+      }
       it.name = name;
       it.category = v('invFCat') || it.category;
       it.tracking = track;
@@ -1483,6 +1601,7 @@
       it.buffers = { before: Math.max(0, invNum(v('invFBefore'))), after: Math.max(0, invNum(v('invFAfter'))) };
       it.kit = v('invFKit') || null;
       it.notes = v('invFNotes');
+      if (pb) { if (pb.purchase) it.purchase = pb.purchase; else delete it.purchase; }
       invStore().save(items);
       showToast('Saved', 'success');
       invRefreshView();
@@ -1577,6 +1696,14 @@
         const t = form.parentNode.querySelector('.modal-title'); if (t) t.textContent = 'Add item';
         const sb = form.querySelector('[type=submit]'); if (sb) sb.textContent = 'Add item';
       }
+      // Optional purchase info, collapsed. Added once; form.reset() clears the typed values each time.
+      if (!document.getElementById('equipPurchPrice')) {
+        const sub = form.querySelector('[type=submit]');
+        if (sub) sub.insertAdjacentHTML('beforebegin', '<details class="inv-purch-det" id="equipPurchDet"><summary>Purchase info (optional)</summary>'
+          + invPurchaseFieldsHtml('equipPurch', null, true).replace(/class="field"/g, 'class="form-group"').replace(/class="field-label"/g, 'class="form-label"').replace(/class="input"/g, 'class="form-input"')
+          + '<p class="t-meta">Saved on the item only. It does not add a cost to any event.</p></details>');
+      }
+      const pdet = document.getElementById('equipPurchDet'); if (pdet) pdet.open = false;
       // reset the visual state of the tracking control
       const seg = form.querySelector('.inv-track .seg-btn');
       if (seg) invSetTrack(seg, 'serialized');
@@ -1592,6 +1719,9 @@
       const items = invItems();
       const track = (document.getElementById('equipTracking') || {}).value || (document.getElementById('equipSerial').value ? 'serialized' : 'bulk');
       const qty = track === 'serialized' ? 1 : Math.max(1, Math.round(invNum((document.getElementById('equipQty') || {}).value)) || 1);
+      // Check the optional purchase price before a tag number is used up.
+      const pb = invPurchaseBuild(invPurchaseReadFields('equipPurch'), null, qty);
+      if (!pb.ok) { showToast(pb.error, 'error'); return; }
       const tag = window._invPendingTag && !items.some(i => i.tag === window._invPendingTag) ? window._invPendingTag : invNextTag(items);
       window._invPendingTag = '';
       const it = {
@@ -1605,6 +1735,7 @@
         tracking: track, qty: qty, unit: track === 'serialized' ? 'pcs' : ((document.getElementById('equipUnit') || {}).value || 'pcs'),
         tag: tag, kit: null, buffers: { before: 2, after: 2 }, condition: 'A', maintenance: [], history: []
       };
+      if (pb.purchase) it.purchase = pb.purchase;
       invLog(it, 'register', null, 'Added to inventory');
       items.push(it);
       invStore().save(items);

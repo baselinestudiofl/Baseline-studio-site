@@ -204,3 +204,17 @@
 @media (prefers-reduced-motion: reduce) { .inv-flash { animation: none !important; opacity: 0 !important; } }
 
 /* print: the pull list and labels open in their own window; nothing to do here */
+
+/* ── Purchase info (gear cost). Tokens only. ───────────────────────────────── */
+.inv-spent { display: flex; flex-wrap: wrap; align-items: baseline; gap: var(--sp-2) var(--sp-3); margin: 0 0 var(--sp-3); padding: var(--sp-3) var(--sp-4); background: var(--surface-1); border: 1px solid var(--border); border-radius: var(--r-lg); }
+.inv-spent-label { font: 500 var(--fs-13)/1.4 var(--font-body); color: var(--text-3); }
+.inv-spent-val { font: 600 var(--fs-20)/1.2 var(--font-body); color: var(--text-1); }
+.inv-purch-det { margin: 0 0 var(--sp-4); padding: var(--sp-3) var(--sp-4); background: var(--surface-2); border: 1px solid var(--border); border-radius: var(--r-lg); }
+.inv-purch-det > summary { cursor: pointer; min-height: 44px; display: flex; align-items: center; font: 500 var(--fs-14)/1.4 var(--font-body); color: var(--text-1); }
+.inv-purch-det[open] > summary { margin-bottom: var(--sp-3); }
+.inv-purch-ev { margin: 0 0 var(--sp-3); font-size: var(--fs-14); color: var(--text-2); }
+.inv-purch-link { padding: 0 var(--sp-1); font-weight: 600; text-decoration: underline; }
+.inv-purch-list { margin: 0 0 var(--sp-2); display: flex; flex-direction: column; gap: var(--sp-2); }
+.inv-purch-row { display: flex; justify-content: space-between; gap: var(--sp-4); font-size: var(--fs-14); }
+.inv-purch-row dt { color: var(--text-3); }
+.inv-purch-row dd { margin: 0; color: var(--text-1); text-align: right; min-width: 0; overflow-wrap: anywhere; }
