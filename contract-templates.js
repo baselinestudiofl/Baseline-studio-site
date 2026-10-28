@@ -13,7 +13,9 @@
 (function (root) {
   'use strict';
 
-  var VERSION = 1;
+  // Template text version. 2 = the shorter, plainer agreements with the "Agreement at a glance" box.
+  // When the stock wording changes again: raise this, and add the fingerprints of the version being replaced to STOCK_HISTORY.
+  var VERSION = 2;
 
   // ---------------------------------------------------------------------------
   // Terms. One object, stored at settings.contractTerms. Defaults are the owner's decisions.
@@ -458,20 +460,40 @@
 
   function cancellationHtml(ctx) {
     var t = ctx.terms, tot = ctx.total, dep = ctx.deposit;
-    var e1 = '', e2 = '', e3 = '';
-    if (tot !== null) {
-      e1 = ' For this event that is ' + money(dep) + '.';
-      e2 = ' For this event that is ' + money(round2(dep + (tot - dep) * t.cancelMidPercent / 100)) + '.';
-      e3 = ' For this event that is ' + money(tot) + '.';
-    }
     var near = t.cancelNearDays, far = t.cancelFarDays;
-    return '<p>Client must cancel in writing (email is fine). We count the days from the date we receive the notice to the date of the event. The deposit is non-refundable in every case, because it reserves the date and the crew and equipment we set aside for it.</p>' +
-      '<ul>' +
-      '<li><strong>' + far + ' days or more before the event:</strong> Client owes the deposit only (' + t.depositPercent + '% of the total).' + e1 + '</li>' +
-      '<li><strong>' + near + ' to ' + (far - 1) + ' days before the event:</strong> Client owes the deposit plus ' + t.cancelMidPercent + '% of the remaining balance.' + e2 + '</li>' +
-      '<li><strong>Fewer than ' + near + ' days before the event:</strong> Client owes the full contract balance.' + e3 + '</li>' +
-      '</ul>' +
-      '<p>Payments already made count toward what Client owes. If Client has paid more than is owed under these terms, we refund the difference.</p>';
+    var cols = tot !== null;
+    var amt = cols ? [money(dep), money(round2(dep + (tot - dep) * t.cancelMidPercent / 100)), money(tot)] : [];
+    var rows = [
+      [far + ' days or more before the event', 'The deposit only (' + t.depositPercent + '% of the total)'],
+      [near + ' to ' + (far - 1) + ' days before the event', 'The deposit plus ' + t.cancelMidPercent + '% of the remaining balance'],
+      ['Fewer than ' + near + ' days before the event', 'The full contract balance']
+    ];
+    var h = '<p>Client must cancel in writing (email is fine). Days count from the day we receive the notice to the day of the event. The deposit is never refundable, because it reserves the date and the crew and equipment we set aside.</p>' +
+      '<table style="width:100%;border-collapse:collapse;margin:0 0 14px;"><thead><tr><th style="' + TH + '">When Client cancels</th><th style="' + TH + '">Client owes</th>' +
+      (cols ? '<th style="' + TH + 'text-align:right;">For this event</th>' : '') + '</tr></thead><tbody>';
+    rows.forEach(function (r, i) {
+      h += '<tr><td style="' + TD + '">' + r[0] + '</td><td style="' + TD + '">' + r[1] + '</td>' + (cols ? '<td style="' + TD + 'text-align:right;">' + amt[i] + '</td>' : '') + '</tr>';
+    });
+    return h + '</tbody></table><p>Payments already made count toward what Client owes. We refund any overpayment.</p>';
+  }
+
+  // One-line versions for the "Agreement at a glance" box. The full terms stay in the sections below.
+  function cancellationSummary(ctx) {
+    var t = ctx.terms;
+    return 'The deposit is non-refundable. ' + t.cancelFarDays + ' or more days out: deposit only. ' +
+      t.cancelNearDays + ' to ' + (t.cancelFarDays - 1) + ' days: deposit plus ' + t.cancelMidPercent + '% of the balance. ' +
+      'Under ' + t.cancelNearDays + ' days: full balance.';
+  }
+
+  function overtimeSummary(ctx) {
+    var ot = ctx.overtime, t = ctx.terms, out;
+    if (!ot.lines.length) {
+      out = money(t.overtimeDjRate) + ' per hour for a DJ with sound, plus ' + money(t.overtimeCrewRate) + ' per hour for each additional crew member, billed in ' + ot.block + '-minute blocks';
+    } else {
+      out = money(ot.total) + ' per hour, billed in ' + ot.block + '-minute blocks (' + money(ot.perBlock) + ' per block)';
+    }
+    if (ot.musicians) out += '. Live musicians charge their own overtime rate, which we pass through to Client';
+    return out + '. Client approves it on site first.';
   }
 
   // ---------------------------------------------------------------------------
@@ -531,8 +553,11 @@
 
   // ---------------------------------------------------------------------------
   // Service modules. Included only when a matching service is booked.
+  // Setup time, space and power for every booked service live once, in the table under "What we need from you".
+  // The effects (CO2, cold spark, clouds, other effects) share one "Effects and equipment safety" block.
   // ---------------------------------------------------------------------------
   var MODULE_ORDER = ['dj_mc', 'audio', 'lighting', 'gobo', 'display', 'co2', 'coldspark', 'clouds', 'fx', 'musicians', 'other'];
+  var EFFECT_KEYS = ['co2', 'coldspark', 'clouds', 'fx'];
 
   // Setup minutes per module. Edit here to change what the contracts say.
   var MODULE_SETUP = { dj_mc: 90, audio: 60, lighting: 120, gobo: 60, display: 120, co2: 60, coldspark: 90, clouds: 60, fx: 60, musicians: 60, other: 60 };
@@ -563,16 +588,12 @@
     return names.length ? names.join('; ') : 'the services listed in the booked items table';
   }
 
-  function P(label, text) { return '<p><strong>' + label + '.</strong> ' + text + '</p>'; }
+  // One list item: bold label, then the text.
+  function L(label, text) { return '<li><strong>' + label + '.</strong> ' + text + '</li>'; }
 
-  var EQUIPMENT_LINE = 'All equipment stays our property. Client is responsible for loss or damage caused by guests or by Client\'s other vendors, as set out in the Equipment and damage section.';
   var STOP_LINE = 'We may stop, pause or reduce any effect at any time if we believe it is unsafe, if venue staff, a fire marshal or another authority tells us to, or if weather or crowd conditions call for it. If we stop an effect because of a problem with our own equipment, we credit that effect\'s line item. In every other case the price of the line item is not refunded.';
 
-  function approvalLine(what, details) {
-    return what + ' needs the venue\'s written approval before the event. Some venues and local fire departments also require a permit, advance notice or a fire marshal inspection. Client either obtains the approval or authorizes us in writing to obtain it for Client, at Client\'s cost. Send us a copy at least ' + details + ' days before the event. If the approval is not in place, we may leave the effect out, and the price of that line item is not refunded.';
-  }
-
-  // Power wording. 'venue' is the standard text in each module. The two generator modes replace every outlet line.
+  // Power wording. 'venue' is the standard text. The two generator modes replace every outlet line.
   // Generator wording needs the owner and an attorney to check it (contracts-README.md).
   function gen(ctx) { return ctx.powerSource !== 'venue'; }
   function powerText(ctx) {
@@ -582,160 +603,219 @@
     return 'We bring and run a generator for our equipment. Client confirms with the venue that a generator is allowed and gives us a safe, ventilated, level spot for it within 100 feet of our setup, with a clear path for cables.';
   }
 
+  function co2Fine(ctx) {
+    var f = [];
+    ctx.services.forEach(function (s) { s.fine.forEach(function (k) { if (f.indexOf(k) < 0) f.push(k); }); });
+    return { jets: f.indexOf('co2jet') >= 0, cannon: f.indexOf('co2cannon') >= 0 };
+  }
+
+  function moduleTitle(ctx, k) {
+    var h = ctx.has;
+    if (k === 'dj_mc') return h.dj && h.mc ? 'DJ and MC services' : (h.mc && !h.dj ? 'MC services' : 'DJ services');
+    if (k === 'co2') {
+      var c = co2Fine(ctx);
+      return c.jets && c.cannon ? 'CO2 jets and CO2 cannon' : (c.cannon ? 'CO2 cannon' : (c.jets ? 'CO2 jets' : 'CO2 effects'));
+    }
+    return { audio: 'Audio and public address', lighting: 'Lighting', gobo: 'Gobo and logo projection', display: 'LED video wall, TV displays and projection',
+      coldspark: 'Cold spark', clouds: 'Dancing on clouds (low fog)', fx: 'Other effects (fog, haze, confetti)', musicians: 'Live musicians', other: 'Other booked services' }[k];
+  }
+
+  // Setup time and what we need, one row per booked service. Shown once, under "What we need from you".
+  var NEEDS = {
+    dj_mc: function (ctx, g) {
+      return ['About ' + fmtMinutes(MODULE_SETUP.dj_mc) + ' before the start time',
+        'A spot of about 8 by 6 feet near the dance floor' + (g ? ' and a clear path for equipment.' : ', a grounded power outlet within 25 feet, and a clear path for equipment.') +
+        ' Confirm sound limits, curfews and any outside-DJ rules with the venue before the event.'];
+    },
+    audio: function (ctx, g) {
+      return ['About ' + fmtMinutes(MODULE_SETUP.audio) + ' before the start time',
+        'Floor space or stands for speakers where we agree' + (g ? '.' : ', and a grounded power outlet nearby.') +
+        ' Confirm sound limits and curfew with the venue in advance, and tell us before the event if it has its own sound system or house technician.'];
+    },
+    lighting: function (ctx, g) {
+      return ['About ' + fmtMinutes(MODULE_SETUP.lighting) + ' before guests arrive',
+        (g ? 'Uplights along the walls need a clear path for our cabling; dance floor and stage fixtures need floor space near the dance floor or stage.' : 'Uplights along the walls need an outlet within reach or a clear path for our cabling; dance floor and stage fixtures need floor space and power near the dance floor or stage.') +
+        ' Send color choices at least ' + ctx.terms.detailsDueDays + ' days before the event. Confirm the venue\'s rules on placing, taping, hanging or rigging lights in advance; anything hung or rigged from a ceiling or truss needs the venue\'s written approval.'];
+    },
+    gobo: function (ctx, g) {
+      return ['About ' + fmtMinutes(MODULE_SETUP.gobo) + ' before guests arrive',
+        'A clear path to a flat, light-colored surface' + (g ? '.' : ' and a grounded power outlet nearby.') +
+        ' Image quality depends on the surface and the room\'s brightness. Confirm with the venue in advance that projection on its walls, ceilings or floors is allowed.'];
+    },
+    display: function (ctx, g) {
+      return ['About ' + fmtMinutes(MODULE_SETUP.display) + ' of clear venue access before guests arrive',
+        'A flat, level floor' + (g ? '.' : ' and dedicated 20-amp circuits (confirm power with the venue before the event).') +
+        ' Anything flown or rigged needs the venue\'s written approval and its approved rigging plan. Ground-stacked walls need a clear area around them.'];
+    },
+    co2: function () {
+      return ['About ' + fmtMinutes(MODULE_SETUP.co2) + ' before guests arrive',
+        'Device positions agreed before the event, good ventilation indoors, and written venue approval (see Effects and equipment safety).'];
+    },
+    coldspark: function (ctx, g) {
+      return ['About ' + fmtMinutes(MODULE_SETUP.coldspark) + ' before guests arrive',
+        'The clearances in Effects and equipment safety, ' + (g ? '' : 'a grounded power outlet near each machine, ') + 'and written venue approval.'];
+    },
+    clouds: function (ctx, g) {
+      return ['About ' + fmtMinutes(MODULE_SETUP.clouds) + ' before guests arrive',
+        'A smooth, level dance floor, space for the machine at the edge of the floor, ' + (g ? '' : 'a grounded power outlet nearby, ') + 'good ventilation, and written venue approval.'];
+    },
+    fx: function (ctx, g) {
+      return ['About ' + fmtMinutes(MODULE_SETUP.fx) + ' before guests arrive',
+        (g ? 'Good ventilation indoors and written venue approval.' : 'A grounded power outlet nearby, good ventilation indoors, and written venue approval.')];
+    },
+    musicians: function (ctx, g) {
+      return ['About ' + fmtMinutes(MODULE_SETUP.musicians) + ' before their first set, for setup and a sound check',
+        'A performance area of about 10 by 8 feet, ' + (g ? '' : 'grounded power, ') + 'cover from sun and rain if the event is outdoors, and a private place for cases and changing. Confirm the venue allows amplified live music and tell us about any sound limits or curfew.'];
+    },
+    other: function () {
+      return ['To be confirmed', 'We confirm setup, space and power needs for these items with Client before the event.'];
+    }
+  };
+
+  function needsTableHtml(ctx, keys) {
+    if (!keys.length) return '';
+    var g = gen(ctx);
+    var h = '<h3>What each booked service needs</h3><table style="width:100%;border-collapse:collapse;margin:0 0 14px;"><thead><tr><th style="' + TH + 'width:22%;">Service</th><th style="' + TH + 'width:24%;">Setup time</th><th style="' + TH + '">What we need</th></tr></thead><tbody>';
+    keys.forEach(function (k) {
+      var r = NEEDS[k](ctx, g);
+      h += '<tr><td style="' + TD + '">' + moduleTitle(ctx, k) + '</td><td style="' + TD + '">' + r[0] + '</td><td style="' + TD + '">' + r[1] + '</td></tr>';
+    });
+    return h + '</tbody></table>';
+  }
+
+  // What each service includes and how we run it. The booked items table already names the items.
+  // Setup, space, power and venue checks are in the needs table.
   var MODULES = {
     dj_mc: function (ctx) {
-      var t = ctx.terms, h = ctx.has;
-      var title = h.dj && h.mc ? 'DJ and MC services' : (h.mc && !h.dj ? 'MC services' : 'DJ services');
-      return '<h3>' + title + '</h3>' +
-        P('What is included', 'Your booking includes ' + itemsText(ctx, ['dj', 'mc']) + '.' +
-          (h.dj ? ' Our DJ plays music for the contracted hours on a professional sound system sized for the room, with microphones for announcements and toasts. The sound system is part of the DJ service and is not a separate charge.' : '') +
-          (h.mc ? ' Our MC announces the program and keeps it moving on your timeline.' : '')) +
-        P('Setup, space and power', 'We set up about ' + fmtMinutes(MODULE_SETUP.dj_mc) + ' before the start time. We need a spot of about 8 by 6 feet near the dance floor' + (gen(ctx) ? ' and a clear path to bring equipment in. ' + powerText(ctx) : ', a grounded power outlet within 25 feet, and a clear path to bring equipment in.')) +
-        P('Venue approval', 'Ask the venue about sound limits, curfews and any rules for outside DJs. Client confirms these with the venue before the event.') +
-        P('Operation', 'Our DJ and crew run all equipment. The DJ plays music in the style agreed with Client, takes short breaks with music still playing, and may decline a request that does not fit the program or the venue rules.') +
-        P('Safety', 'We keep volume within the venue\'s limits and lower it if venue staff or an authority asks. We cover or route cables so they stay out of walkways.') +
-        P('Equipment', EQUIPMENT_LINE);
+      var h = ctx.has;
+      return '<h3>' + moduleTitle(ctx, 'dj_mc') + '</h3><ul>' +
+        L('Included', (h.dj ? 'Our DJ plays music for the contracted hours on a professional sound system sized for the room, with microphones for announcements and toasts. The sound system is not a separate charge.' : '') +
+          (h.mc ? (h.dj ? ' ' : '') + 'Our MC announces the program and keeps it moving on your timeline.' : '')) +
+        L('Operation and safety', 'Our DJ and crew run all equipment. The DJ plays the style agreed with Client, takes short breaks with music still playing, and may decline a request that does not fit the program or the venue rules. We keep volume within the venue\'s limits, lower it if venue staff or an authority asks, and keep cables out of walkways.') +
+        '</ul>';
     },
     audio: function (ctx) {
-      var t = ctx.terms;
-      return '<h3>Audio and public address</h3>' +
-        P('What is included', 'Your booking includes ' + itemsText(ctx, ['audio']) + '. That covers speakers, a mixer, microphones, stands and cabling for the contracted use.') +
-        P('Setup, space and power', 'We set up about ' + fmtMinutes(MODULE_SETUP.audio) + ' before the start time and run a sound check before guests arrive. Speakers need floor space or stands at the positions we agree on' + (gen(ctx) ? '. ' + powerText(ctx) : ', and a grounded power outlet nearby.')) +
-        P('Venue approval', 'Client confirms the venue\'s sound limits and curfew in advance. Where the venue has its own sound system or house technician, Client tells us before the event.') +
-        P('Operation', 'Our audio technician sets up and runs the system. Speakers, presenters and other vendors who bring their own equipment coordinate with us first. We are not responsible for equipment we did not supply.') +
-        P('Safety', 'We keep volume within the venue\'s limits, secure stands and speakers, and cover or route cables so they stay out of walkways. We can turn the system down or off if venue staff or an authority asks.') +
-        P('Equipment', EQUIPMENT_LINE);
+      return '<h3>' + moduleTitle(ctx, 'audio') + '</h3><ul>' +
+        L('Included', 'Speakers, a mixer, microphones, stands and cabling for the contracted use, and a sound check before guests arrive.') +
+        L('Operation and safety', 'Our audio technician runs the system. Speakers, presenters and other vendors who bring their own equipment coordinate with us first, and we are not responsible for equipment we did not supply. We keep volume within the venue\'s limits, secure stands and speakers, keep cables out of walkways, and turn the system down or off if venue staff or an authority asks.') +
+        '</ul>';
     },
     lighting: function (ctx) {
-      var t = ctx.terms;
-      return '<h3>Lighting</h3>' +
-        P('What is included', 'Your booking includes ' + itemsText(ctx, ['lighting']) + '. Fixtures, stands, cabling and control are included.') +
-        P('Setup, space and power', 'We set up about ' + fmtMinutes(MODULE_SETUP.lighting) + ' before guests arrive. Uplights go along the walls and need ' + (gen(ctx) ? 'a clear path for our cabling. Dance floor and stage fixtures need floor space near the dance floor or stage. ' + powerText(ctx) : 'an outlet within reach or a clear path for our cabling. Dance floor and stage fixtures need floor space and power near the dance floor or stage.') + ' Tell us your color choices at least ' + t.detailsDueDays + ' days before the event.') +
-        P('Venue approval', 'Some venues limit how lights can be placed, taped, hung or rigged. Client confirms the venue\'s rules in advance. Anything hung or rigged from a ceiling or truss needs the venue\'s written approval.') +
-        P('Operation', 'Our lighting technician sets up and runs the lights. Guests and other vendors do not adjust fixtures.') +
-        P('Safety', 'Flashing and strobe effects can affect guests who are sensitive to flashing light. We use strobe effects only if Client approves them, and we can turn any lighting effect off at any time. We keep fixtures and cables out of walkways.') +
-        P('Equipment', EQUIPMENT_LINE);
+      return '<h3>' + moduleTitle(ctx, 'lighting') + '</h3><ul>' +
+        L('Included', 'Fixtures, stands, cabling and control.') +
+        L('Operation and safety', 'Our lighting technician runs the lights, and guests and other vendors do not adjust fixtures. Flashing light can affect sensitive guests, so we use strobe effects only if Client approves them. We can turn any lighting effect off at any time and keep fixtures and cables out of walkways.') +
+        '</ul>';
     },
     gobo: function (ctx) {
-      var t = ctx.terms;
-      return '<h3>Gobo and logo projection</h3>' +
-        P('What is included', 'Your booking includes ' + itemsText(ctx, ['gobo']) + '. A projector or light shows a monogram, logo or pattern on a wall, floor or other surface.') +
-        P('Artwork', 'Send artwork (a vector file or a high-resolution image) at least ' + t.detailsDueDays + ' days before the event. We show you a proof and use the version you approve.') +
-        P('Setup, space and power', 'We set up about ' + fmtMinutes(MODULE_SETUP.gobo) + ' before guests arrive. The projection needs a clear path to a flat, light-colored surface' + (gen(ctx) ? '. ' + powerText(ctx) : ' and a grounded power outlet nearby.') + ' Image quality depends on the surface and on how bright the room is.') +
-        P('Venue approval', 'Some venues do not allow projection on walls, ceilings or floors. Client confirms this with the venue in advance.') +
-        P('Operation', 'Our lighting technician sets up and runs the projection. We place the unit where guests cannot bump it or look into the beam.') +
-        P('Safety', 'We may move, dim or turn off the projection if it creates a hazard or if venue staff ask.') +
-        P('Equipment', EQUIPMENT_LINE);
+      return '<h3>' + moduleTitle(ctx, 'gobo') + '</h3><ul>' +
+        L('Included', 'A projector or light that shows a monogram, logo or pattern on a wall, floor or other surface.') +
+        L('Artwork', 'Send artwork (a vector file or a high-resolution image) at least ' + ctx.terms.detailsDueDays + ' days before the event. We show you a proof and use the version you approve.') +
+        L('Operation and safety', 'Our lighting technician runs the projection and places the unit where guests cannot bump it or look into the beam. We may move, dim or turn off the projection if it creates a hazard or if venue staff ask.') +
+        '</ul>';
     },
     display: function (ctx) {
-      var t = ctx.terms;
-      return '<h3>LED video wall, TV displays and projection</h3>' +
-        P('What is included', 'Your booking includes ' + itemsText(ctx, ['display']) + '. Standard motion background content is included. For a video wall that means panels, processor, stands or ground support, cabling and playback. A live camera feed (IMAG), a camera operator, recording and livestreaming are included only if they are listed in the booked items table.') +
-        P('Content', 'Custom graphics, logos, slides or video must reach us at least 72 hours before the event. We cannot promise changes made after that.') +
-        P('Setup, space and power', 'Installation takes about ' + fmtMinutes(MODULE_SETUP.display) + ' of clear venue access before guests arrive. A video wall needs ' + (gen(ctx) ? 'a flat, level floor. ' + powerText(ctx) : 'dedicated 20-amp circuits and a flat, level floor. Client confirms power with the venue before the event.') + ' If venue scheduling cuts the setup window, we may have to reduce what we install.') +
-        P('Venue approval', 'Anything flown or rigged needs the venue\'s written approval and its approved rigging plan. Ground-stacked walls need a flat, level floor and a clear area around them.') +
-        P('Operation', 'Our AV technician installs and runs the display. No one else changes the panel layout or the settings.') +
-        P('Safety', 'No one may lean on, climb or move the wall, screens or stands. We may shut down or move a display if the footing is unsafe, if wind or weather puts an outdoor display at risk, or if venue staff ask.') +
-        P('Equipment', EQUIPMENT_LINE);
-    },
-    co2: function (ctx) {
-      var t = ctx.terms, f = [];
-      ctx.services.forEach(function (s) { s.fine.forEach(function (k) { if (f.indexOf(k) < 0) f.push(k); }); });
-      var jets = f.indexOf('co2jet') >= 0, cannon = f.indexOf('co2cannon') >= 0;
-      var title = jets && cannon ? 'CO2 jets and CO2 cannon' : (cannon ? 'CO2 cannon' : (jets ? 'CO2 jets' : 'CO2 effects'));
-      var space = 'We set up about ' + fmtMinutes(MODULE_SETUP.co2) + ' before guests arrive and place the devices at positions we agree on before the event. Indoors, the room needs good ventilation. We may limit or decline CO2 use in a sealed or poorly ventilated space.';
-      if (jets) space += ' Keep a guest-free zone of at least 8 feet around each jet while it runs.';
-      if (cannon) space += ' We never aim a cannon at a person\'s face, and we keep at least 4 feet between a cannon blast and any guest.';
-      return '<h3>' + title + '</h3>' +
-        P('What is included', 'Your booking includes ' + itemsText(ctx, ['co2']) + '. We supply the equipment and the CO2 for the contracted moments only. We cannot promise extra activations beyond the booked scope.') +
-        P('Setup, space and power', space) +
-        P('Venue approval', approvalLine('CO2 use', t.detailsDueDays)) +
-        P('Operation', 'Only our trained crew operate the devices. Guests and venue staff do not.') +
-        P('Safety', 'Client and the venue are responsible for keeping guests out of the safety zones. ' + STOP_LINE) +
-        P('Equipment', EQUIPMENT_LINE);
-    },
-    coldspark: function (ctx) {
-      var t = ctx.terms;
-      return '<h3>Cold spark</h3>' +
-        P('What is included', 'Your booking includes ' + itemsText(ctx, ['coldspark']) + '. Cold spark machines make a fountain of sparks that is much cooler than traditional pyrotechnics. They still need the clearances below.') +
-        P('Setup, space and power', 'We set up about ' + fmtMinutes(MODULE_SETUP.coldspark) + ' before guests arrive. Each machine needs 6 feet of clear space on all sides and 12 feet of clear height above it, away from drapes, fabric, decorations and ceilings. A fire extinguisher must be within 15 feet of each machine while it runs.' + (gen(ctx) ? ' ' + powerText(ctx) : ' Each machine needs a grounded power outlet nearby.')) +
-        P('Venue approval', approvalLine('Cold spark', t.detailsDueDays)) +
-        P('Operation', 'Only our trained crew operate the machines, and they fire them at the moments in your timeline. Guests and venue staff do not touch them.') +
-        P('Safety', 'Client keeps guests, including children, out of the clearance area. ' + STOP_LINE) +
-        P('Equipment', EQUIPMENT_LINE);
-    },
-    clouds: function (ctx) {
-      var t = ctx.terms;
-      return '<h3>Dancing on clouds (low fog)</h3>' +
-        P('What is included', 'Your booking includes ' + itemsText(ctx, ['clouds']) + '. A low-lying fog machine makes a ground-level cloud layer, usually for a first dance or another set moment. Each activation lasts about 3 to 5 minutes. Longer or continuous use is not included unless it is listed in the booked items table.') +
-        P('Setup, space and power', 'We set up about ' + fmtMinutes(MODULE_SETUP.clouds) + ' before guests arrive. The effect needs a smooth, level dance floor, space for the machine at the edge of the floor, ' + (gen(ctx) ? 'and good ventilation. ' + powerText(ctx) : 'a grounded power outlet nearby, and good ventilation.')) +
-        P('Venue approval', approvalLine('Fog', t.detailsDueDays) + ' Fog can set off smoke detectors, so Client coordinates with venue management to cover or disable detectors before the event. Client is responsible for any false alarm fees if a detector is not handled as agreed.') +
-        P('Operation', 'Only our trained crew operate the machine.') +
-        P('Safety', 'Low fog hides the floor surface, so Client and the venue keep the dance floor dry and free of trip hazards. ' + STOP_LINE) +
-        P('Equipment', EQUIPMENT_LINE);
-    },
-    fx: function (ctx) {
-      var t = ctx.terms;
-      return '<h3>Other effects (fog, haze, confetti)</h3>' +
-        P('What is included', 'Your booking includes ' + itemsText(ctx, ['fx']) + ' for the contracted moments only.') +
-        P('Setup, space and power', 'We set up about ' + fmtMinutes(MODULE_SETUP.fx) + ' before guests arrive. ' + (gen(ctx) ? 'Indoors, the room needs good ventilation. ' + powerText(ctx) : 'Machines need a grounded power outlet nearby. Indoors, the room needs good ventilation.')) +
-        P('Venue approval', approvalLine('Fog, haze, confetti and similar effects', t.detailsDueDays) + ' Fog and haze can set off smoke detectors, so Client coordinates with venue management to cover or disable detectors before the event. Many venues ban confetti or charge a cleanup fee. Client pays any cleanup fee the venue charges.') +
-        P('Operation', 'Only our trained crew operate these effects.') +
-        P('Safety', STOP_LINE) +
-        P('Equipment', EQUIPMENT_LINE);
+      return '<h3>' + moduleTitle(ctx, 'display') + '</h3><ul>' +
+        L('Included', 'Standard motion background content. A video wall includes panels, processor, stands or ground support, cabling and playback. A live camera feed (IMAG), a camera operator, recording and livestreaming are included only if they are listed in the booked items table.') +
+        L('Content', 'Custom graphics, logos, slides or video must reach us at least 72 hours before the event. We cannot promise later changes.') +
+        L('Operation and safety', 'Our AV technician installs and runs the display, and no one else changes the panel layout or the settings. No one may lean on, climb or move the wall, screens or stands. We may shut down or move a display if the footing is unsafe, if wind or weather puts an outdoor display at risk, or if venue staff ask.') +
+        '</ul>';
     },
     musicians: function (ctx) {
-      var t = ctx.terms;
-      return '<h3>Live musicians</h3>' +
-        P('What is included', 'Your booking includes ' + itemsText(ctx, ['musicians']) + '. Musicians perform for the set lengths listed in the booked items table.') +
-        P('Setup, space and power', 'Musicians arrive about ' + fmtMinutes(MODULE_SETUP.musicians) + ' before their first set for setup and a sound check. They need a performance area of about 10 by 8 feet, ' + (gen(ctx) ? '' : 'grounded power, ') + 'cover from sun and rain if the event is outdoors, and a private place to store cases and change.' + (gen(ctx) ? ' ' + powerText(ctx) : '')) +
-        P('Venue approval', 'Client confirms the venue allows amplified live music and tells us about any sound limits or curfew.') +
-        P('Operation', 'Musicians play the style and set list agreed with Client. They take short breaks between sets. If a DJ is booked, recorded music covers those breaks.') +
-        P('Replacement', 'If a musician cannot perform because of illness or an emergency, we tell Client right away and offer a replacement of similar quality. If we cannot, we refund the price of that line item.') +
-        P('Overtime', 'Live musicians charge their own overtime rate. We pass that rate through to Client at cost, in addition to the overtime rates in this agreement.') +
-        P('Safety', 'We may pause a set if rain, wind or lightning puts the performers or their equipment at risk.') +
-        P('Equipment', 'Instruments and gear belong to the musicians. Client is responsible for damage caused by guests or by Client\'s other vendors.');
+      return '<h3>' + moduleTitle(ctx, 'musicians') + '</h3><ul>' +
+        L('Included', 'Sets of the lengths listed in the booked items table.') +
+        L('Operation and safety', 'Musicians play the style and set list agreed with Client and take short breaks between sets. If a DJ is booked, recorded music covers those breaks. We may pause a set if rain, wind or lightning puts the performers or their equipment at risk.') +
+        L('Replacement', 'If a musician cannot perform because of illness or an emergency, we tell Client right away and offer a replacement of similar quality. If we cannot, we refund the price of that line item.') +
+        L('Overtime', 'Live musicians charge their own overtime rate. We pass that rate through to Client at cost, in addition to the overtime rates in this agreement.') +
+        L('Equipment', 'Instruments and gear belong to the musicians. Client is responsible for damage caused by guests or by Client\'s other vendors.') +
+        '</ul>';
     },
     other: function (ctx) {
       var others = ctx.services.filter(function (s) { return s.keys.length === 1 && s.keys[0] === 'other'; }).map(function (s) { return esc(s.name + (s.sub ? ' (' + s.sub + ')' : '')); });
-      return '<h3>Other booked services</h3>' +
-        '<p>The services listed in the booked items table that do not have their own section above (' + others.join('; ') + ') are provided on the terms in this agreement. We confirm the setup, space and power needs for these items with Client before the event.</p>';
+      return '<h3>' + moduleTitle(ctx, 'other') + '</h3>' +
+        '<p>' + others.join('; ') + ' ' + (others.length > 1 ? 'are' : 'is') + ' provided on the terms in this agreement.</p>';
     }
   };
+
+  // One block for every booked effect. Shared rules are written once; each effect adds only its own facts.
+  function effectsHtml(ctx, keys) {
+    var eff = EFFECT_KEYS.filter(function (k) { return keys.indexOf(k) >= 0; });
+    if (!eff.length) return '';
+    var t = ctx.terms, has = function (k) { return eff.indexOf(k) >= 0; };
+    var c = co2Fine(ctx);
+
+    var subj = [];
+    if (has('co2')) subj.push('CO2 use');
+    if (has('coldspark')) subj.push('cold spark');
+    if (has('clouds') && !has('fx')) subj.push('fog');
+    if (has('fx')) subj.push('fog, haze, confetti and similar effects');
+    var subjText = subj.length > 1 ? subj.slice(0, -1).join(', ') + ' and ' + subj[subj.length - 1] : subj[0];
+    subjText = subjText.charAt(0).toUpperCase() + subjText.slice(1);
+    var verb = (subj.length === 1 && !has('fx')) ? 'needs' : 'need';
+
+    var shared = '';
+    shared += L('Venue approval', subjText + ' ' + verb + ' the venue\'s written approval before the event. Some venues and local fire departments also require a permit, advance notice or a fire marshal inspection. Client either obtains the approval or authorizes us in writing to obtain it for Client, at Client\'s cost. Send us a copy at least ' + t.detailsDueDays + ' days before the event. If the approval is not in place, we may leave the effect out, and the price of that line item is not refunded.');
+    shared += L('Operator control', 'Only our trained crew operate effects equipment, not guests or venue staff.');
+    if (has('co2') || has('coldspark')) shared += L('Safety zones', 'Client and the venue keep guests, including children, out of the safety zones and clearances below.');
+    shared += L('Stopping an effect', STOP_LINE);
+    if (has('co2') || has('clouds') || has('fx')) shared += L('Ventilation', 'Indoors, the room needs good ventilation.' + (has('co2') ? ' We may limit or decline CO2 use in a sealed or poorly ventilated space.' : ''));
+    if (has('clouds') || has('fx')) shared += L('Smoke detectors', 'Fog and haze can set off smoke detectors, so Client coordinates with venue management to cover or disable detectors before the event. Client is responsible for any false alarm fees if a detector is not handled as agreed.');
+
+    var each = '';
+    if (has('co2')) {
+      each += L(moduleTitle(ctx, 'co2'), 'We supply the equipment and the CO2 for the contracted moments only, and cannot promise extra activations beyond the booked scope. We place the devices at positions we agree on before the event.' +
+        (c.jets ? ' Keep a guest-free zone of at least 8 feet around each jet while it runs.' : '') +
+        (c.cannon ? ' We never aim a cannon at a person\'s face, and we keep at least 4 feet between a cannon blast and any guest.' : ''));
+    }
+    if (has('coldspark')) {
+      each += L('Cold spark', 'Each machine needs 6 feet of clear space on all sides and 12 feet of clear height above it, away from drapes, fabric, decorations and ceilings. A fire extinguisher must be within 15 feet of each machine while it runs. We fire the machines at the moments in your timeline.');
+    }
+    if (has('clouds')) {
+      each += L('Dancing on clouds (low fog)', 'A low-lying fog machine makes a ground-level cloud layer, usually for a first dance or another set moment. Each activation lasts about 3 to 5 minutes. Longer or continuous use is not included unless it is listed in the booked items table. Low fog hides the floor surface, so Client and the venue keep the dance floor dry and free of trip hazards.');
+    }
+    if (has('fx')) {
+      each += L('Other effects (fog, haze, confetti)', 'For the contracted moments only. Many venues ban confetti or charge a cleanup fee. Client pays any cleanup fee the venue charges.');
+    }
+    return '<h3>Effects and equipment safety</h3>' +
+      '<p><strong>Rules for every effect</strong></p><ol>' + shared + '</ol>' +
+      '<p><strong>Rules for each effect booked</strong></p><ul>' + each + '</ul>';
+  }
 
   function serviceSectionsHtml(ctx) {
     if (!ctx.hasEvent) return '<p>[Service sections appear here for the services booked on the event.]</p>';
     var keys = moduleKeysFor(ctx);
     var h = '<div class="bs-contract-modules">';
     if (!keys.length) {
-      h += '<p>The services Client has booked are listed in the table above. The other terms in this agreement apply to them.</p>';
+      h += '<p>The other terms in this agreement apply to the services booked.</p>';
     } else {
-      h += '<p>The sections below apply only to the services Client has booked.</p>';
-      keys.forEach(function (k) { h += MODULES[k](ctx); });
+      var doneFx = false;
+      keys.forEach(function (k) {
+        if (EFFECT_KEYS.indexOf(k) >= 0) {
+          if (!doneFx) { h += effectsHtml(ctx, keys); doneFx = true; }
+          return;
+        }
+        h += MODULES[k](ctx);
+      });
     }
     return h + '</div>';
   }
 
   // ---------------------------------------------------------------------------
-  // Client responsibilities
+  // What we need from you: general points, then setup and needs for each booked service
   // ---------------------------------------------------------------------------
   function responsibilitiesHtml(ctx) {
     var t = ctx.terms, keys = moduleKeysFor(ctx);
     var setup = 90;
     keys.forEach(function (k) { if (MODULE_SETUP[k] > setup) setup = MODULE_SETUP[k]; });
-    var power = 'Working, grounded power near each setup location. Each service section lists what that service needs.';
-    if (ctx.has.display) power = 'Working, grounded power near each setup location, plus dedicated 20-amp circuits for any LED video wall. Each service section lists what that service needs.';
+    var power = 'Working, grounded power near each setup location.';
     if (gen(ctx)) power = powerText(ctx);
     var li = [];
-    li.push('<strong>Venue access and load-in.</strong> Confirm the load-in time and route with the venue, and tell us in writing at least ' + t.detailsDueDays + ' days before the event where we load in (dock, elevator or parking) and who meets us. We need clear access for at least ' + fmtMinutes(setup) + ' before guests arrive. If the venue shortens that window, we may have to reduce what we set up.');
-    li.push('<strong>Power.</strong> ' + power);
-    li.push('<strong>Space.</strong> A flat, dry area, covered if the event is outdoors, large enough for the equipment booked, as described in each service section.');
-    li.push('<strong>Crew meals and breaks.</strong> If our crew is on site for more than five hours, please provide a meal (or a 30-minute break to eat) and water for each crew member.');
-    li.push('<strong>Vendor coordination.</strong> Share our contact details and the timeline with your planner, venue coordinator, photographer, videographer and other vendors, and have them contact us to coordinate. No other vendor may use, unplug or move our equipment without our approval.');
-    li.push('<strong>Event details.</strong> Send the final timeline, announcements and name pronunciations, and your must-play and do-not-play songs at least ' + t.detailsDueDays + ' days before the event. We will make reasonable efforts to handle changes after that date but cannot guarantee them.');
-    li.push('<strong>One point of contact.</strong> Name one person who can be reached on the day of the event and who can approve overtime.');
-    li.push('<strong>Guests.</strong> Keep guests away from equipment, stages, cables and effects, and supervise children.');
-    return '<ul>' + li.map(function (x) { return '<li>' + x + '</li>'; }).join('') + '</ul>';
+    li.push('<strong>Venue access and load-in.</strong> Confirm the load-in time and route with the venue. At least ' + t.detailsDueDays + ' days before the event, tell us in writing where we load in and who meets us. We need clear access for at least ' + fmtMinutes(setup) + ' before guests arrive. If the venue shortens that window, we may reduce what we set up.');
+    li.push('<strong>Power and space.</strong> ' + power + ' A flat, dry area, covered if outdoors, large enough for the equipment booked.');
+    li.push('<strong>Crew meals and breaks.</strong> If our crew is on site more than five hours, provide a meal (or a 30-minute break to eat) and water for each member.');
+    li.push('<strong>Vendor coordination.</strong> Share our contact details and the timeline with your other vendors. No other vendor may use, unplug or move our equipment without our approval.');
+    li.push('<strong>Event details.</strong> Send the final timeline, announcements, name pronunciations, and must-play and do-not-play songs at least ' + t.detailsDueDays + ' days before the event. We try to handle later changes but cannot guarantee them.');
+    li.push('<strong>One point of contact.</strong> Name one person we can reach on the day of the event who can approve overtime.');
+    return '<ol>' + li.map(function (x) { return '<li>' + x + '</li>'; }).join('') + '</ol>' + needsTableHtml(ctx, keys);
   }
 
   // ---------------------------------------------------------------------------
@@ -785,6 +865,8 @@
       html('service_sections', '<p>[Service sections appear here for the services booked on the event.]</p>');
     }
     html('overtime_rate', overtimeRateHtml(ctx));
+    text('cancellation_summary', cancellationSummary(ctx));
+    text('overtime_summary', overtimeSummary(ctx));
     html('cancellation_terms', cancellationHtml(ctx));
     html('client_responsibilities', responsibilitiesHtml(ctx));
     return v;
@@ -793,7 +875,8 @@
   var TOKEN_NAMES = ['client_name', 'client_email', 'client_phone', 'event_name', 'event_date', 'event_time', 'event_type', 'venue_name', 'venue_address',
     'services_list', 'total_price', 'deposit_amount', 'balance_amount', 'deposit_percent', 'current_date', 'payment_terms', 'deposit_due_date',
     'balance_due_date', 'balance_due_days', 'details_due_days', 'overtime_block_minutes', 'overtime_dj_rate', 'overtime_crew_rate', 'portalUrl',
-    'booked_items_table', 'service_sections', 'overtime_rate', 'cancellation_terms', 'client_responsibilities'];
+    'booked_items_table', 'service_sections', 'overtime_rate', 'cancellation_terms', 'client_responsibilities',
+    'cancellation_summary', 'overtime_summary'];
 
   function plainToHtml(s) {
     // template text is trusted, so its own {{tokens}} must survive; only markup characters are escaped
@@ -883,57 +966,64 @@
     '<td style="width:50%;padding:0 0 0 20px;vertical-align:top;"><p><strong>Baseline Studio</strong><br>Authorized signer</p><div style="border-bottom:1px solid #333;height:46px;margin-bottom:6px;"></div><p>Signature</p><p>Date: ____________________</p></td>' +
     '</tr></table>';
 
+  var LATE_START = 'If the program starts late, the contracted end time stays the same. Time added to make up for a late start is overtime and needs approval under the Overtime section.';
+
   var TYPE_SECTIONS = {
     wedding: {
       title: 'Ceremony, cocktail hour and reception',
-      html:
-        '<p><strong>Ceremony.</strong> If our booked items include sound for the ceremony, we set up speakers and a microphone for the officiant and play the processional, recessional and music cues at the times in your timeline. Tell us the ceremony location, the start time, and who will give us our cues. If the ceremony is in a different space than the reception, tell us at least {{details_due_days}} days before the event. A second location may need extra crew time or equipment, and any added cost is agreed in writing before the event.</p>' +
-        '<p><strong>Cocktail hour.</strong> Background music starts when guests move to the cocktail area, unless your timeline says otherwise.</p>' +
-        '<p><strong>Reception.</strong> We run the reception in the order of your final timeline, for example the grand entrance, first dance, parent dances, toasts, dinner, cake and open dancing. Send us the names to announce with their pronunciations.</p>' +
-        '<p><strong>Timing.</strong> The contracted end time stays the same if the program starts late. Time added to make up for a late start is overtime and must be approved as described in the Overtime section.</p>'
+      html: '<ol>' +
+        '<li><strong>Ceremony.</strong> If our booked items include ceremony sound, we set up speakers and a microphone for the officiant and play the processional, recessional and music cues at the times in your timeline. Tell us the ceremony location, the start time and who gives us our cues. If the ceremony is in a different space than the reception, tell us at least {{details_due_days}} days before the event. A second location may need extra crew time or equipment, and any added cost is agreed in writing before the event.</li>' +
+        '<li><strong>Cocktail hour.</strong> Background music starts when guests move to the cocktail area, unless your timeline says otherwise.</li>' +
+        '<li><strong>Reception.</strong> We run the reception in the order of your final timeline (for example grand entrance, first dance, parent dances, toasts, dinner, cake and open dancing).</li>' +
+        '<li><strong>Late start.</strong> ' + LATE_START + '</li>' +
+        '</ol>'
     },
     quince: {
       title: 'Court of honor, choreography and timing',
-      html:
-        '<p><strong>Court and choreography.</strong> The grand entrance, waltz and surprise dance run to music files. Send the final audio files, edited to the length your group rehearsed, at least {{details_due_days}} days before the event. We play the files you send. We do not edit choreography music unless that is listed in the booked items table.</p>' +
-        '<p><strong>Rehearsal and sound check.</strong> If the court needs to rehearse with our sound system, tell us. A rehearsal at the venue before the day of the event needs its own access time and is agreed in writing.</p>' +
-        '<p><strong>Program and timing.</strong> A quincea\u00f1era has many set moments, such as the court presentation, waltz, parent dances, toast and surprise dance. We run them in the order of the program you give us. The contracted end time stays the same if the program starts late. Time added to make up for a late start is overtime and must be approved as described in the Overtime section.</p>'
+      html: '<ol>' +
+        '<li><strong>Court and choreography.</strong> The grand entrance, waltz and surprise dance run to music files. Send the final audio files, edited to the length your group rehearsed, at least {{details_due_days}} days before the event. We play the files you send and do not edit choreography music unless that is listed in the booked items table.</li>' +
+        '<li><strong>Rehearsal and sound check.</strong> If the court needs to rehearse with our sound system, tell us. A rehearsal at the venue before the event day needs its own access time and is agreed in writing.</li>' +
+        '<li><strong>Program and timing.</strong> We run the set moments (court presentation, waltz, parent dances, toast and surprise dance) in the order of the program you give us. ' + LATE_START + '</li>' +
+        '</ol>'
     },
     mitzvah: {
       title: 'Shabbat, holidays and the hora',
-      html:
-        '<p><strong>Shabbat and holidays.</strong> If the event is on a Friday evening, a Saturday or a Jewish holiday, or if the start time depends on the end of Shabbat (Motzei Shabbos), tell us at least {{details_due_days}} days before the event. We follow your family\'s and the venue\'s rules about when we may load in, set up and turn equipment on. If setup has to happen before Shabbat begins or after it ends, that changes our access window. Client confirms the access window with us in writing, and the program start moves with it.</p>' +
-        '<p><strong>Hora, candle lighting and family moments.</strong> We play music and make announcements for the hora, candle lighting, blessings and other moments in the order of the program you give us. Send the program with the names to announce and their pronunciations at least {{details_due_days}} days before the event.</p>' +
-        '<p><strong>Venue and food rules.</strong> If the venue or caterer follows kosher rules that limit outside food or equipment, tell us in advance so we can plan crew meals and equipment.</p>' +
-        '<p><strong>Guests.</strong> Many guests are young. We play clean versions of songs unless Client tells us otherwise in writing.</p>'
+      html: '<ol>' +
+        '<li><strong>Shabbat and holidays.</strong> If the event is on a Friday evening, a Saturday or a Jewish holiday, or the start time depends on the end of Shabbat (Motzei Shabbos), tell us at least {{details_due_days}} days before the event. We follow your family\'s and the venue\'s rules about when we may load in, set up and turn equipment on. If setup has to happen before Shabbat begins or after it ends, our access window changes. Client confirms the access window with us in writing, and the program start moves with it.</li>' +
+        '<li><strong>Hora, candle lighting and family moments.</strong> We play music and make announcements for the hora, candle lighting, blessings and other moments in the order of the program you give us. Send the program, with the names to announce and their pronunciations, at least {{details_due_days}} days before the event.</li>' +
+        '<li><strong>Venue and food rules.</strong> If the venue or caterer follows kosher rules that limit outside food or equipment, tell us in advance so we can plan crew meals and equipment.</li>' +
+        '<li><strong>Guests.</strong> Many guests are young. We play clean versions of songs unless Client tells us otherwise in writing.</li>' +
+        '</ol>'
     },
     sweet16: {
       title: 'Program, guests and age',
-      html:
-        '<p><strong>Program.</strong> Send the program, such as the entrance, parent dances, candle ceremony, toast, games and open dancing, at least {{details_due_days}} days before the event. We run it in that order. The contracted end time stays the same if the program starts late. Time added to make up for a late start is overtime and must be approved as described in the Overtime section.</p>' +
-        '<p><strong>Guests and age.</strong> Most guests are under 18. Client is responsible for supervising guests and for following the venue\'s age rules. We play clean versions of songs unless Client tells us otherwise in writing. We do not serve or handle alcohol.</p>' +
-        '<p><strong>The person signing.</strong> The person who signs for Client must be 18 or older and is responsible for payment under this agreement. An adult from the family must be our contact for the whole event.</p>'
+      html: '<ol>' +
+        '<li><strong>Program.</strong> Send the program (for example entrance, parent dances, candle ceremony, toast, games and open dancing) at least {{details_due_days}} days before the event. We run it in that order. ' + LATE_START + '</li>' +
+        '<li><strong>Guests and age.</strong> Most guests are under 18. Client supervises guests and follows the venue\'s age rules. We play clean versions of songs unless Client tells us otherwise in writing. We do not serve or handle alcohol.</li>' +
+        '<li><strong>The person signing.</strong> The person who signs for Client must be 18 or older and is responsible for payment under this agreement. An adult from the family must be our contact for the whole event.</li>' +
+        '</ol>'
     },
     corporate: {
-      title: 'Purchase orders, invoicing and run of show',
-      html:
-        '<p><strong>Billing.</strong> This agreement is with the company or organization named as Client above. The person who signs says they have the authority to sign for it. We send invoices to the contact above, or to an accounts payable address Client gives us in writing.</p>' +
-        '<p><strong>Purchase orders.</strong> If Client\'s company requires a purchase order, send us the PO number before the deposit is due. A purchase order process does not change the payment dates in this agreement unless we agree in writing. We provide an invoice and a W-9 on request.</p>' +
-        '<p><strong>Run of show and AV.</strong> Send the run of show (agenda, speakers, presentations, cues, and microphone needs) at least {{details_due_days}} days before the event. Presentations, videos and logos must reach us at least 72 hours before the event. Plan time for an AV check before doors open, and tell us who our contact is for speakers. We make reasonable efforts to handle changes after those dates but cannot guarantee them.</p>' +
-        '<p><strong>Venue and company paperwork.</strong> If the venue or Client\'s company requires a certificate of insurance or other paperwork, tell us what it must say and when it is due at least {{details_due_days}} days before the event.</p>'
+      title: 'Billing, purchase orders and run of show',
+      html: '<ol>' +
+        '<li><strong>Billing.</strong> This agreement is with the company or organization named as Client, and the person who signs says they have authority to sign for it. We send invoices to the contact above, or to an accounts payable address Client gives us in writing.</li>' +
+        '<li><strong>Purchase orders.</strong> If Client\'s company requires a purchase order, send us the PO number before the deposit is due. A purchase order process does not change the payment dates unless we agree in writing. We provide an invoice and a W-9 on request.</li>' +
+        '<li><strong>Run of show and AV.</strong> Send the run of show (agenda, speakers, presentations, cues and microphone needs) at least {{details_due_days}} days before the event, and presentations, videos and logos at least 72 hours before. Plan time for an AV check before doors open, and tell us who our contact is for speakers.</li>' +
+        '<li><strong>Venue and company paperwork.</strong> If the venue or Client\'s company requires a certificate of insurance or other paperwork, tell us what it must say and when it is due, at least {{details_due_days}} days before the event.</li>' +
+        '</ol>'
     },
     birthday: {
-      title: 'Location, noise and outdoor setup',
-      html:
-        '<p><strong>Private locations.</strong> If the event is at a home, backyard, rooftop or other space that is not a regular event venue, Client confirms that we may load in, that power and space are available, and that any landlord, building or HOA rules (elevator reservations, quiet hours, parking) are met.</p>' +
-        '<p><strong>Noise.</strong> Client is responsible for local noise rules and for neighbors. We lower the volume to the level the host, the venue or an authority asks for, and we stop if an officer tells us to.</p>' +
-        '<p><strong>Outdoor setup.</strong> For an outdoor event, Client provides a covered, level area for our equipment. Weather rules are in the Safety section.</p>'
+      title: 'Location and noise',
+      html: '<ol>' +
+        '<li><strong>Private locations.</strong> If the event is at a home, backyard, rooftop or other space that is not a regular event venue, Client confirms that we may load in, that power and space are available, and that any landlord, building or HOA rules (elevator reservations, quiet hours, parking) are met.</li>' +
+        '<li><strong>Noise.</strong> Client is responsible for local noise rules and for neighbors. We lower the volume to the level the host, the venue or an authority asks for, and we stop if an officer tells us to.</li>' +
+        '</ol>'
     }
   };
 
   function buildSections(kind) {
     var secs = [];
-    secs.push({ title: 'Parties and event details', html:
+    secs.push({ title: 'Parties and event', html:
       '<p>This agreement is made on <strong>{{current_date}}</strong> between <strong>Baseline Studio</strong>, Miami, Florida (&quot;Baseline Studio,&quot; &quot;we&quot; or &quot;us&quot;) and <strong>{{client_name}}</strong> (&quot;Client&quot; or &quot;you&quot;).</p>' +
       '<table style="width:100%;border-collapse:collapse;margin:0 0 14px;">' +
       '<tr><th style="' + TD + 'width:30%;text-align:left;">Client</th><td style="' + TD + '">{{client_name}}<br>{{client_email}}<br>{{client_phone}}</td></tr>' +
@@ -941,52 +1031,65 @@
       '<tr><th style="' + TD + 'text-align:left;">Date and time</th><td style="' + TD + '">{{event_date}}<br>{{event_time}}</td></tr>' +
       '<tr><th style="' + TD + 'text-align:left;">Venue</th><td style="' + TD + '">{{venue_name}}<br>{{venue_address}}</td></tr>' +
       '</table>' });
-    secs.push({ title: 'What we are providing', html:
-      '<p>Baseline Studio will provide the services listed below at the event above.</p>{{booked_items_table}}' });
-    secs.push({ title: 'Service terms', html: '{{service_sections}}' });
-    if (TYPE_SECTIONS[kind]) secs.push({ title: TYPE_SECTIONS[kind].title, html: TYPE_SECTIONS[kind].html });
+    secs.push({ glance: true, html:
+      '<h2>Agreement at a glance</h2><p><em>Plain-language summary. The full terms below are the agreement.</em></p>' +
+      '<table style="width:100%;border-collapse:collapse;border:2px solid #333;margin:0 0 14px;">' +
+      '<tr><th style="' + TD + 'width:30%;text-align:left;">Event</th><td style="' + TD + '">{{event_name}}</td></tr>' +
+      '<tr><th style="' + TD + 'text-align:left;">Date and time</th><td style="' + TD + '">{{event_date}}, {{event_time}}</td></tr>' +
+      '<tr><th style="' + TD + 'text-align:left;">Venue</th><td style="' + TD + '">{{venue_name}}</td></tr>' +
+      '<tr><th style="' + TD + 'text-align:left;">Services included</th><td style="' + TD + '">{{services_list}}</td></tr>' +
+      '<tr><th style="' + TD + 'text-align:left;">Total</th><td style="' + TD + '">{{total_price}}</td></tr>' +
+      '<tr><th style="' + TD + 'text-align:left;">Deposit</th><td style="' + TD + '">{{deposit_amount}} ({{deposit_percent}}, non-refundable). Due: {{deposit_due_date}}</td></tr>' +
+      '<tr><th style="' + TD + 'text-align:left;">Balance</th><td style="' + TD + '">{{balance_amount}}. Due: {{balance_due_date}}</td></tr>' +
+      '<tr><th style="' + TD + 'text-align:left;">Cancellation</th><td style="' + TD + '">{{cancellation_summary}}</td></tr>' +
+      '<tr><th style="' + TD + 'text-align:left;">Overtime</th><td style="' + TD + '">{{overtime_summary}}</td></tr>' +
+      '<tr><th style="' + TD + 'text-align:left;">Client contact</th><td style="' + TD + '">{{client_email}}<br>{{client_phone}}</td></tr>' +
+      '</table>' });
+    secs.push({ title: 'What we provide', html:
+      '<p>Baseline Studio will provide the services below at the event above.</p>{{booked_items_table}}' });
     secs.push({ title: 'Payment', html:
-      '<table style="width:100%;border-collapse:collapse;margin:0 0 14px;"><thead><tr><th style="' + TH + '">Payment</th><th style="' + TH + 'text-align:right;">Amount</th><th style="' + TH + '">Due</th></tr></thead><tbody>' +
-      '<tr><td style="' + TD + '">Deposit ({{deposit_percent}}, non-refundable)</td><td style="' + TD + 'text-align:right;">{{deposit_amount}}</td><td style="' + TD + '">{{deposit_due_date}}</td></tr>' +
-      '<tr><td style="' + TD + '">Remaining balance</td><td style="' + TD + 'text-align:right;">{{balance_amount}}</td><td style="' + TD + '">{{balance_due_date}}</td></tr>' +
-      '<tr><td style="' + TD + 'font-weight:bold;">Total</td><td style="' + TD + 'text-align:right;font-weight:bold;">{{total_price}}</td><td style="' + TD + '"></td></tr>' +
-      '</tbody></table>' +
       '<p>{{payment_terms}}</p>' +
-      '<p>We accept the payment methods listed on your invoice. If a payment is late, we may pause work on the event until it is paid. We do not have to provide services if the balance is unpaid when the event starts.</p>' });
+      '<p>Payment methods are listed on your invoice. We may pause work while a payment is late, and need not provide services if the balance is unpaid when the event starts.</p>' });
     secs.push({ title: 'Cancellation and rescheduling', html:
       '{{cancellation_terms}}' +
-      '<p><strong>Rescheduling.</strong> Client may ask in writing to move the event to a new date. If we are available on the new date, we move the booking and carry the deposit over to it. If we are not available and Client does not choose another date, the cancellation terms above apply, counted from the original event date.</p>' +
-      '<p><strong>If we cancel.</strong> If we have to cancel for any reason other than the events in the Force majeure section, we refund every payment Client made, including the deposit, and we help Client find a replacement.</p>' });
+      '<ol>' +
+      '<li><strong>Rescheduling.</strong> Client may ask in writing to move the event. If we are available on the new date, we move the booking and carry the deposit over. If not, and Client does not choose another date, the cancellation terms apply, counted from the original event date.</li>' +
+      '<li><strong>If we cancel.</strong> If we cancel for any reason other than those in the Force majeure section, we refund every payment Client made, including the deposit, and help Client find a replacement.</li>' +
+      '</ol>' });
+    secs.push({ title: 'What we need from you', html:
+      '{{client_responsibilities}}' +
+      '<p><strong>Venue rules, permits and fees.</strong> Client follows the venue\'s rules (load-in times and routes, sound limits and curfews, approved vendor lists, insurance requirements, and rules about effects, projection, confetti and open flame) and gets any permit, fire marshal approval or noise permit that the venue, city or county requires. If the venue charges us a fee because of Client\'s event, we tell Client before the event when we know about it and pass the fee through at cost.</p>' });
     secs.push({ title: 'Overtime', html:
-      '<p>Overtime means time past the contracted end time of the event. For this event overtime is billed at {{overtime_rate}}.</p>' +
-      '<ul>' +
-      '<li>Overtime is billed in {{overtime_block_minutes}}-minute blocks. Any part of a block counts as a full block.</li>' +
-      '<li>Client, or the contact Client names, must approve overtime on site before it starts. We stop at the contracted end time unless overtime is approved.</li>' +
-      '<li>If the venue charges overtime fees, we pass them through to Client at cost.</li>' +
-      '<li>We add overtime to a final invoice after the event.</li>' +
-      '</ul>' });
-    secs.push({ title: 'Client responsibilities', html: '<p>Client agrees to do the following.</p>{{client_responsibilities}}' });
-    secs.push({ title: 'Venue rules and permits', html:
-      '<p>Client is responsible for knowing and following the venue\'s rules, including load-in times and routes, sound limits and curfews, approved vendor lists, insurance requirements, and rules about effects, projection, confetti and open flame. Client is also responsible for any permit, fire marshal approval or noise permit that the venue, the city or the county requires for the event.</p>' +
-      '<p>If the venue charges us a fee because of Client\'s event, we tell Client before the event when we know about it and pass the fee through to Client at cost.</p>' });
-    secs.push({ title: 'Equipment and damage', html:
-      '<p>All equipment we bring stays our property. Client and the venue provide a secure place for our equipment during the event and during teardown. Client is responsible for the cost to repair or replace equipment that is damaged, lost or stolen because of guests, Client\'s other vendors, or Client, other than normal wear. Please keep food and drinks away from our equipment.</p>' });
-    secs.push({ title: 'Safety', html:
-      '<p><strong>Crowd.</strong> Client and the venue are responsible for crowd management and for keeping guests away from stages, cables, effects and equipment. Climbing on or hanging from equipment is not allowed, and our crew may ask guests to step back.</p>' +
-      '<p><strong>Effects.</strong> We may pause, reduce or stop any lighting or special effect at any time for safety, as described in the service sections above.</p>' +
-      '<p><strong>Weather.</strong> For outdoor events, Client provides a covered, level area for our equipment. We may pause or stop work if lightning, high wind or heavy rain puts people or equipment at risk.</p>' +
-      '<p><strong>Conduct.</strong> If anyone at the event threatens or harasses our crew, or conditions become unsafe, we may pause work until it is resolved and leave if it continues. No refund is owed in that case.</p>' });
+      '<p>Overtime is time past the contracted end time. For this event overtime is billed at {{overtime_rate}}.</p>' +
+      '<ol>' +
+      '<li>We bill overtime in {{overtime_block_minutes}}-minute blocks. Any part of a block counts as a full block.</li>' +
+      '<li>Client, or the contact Client names, must approve overtime on site before it starts. Without approval we stop at the contracted end time.</li>' +
+      '<li>Overtime goes on the final invoice with any overtime fees the venue charges us, which we pass through at cost.</li>' +
+      '</ol>' });
+    secs.push({ title: 'Service details', html: '{{service_sections}}' });
+    if (TYPE_SECTIONS[kind]) secs.push({ title: TYPE_SECTIONS[kind].title, html: TYPE_SECTIONS[kind].html });
+    secs.push({ title: 'Equipment, safety and conduct', html:
+      '<ol>' +
+      '<li><strong>Equipment.</strong> All equipment we bring stays our property. Client and the venue provide a secure place for it during the event and teardown. Client pays to repair or replace equipment that is damaged, lost or stolen because of guests, Client\'s other vendors or Client, other than normal wear. Keep food and drinks away from it.</li>' +
+      '<li><strong>Crowd.</strong> Client and the venue manage the crowd and keep guests away from stages, cables, effects and equipment. Client supervises children. No climbing on or hanging from equipment; our crew may ask guests to step back.</li>' +
+      '<li><strong>Weather.</strong> We may pause or stop work if lightning, high wind or heavy rain puts people or equipment at risk.</li>' +
+      '<li><strong>Conduct.</strong> If anyone threatens or harasses our crew, or conditions become unsafe, we may pause work until it is resolved and leave if it continues, with no refund.</li>' +
+      '</ol>' });
     secs.push({ title: 'Force majeure', html:
-      '<p>Neither side is responsible for a delay or failure to perform caused by something beyond its reasonable control, such as a hurricane or other severe weather, fire, flood, a government order, a venue closure, a power outage, or a public emergency. If the event cannot take place for one of these reasons, we move the event to a new date within 12 months and apply the payments Client made to it. If neither side can make a new date work, we refund the payments Client made, other than the non-refundable deposit and any costs we cannot recover.</p>' });
+      '<p>Neither side is responsible for a delay or failure caused by something beyond its reasonable control, such as a hurricane or other severe weather, fire, flood, a government order, a venue closure, a power outage or a public emergency. If the event cannot take place for that reason, we move it to a new date within 12 months and apply Client\'s payments to it. If neither side can make a new date work, we refund Client\'s payments except the non-refundable deposit and any costs we cannot recover.</p>' });
     secs.push({ title: 'Limitation of liability', html:
-      '<p>Our total liability for any claim connected with this agreement is limited to the amount Client has paid us under it. We are not liable for indirect, incidental or consequential damages. We are not liable for the acts of guests, the venue or other vendors, or for delays they cause.</p>' });
+      '<p>Our total liability for any claim connected with this agreement is limited to what Client has paid us under it. We are not liable for indirect, incidental or consequential damages, or for the acts of guests, the venue or other vendors, or for delays they cause.</p>' });
     secs.push({ title: 'Photos and video', html:
-      '<p>We may take photos and video of our setup and of the event, and use them in our portfolio, on our website and on social media. Client may opt out by checking the box below or by telling us in writing before the event.</p>' +
+      '<p>We may photograph and film our setup and the event for our portfolio, website and social media. Client may opt out by checking the box below or by telling us in writing before the event.</p>' +
       '<p>[ ] Client opts out of photo and video use by Baseline Studio.</p>' });
-    secs.push({ title: 'Governing law', html:
-      '<p>This agreement is governed by the laws of the State of Florida. Any dispute will be brought in the state or federal courts located in Miami-Dade County, Florida.</p>' });
-    secs.push({ title: 'Entire agreement', html:
-      '<p>This agreement is the whole agreement between Client and Baseline Studio for this event. It replaces earlier quotes, emails and conversations. Changes must be in writing and agreed by both sides, and an email that both sides confirm counts as writing. If a part of this agreement cannot be enforced, the rest stays in effect. Each side may sign electronically, and an electronic signature has the same effect as a handwritten one.</p>' });
+    secs.push({ title: 'Governing law and general terms', html:
+      '<ol>' +
+      '<li>Florida law governs this agreement. Any dispute will be brought in the state or federal courts located in Miami-Dade County, Florida.</li>' +
+      '<li>This is the whole agreement for this event. It replaces earlier quotes, emails and conversations.</li>' +
+      '<li>Changes must be in writing and agreed by both sides. An email that both sides confirm counts as writing.</li>' +
+      '<li>If a part of this agreement cannot be enforced, the rest stays in effect.</li>' +
+      '<li>An electronic signature has the same effect as a handwritten one.</li>' +
+      '</ol>' });
     secs.push({ title: 'Signatures', html:
       '<p>By signing, each side agrees to this agreement.</p>' + SIG_BLOCK });
     return secs;
@@ -995,8 +1098,11 @@
   function buildTemplateHtml(kind) {
     var secs = buildSections(kind);
     var h = '<h1>' + TITLES[kind] + '</h1>';
-    secs.forEach(function (s, i) {
-      h += '<h2>' + (i + 1) + '. ' + s.title + '</h2>' + s.html;
+    var n = 0;
+    secs.forEach(function (s) {
+      if (s.glance) { h += s.html; return; }
+      n++;
+      h += '<h2>' + n + '. ' + s.title + '</h2>' + s.html;
     });
     return h;
   }
@@ -1046,8 +1152,38 @@
     return fields.every(function (f) { return originals.indexOf(visibleText(f)) >= 0; });
   }
 
-  // Add the contract templates once, rename untouched legacy agreements, report edited ones.
-  // Pure: returns a new templates array and a new settings object. Nothing is deleted.
+  // Fingerprints (visible text, see fingerprint()) of the stock wording shipped in earlier versions.
+  // A stored template whose text matches one of these has never been edited by the owner, so it can be refreshed.
+  // Anything else is the owner's own version and is never touched.
+  var STOCK_HISTORY = {
+    'tpl-contract-generic':   { 1: '5864:ebdaf79b' },
+    'tpl-contract-wedding':   { 1: '6946:a064f6b0' },
+    'tpl-contract-quince':    { 1: '6797:a5a10442' },
+    'tpl-contract-mitzvah':   { 1: '6991:46834547' },
+    'tpl-contract-sweet16':   { 1: '6691:a73e09c0' },
+    'tpl-contract-corporate': { 1: '7058:16065717' },
+    'tpl-contract-birthday':  { 1: '6531:86ddf7fa' }
+  };
+
+  function fingerprint(s) {
+    var t = visibleText(s), h = 2166136261;
+    for (var i = 0; i < t.length; i++) { h ^= t.charCodeAt(i); h = Math.imul(h, 16777619) >>> 0; }
+    return t.length + ':' + h.toString(16);
+  }
+
+  // 'current' = text of this version, 'old' = untouched stock text of an earlier version, 'edited' = anything else.
+  function stockStatus(t, def) {
+    var fields = [t.contentHTML, t.content].filter(function (x) { return x !== undefined && x !== null && String(x).trim() !== ''; });
+    if (!fields.length) return 'edited';
+    var hist = STOCK_HISTORY[def.id] || {}, old = Object.keys(hist).map(function (k) { return hist[k]; });
+    var cur = fingerprint(def.contentHTML);
+    if (fields.every(function (f) { return fingerprint(f) === cur; })) return 'current';
+    if (fields.every(function (f) { return old.indexOf(fingerprint(f)) >= 0; })) return 'old';
+    return 'edited';
+  }
+
+  // Add the contract templates once, refresh untouched stock templates to the current wording, rename untouched legacy agreements,
+  // report edited ones. Pure: returns a new templates array and a new settings object. Nothing is deleted.
   function ensureTemplates(existing, settings) {
     var list = Array.isArray(existing) ? existing.map(function (t) { return t; }) : [];
     var s = settings && typeof settings === 'object' && !Array.isArray(settings) ? settings : {};
@@ -1068,18 +1204,33 @@
       return t;
     });
 
-    var fresh = [];
+    var fresh = [], refreshed = [], staleEdited = [];
     templateDefs().forEach(function (def) {
-      var present = list.some(function (t) { return t && t.id === def.id; });
-      if (present) { if (!seed[def.id]) { seed[def.id] = VERSION; changed = true; } return; }
+      var idx = -1;
+      list.forEach(function (t, i) { if (idx < 0 && t && t.id === def.id) idx = i; });
+      if (idx >= 0) {
+        var st = stockStatus(list[idx], def);
+        if (st === 'old') {
+          // untouched stock text of an earlier version: swap in the new wording, keep the owner's id, name and other fields
+          var copy = {}; for (var q in list[idx]) copy[q] = list[idx][q];
+          copy.contentHTML = def.contentHTML; copy.content = def.content; copy.builtinVersion = VERSION; copy.contractKind = def.contractKind;
+          list[idx] = copy; refreshed.push(def.id); seed[def.id] = VERSION; changed = true;
+        } else if (st === 'edited') {
+          // the owner changed this one: leave it alone, report it once
+          if ((seed[def.id] || 0) < VERSION) { staleEdited.push({ id: def.id, name: list[idx].name }); seed[def.id] = VERSION; changed = true; }
+        } else if (seed[def.id] !== VERSION) { seed[def.id] = VERSION; changed = true; }
+        return;
+      }
       if (seed[def.id]) return;                 // seeded before and then deleted by the owner: leave it gone
       fresh.push(def); seed[def.id] = VERSION; added.push(def.id); changed = true;
     });
     list = fresh.concat(list);
+    keptEdited = keptEdited.concat(staleEdited);
 
     var ns = {}; for (k in s) ns[k] = s[k];
     ns.contractSeed = seed;
-    return { templates: list, settings: ns, added: added, renamed: renamed, keptEdited: keptEdited, changed: changed };
+    if (refreshed.length || staleEdited.length) ns.contractRefresh = { version: VERSION, refreshed: refreshed, keptEdited: staleEdited.map(function (x) { return x.id; }) };
+    return { templates: list, settings: ns, added: added, renamed: renamed, refreshed: refreshed, keptEdited: keptEdited, changed: changed };
   }
 
   // ---------------------------------------------------------------------------

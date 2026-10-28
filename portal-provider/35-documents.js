@@ -153,6 +153,9 @@
         case 'empty': return 'Describe the change first.';
         case 'long': return 'Keep the description under 600 characters.';
         case 'big': return 'This contract is too long for the assistant. Edit it by hand.';
+        case 'busy': return 'The assistant is busy right now. Try again in a minute.';
+        case 'limitPart': return 'The free AI limit for today is used up. It resets tonight.';
+        case 'nodoc': return 'The contract has no text yet.';
         case 'stale': return 'The text changed after the suggestions were made. Press Suggest changes again.';
         case 'none': return 'No change needed.';
         default: return 'The assistant could not answer. Try again, or edit by hand.';
@@ -249,8 +252,7 @@
       const t = String(instruction || '').trim();
       if (!t) return _aiMsg('empty');
       if (t.length > 600) return _aiMsg('long');
-      const chars = (blocks || []).reduce((n, b) => n + b.html.length, 0);
-      if (!blocks || !blocks.length || blocks.length > 40 || chars > 30000) return _aiMsg('big');
+      if (!blocks || !blocks.length) return _aiMsg('nodoc'); // any length is fine: long contracts are sent in parts by _aiRunAll
       return '';
     }
     // Posts to the assistant link with the session token. Resolves to { ok: true, data } or { error, message }.
@@ -264,19 +266,118 @@
       let data = null;
       try { data = await r.json(); } catch (e) { data = null; }
       const code = data && typeof data.error === 'string' ? data.error : '';
-      if (r.status === 429 || code === 'limit') return { error: 'limit', message: _aiMsg('limit') };
+      if (code === 'limit') return { error: 'limit', message: _aiMsg('limit') };
+      if (r.status === 429) return { error: 'busy', message: _aiMsg('busy') }; // any other 429 is a busy answer, _aiRunAll retries it
       if (r.status === 401 || code === 'auth') return { error: 'auth', message: _aiMsg('auth') };
       if (r.status === 403 && code === 'forbidden') return { error: 'forbidden', message: _aiMsg('forbidden') };
       if (!r.ok) return { error: 'other', message: (r.status === 400 && /\s/.test(code)) ? code : _aiMsg('other') };
       if (!data || !Array.isArray(data.changes)) return { error: 'other', message: _aiMsg('other') };
       return { ok: true, data: data };
     }
+    // Long contracts: the assistant link accepts at most 40 paragraphs and 30000 characters per question, so the text is sent in parts
+    // that stay well under that (30 paragraphs, 20000 characters). A paragraph is never split. One paragraph over the character limit
+    // is skipped and reported. Each part is numbered 0.. inside the part; g is the paragraph number in the whole document.
+    function _aiLimits() { return { paras: 30, chars: 20000, cards: 25, warn: 6, retries: 3, waitMs: 1500 }; }
+    function _aiChunks(blocks) {
+      const L = _aiLimits(), chunks = [], tooBig = [];
+      let cur = [], chars = 0;
+      const flush = () => { if (cur.length) chunks.push(cur); cur = []; chars = 0; };
+      (blocks || []).forEach(b => {
+        const len = String(b.html).length;
+        if (len > L.chars) { tooBig.push(b.i); return; }
+        if (cur.length >= L.paras || chars + len > L.chars) flush();
+        cur.push({ g: b.i, html: b.html }); chars += len;
+      });
+      flush();
+      return { chunks: chunks.map(c => c.map((x, k) => ({ i: k, html: x.html, g: x.g }))), tooBig: tooBig };
+    }
+    // One question to the assistant with its own time limit. o.signal (Cancel) aborts it too.
+    async function _aiOne(o, payload) {
+      const ctl = (typeof AbortController === 'function') ? new AbortController() : null;
+      const outer = o.signal && o.signal.addEventListener ? o.signal : null;
+      const onAbort = () => { if (ctl) ctl.abort(); };
+      if (outer) { if (outer.aborted) onAbort(); else outer.addEventListener('abort', onAbort); }
+      const timer = setTimeout(onAbort, o.timeoutMs || 60000);
+      let res;
+      try { res = await _aiRequest(o.url, o.token, payload, o.fetchFn, ctl ? ctl.signal : undefined); }
+      catch (e) { res = { error: 'other', message: _aiMsg('other') }; }
+      clearTimeout(timer);
+      if (outer && outer.removeEventListener) outer.removeEventListener('abort', onAbort);
+      return res;
+    }
+    // Runs every part one after another with the same instruction. o: { url, token, instruction, event, blocks, fetchFn, signal, sleep, onProgress }.
+    // Returns { changes (document order, ids in the whole document), notes, parts, checked, failed: {part,error,message}|null, cancelled, tooBig, total }.
+    async function _aiRunAll(o) {
+      const L = _aiLimits(), plan = _aiChunks(o.blocks), n = plan.chunks.length;
+      const sleep = o.sleep || (ms => new Promise(r => setTimeout(r, ms)));
+      const aborted = () => !!(o.signal && o.signal.aborted);
+      const out = { changes: [], notes: '', parts: n, checked: 0, failed: null, cancelled: false, tooBig: plan.tooBig, total: 0 };
+      let all = [];
+      for (let k = 0; k < n; k++) {
+        if (aborted()) { out.cancelled = true; break; }
+        if (o.onProgress) o.onProgress(k + 1, n);
+        const chunk = plan.chunks[k];
+        const payload = { instruction: o.instruction, paragraphs: chunk.map(c => ({ i: c.i, html: c.html })), event: o.event };
+        let res = await _aiOne(o, payload);
+        for (let t = 0; t < L.retries && !res.ok && res.error === 'busy' && !aborted(); t++) { await sleep(L.waitMs); res = await _aiOne(o, payload); }
+        if (!res.ok) {
+          if (aborted()) out.cancelled = true; else out.failed = { part: k + 1, error: res.error, message: res.message };
+          break;
+        }
+        const parsed = _aiParseReply(res.data, chunk.map(c => ({ i: c.i, html: c.html })));
+        if (!out.notes && parsed.notes) out.notes = parsed.notes;
+        parsed.changes.forEach(c => {
+          const local = typeof c.i === 'number' ? c.i : Number(String(c.i).slice(6));
+          const g = chunk[local].g;
+          all.push(Object.assign({}, c, { i: typeof c.i === 'number' ? g : 'after:' + g }));
+        });
+        out.checked++;
+      }
+      const seen = new Set();
+      all = all.filter(c => { const key = typeof c.i === 'number' ? 'r' + c.i : 'a' + c.i + ':' + c.html; if (seen.has(key)) return false; seen.add(key); return true; });
+      const pos = c => (typeof c.i === 'number' ? c.i * 2 : Number(String(c.i).slice(6)) * 2 + 1);
+      all = all.map((c, idx) => ({ c: c, idx: idx })).sort((a, b) => (pos(a.c) - pos(b.c)) || (a.idx - b.idx)).map(x => x.c);
+      out.total = all.length;
+      out.changes = all.slice(0, L.cards).map((c, idx) => Object.assign({}, c, { key: String(idx) }));
+      return out;
+    }
+    // The status line after a run. Returns { text, kind }.
+    function _aiSummary(r) {
+      const L = _aiLimits(), n = r.changes.length, bits = [];
+      if (n) bits.push(n === 1 ? '1 suggestion.' : n + ' suggestions.');
+      if (r.total > n) bits.push('Showing the first ' + L.cards + ' of ' + r.total + '. Accept or skip these, then press Suggest changes again for the rest.');
+      if (r.tooBig && r.tooBig.length) {
+        const nums = r.tooBig.map(i => i + 1).join(', ');
+        bits.push((r.tooBig.length === 1 ? 'Paragraph ' + nums + ' was' : 'Paragraphs ' + nums + ' were') + ' too long to check and ' + (r.tooBig.length === 1 ? 'was' : 'were') + ' skipped. Edit ' + (r.tooBig.length === 1 ? 'it' : 'them') + ' by hand.');
+      }
+      if (r.failed) {
+        if (r.parts <= 1) return { text: r.failed.message, kind: 'error' };
+        const why = r.failed.error === 'limit' ? _aiMsg('limitPart') : r.failed.message;
+        bits.push('Part ' + r.failed.part + ' of ' + r.parts + ' was not checked. ' + why + (r.failed.part < r.parts ? ' Later parts were not checked either.' : ''));
+        return { text: bits.join(' '), kind: n ? 'warn' : 'error' };
+      }
+      if (r.cancelled) { bits.push('Stopped after ' + r.checked + ' of ' + r.parts + ' parts.'); return { text: bits.join(' '), kind: 'warn' }; }
+      if (!n) { bits.unshift(r.notes || _aiMsg('none')); return { text: bits.join(' '), kind: '' }; }
+      if (r.parts <= 1 && r.notes) bits.push(r.notes);
+      return { text: bits.join(' '), kind: r.tooBig && r.tooBig.length ? 'warn' : '' };
+    }
+    // Asks before a long run. Uses the CRM dialog when it exists.
+    async function _aiAsk(parts) {
+      const L = _aiLimits();
+      if (parts <= L.warn) return true;
+      const body = 'This is a long contract, so it will take about ' + parts + ' questions of today\'s free allowance.';
+      try {
+        if (window.CRMUI && typeof CRMUI.confirm === 'function') return !!(await CRMUI.confirm({ title: 'Long contract', body: body, confirmLabel: 'Continue' }));
+        if (typeof window.confirm === 'function') return !!window.confirm(body + ' Continue?');
+      } catch (e) { return false; }
+      return true;
+    }
     function _aiBoxHtml() {
       if (!_aiUrl()) return '';
       return `<section class="ce-ai" data-ce-ai aria-labelledby="ceAiL">
         <label class="field-label" id="ceAiL" for="ceAiText">Describe a change</label>
         <textarea class="input" id="ceAiText" data-ai-input rows="2" maxlength="600" placeholder="Example: the client provides a loading dock pass for load in"></textarea>
-        <div class="ce-ai-row"><button type="button" class="btn btn-secondary" data-ai-go>Suggest changes</button><span class="field-hint">Nothing changes until you accept it.</span></div>
+        <div class="ce-ai-row"><button type="button" class="btn btn-secondary" data-ai-go>Suggest changes</button><button type="button" class="btn btn-secondary" data-ai-cancel hidden>Cancel</button><span class="field-hint">Nothing changes until you accept it.</span></div>
         <p class="ce-ai-status" data-ai-status role="status" aria-live="polite"></p>
         <div class="ce-ai-list" data-ai-list></div>
       </section>`;
@@ -304,7 +405,8 @@
       const box = root && root.querySelector('[data-ce-ai]');
       const area = root && root.querySelector('#ceArea');
       if (!box || !area) return;
-      const input = box.querySelector('[data-ai-input]'), go = box.querySelector('[data-ai-go]');
+      const input = box.querySelector('[data-ai-input]'), go = box.querySelector('[data-ai-go]'), cancel = box.querySelector('[data-ai-cancel]');
+      let ctl_ = null;
       const status = box.querySelector('[data-ai-status]'), list = box.querySelector('[data-ai-list]');
       let st = null, busy = false;
       const say = (msg, kind) => { status.textContent = msg || ''; status.setAttribute('data-kind', kind || ''); };
@@ -340,22 +442,29 @@
         const url = _aiUrl();
         if (!url) { say(_aiMsg('other'), 'warn'); return; }
         const lastHtml = now();
-        setBusy(true); say('Reading the contract...', '');
+        setBusy(true);
+        const parts = _aiChunks(blocks).chunks.length;
+        if (!(await _aiAsk(parts))) { setBusy(false); say('Nothing was sent.', ''); return; }
+        say('Reading the contract...', '');
         st = null; render();
         const ctl = (typeof AbortController === 'function') ? new AbortController() : null;
-        const timer = setTimeout(() => { if (ctl) ctl.abort(); }, 60000);
-        let res;
-        try { res = await _aiRequest(url, window._sbToken, { instruction: input.value.trim(), paragraphs: blocks, event: _aiEventInfo(ev) }, window.fetch.bind(window), ctl ? ctl.signal : undefined); }
-        catch (e) { res = { error: 'other', message: _aiMsg('other') }; }
-        clearTimeout(timer);
+        ctl_ = ctl;
+        if (cancel) cancel.hidden = false;
+        let r;
+        try {
+          r = await _aiRunAll({ url: url, token: window._sbToken, instruction: input.value.trim(), event: _aiEventInfo(ev), blocks: blocks, fetchFn: window.fetch.bind(window), signal: ctl ? ctl.signal : undefined,
+            onProgress: (k, n) => { if (n > 1) say('Checking part ' + k + ' of ' + n, ''); } });
+        } catch (e) { r = { changes: [], notes: '', parts: parts, checked: 0, failed: { part: 1, error: 'other', message: _aiMsg('other') }, cancelled: false, tooBig: [], total: 0 }; }
+        ctl_ = null;
+        if (cancel) cancel.hidden = true;
         setBusy(false);
-        if (!res.ok) { say(res.message, 'error'); return; }
-        const parsed = _aiParseReply(res.data, blocks);
-        if (!parsed.changes.length) { say(parsed.notes || _aiMsg('none'), ''); return; }
-        st = { blocks: blocks, changes: parsed.changes, lastHtml: lastHtml };
-        say((parsed.changes.length === 1 ? '1 suggestion. ' : parsed.changes.length + ' suggestions. ') + (parsed.notes || ''), '');
+        if (now() !== lastHtml) { say(_aiMsg('stale'), 'warn'); return; }
+        const sum = _aiSummary(r);
+        if (r.changes.length) st = { blocks: blocks, changes: r.changes, lastHtml: lastHtml };
+        say(sum.text, sum.kind);
         render();
       });
+      if (cancel) cancel.addEventListener('click', () => { if (ctl_) ctl_.abort(); });
     }
 
     // Edit an unsigned event document. Signed documents are never editable.
@@ -1055,48 +1164,26 @@ body{margin:0;background:#e6e8eb;color:#111;font-family:Georgia,'Times New Roman
     //  ADDENDUM LIBRARY — auto-injected into contracts based on services
     // ─────────────────────────────────────────────────────────────────
     const ADDENDUM_LIBRARY = [
-      { keywords: ['cold spark'],
-        title: 'Cold Spark Towers: Safety & Liability Addendum',
-        content: `<p>This addendum governs the use of Cold Spark Towers ("pyrotechnic-style cold spark devices") at the Event.</p>
-<p><strong>1. Venue Approval.</strong> Client is solely responsible for obtaining written venue approval for cold spark effects prior to the event date. If approval is not obtained, Baseline Studio reserves the right to omit this effect without issuing a refund for its line item.</p>
-<p><strong>2. Safety Clearance.</strong> Cold spark towers require a minimum clearance of 6 feet on all sides and 12 feet of vertical clearance. Client and venue are responsible for ensuring these conditions are met.</p>
-<p><strong>3. Fire Safety.</strong> A fire extinguisher must be accessible within 15 feet of each device during operation. Baseline Studio is not responsible for venue compliance with local fire codes.</p>
-<p><strong>4. Liability.</strong> Client assumes all liability for any injury or property damage resulting from failure to maintain required clearances or from unauthorized guest contact with operating devices.</p>` },
-      { keywords: ['co₂ jets', 'co2 jets', 'co₂ jet', 'co2 jet'],
-        title: 'CO₂ Jets: Safety & Operations Addendum',
-        content: `<p>This addendum governs the use of CO₂ Jets at the Event.</p>
-<p><strong>1. Indoor Use.</strong> CO₂ jet effects require adequate venue ventilation. Use in sealed or poorly ventilated spaces may be restricted or prohibited at Baseline Studio's discretion.</p>
-<p><strong>2. Safe Zone.</strong> A minimum 8-foot guest-free safety perimeter must be maintained around active CO₂ jet devices during operation. Venue and Client are jointly responsible for crowd management in this zone.</p>
-<p><strong>3. Supply.</strong> CO₂ canisters are provided for the contracted duration only. Additional activations beyond the quoted scope may not be available on-site.</p>
-<p><strong>4. Liability.</strong> Client assumes responsibility for ensuring no guests approach active equipment during operation. Baseline Studio is not liable for injury resulting from unauthorized contact with CO₂ jet devices.</p>` },
-      { keywords: ['co₂ cannon', 'co2 cannon', 'co₂ cannons', 'co2 cannons'],
-        title: 'CO₂ Cannons: Safety & Operations Addendum',
-        content: `<p>This addendum governs the use of CO₂ Cannons ("handheld or mounted cryo cannons") at the Event.</p>
-<p><strong>1. Operator Control.</strong> CO₂ cannons are operated exclusively by Baseline Studio personnel. No guest or venue staff shall operate the equipment under any circumstance.</p>
-<p><strong>2. Direction of Effect.</strong> CO₂ cannon blasts shall not be directed at any individual's face at close range. A minimum stand-off distance of 4 feet is required for any directed guest interaction.</p>
-<p><strong>3. Venue Consent.</strong> Client is responsible for confirming venue consent to CO₂ cannon use. Condensation and CO₂ gas may affect certain surfaces and HVAC systems.</p>
-<p><strong>4. Liability.</strong> Baseline Studio is not liable for injury or property damage caused by guests attempting to operate or interfere with CO₂ cannon equipment.</p>` },
-      { keywords: ['dancing on cloud', 'dancing on clouds'],
-        title: 'Dancing on Clouds / Low-Lying Fog: Safety Addendum',
-        content: `<p>This addendum governs the use of the Dancing on Clouds low-lying fog effect at the Event.</p>
-<p><strong>1. Effect Description.</strong> The Dancing on Clouds effect uses a low-lying fog machine to create a ground-level cloud layer, typically for the first dance or a designated ceremony moment.</p>
-<p><strong>2. Slip Hazard.</strong> Low-lying fog may reduce visibility of the floor surface. Client and venue are responsible for ensuring the dance floor is dry and free of trip hazards prior to activation.</p>
-<p><strong>3. Duration.</strong> The effect is designed for a single designated moment (typically 3–5 minutes per activation). Extended continuous use is not included unless separately quoted.</p>
-<p><strong>4. Ventilation.</strong> Adequate venue ventilation is required. Baseline Studio reserves the right to halt the effect if CO₂ levels or visibility impairment present a safety concern.</p>` },
-      { keywords: ['led video wall', 'video wall'],
-        title: 'LED Video Wall: Setup & Power Requirements Addendum',
-        content: `<p>This addendum governs the installation and operation of an LED Video Wall at the Event.</p>
-<p><strong>1. Power Requirements.</strong> The LED Video Wall requires dedicated 20-amp circuits. Client is responsible for confirming power availability with the venue prior to the event date.</p>
-<p><strong>2. Setup Time.</strong> Installation requires a minimum of 2 hours of unobstructed venue access before guest arrival. Any reduction of this window due to venue scheduling is not the liability of Baseline Studio.</p>
-<p><strong>3. Content.</strong> Standard motion background content is included. Custom graphics, logos, or video must be delivered to Baseline Studio no later than 72 hours before the event date.</p>
-<p><strong>4. Structural Safety.</strong> The LED Video Wall will be ground-supported or rigged per the venue's approved plan. No modification to the panel arrangement shall be made without written consent from Baseline Studio.</p>` },
-      { keywords: ['fog', 'haze', 'fog / haze', 'fog/haze'],
-        title: 'Fog / Haze Machine: Operations Addendum',
-        content: `<p>This addendum governs the use of fog or haze machines at the Event.</p>
-<p><strong>1. Fire Alarm Systems.</strong> Fog and haze effects may trigger venue smoke detectors. Client and venue are solely responsible for coordinating with venue management to disable or cover applicable detectors prior to use. Baseline Studio is not liable for any false alarms or associated costs.</p>
-<p><strong>2. Effect Type.</strong> Haze machines produce a fine atmospheric haze to enhance lighting. Standard fog machines produce denser, more visible clouds. The contracted equipment type determines which is deployed.</p>
-<p><strong>3. Fluid.</strong> Only water-based, venue-safe fog/haze fluid is used. Oil-based fluids are not used by Baseline Studio.</p>
-<p><strong>4. Ventilation.</strong> Adequate venue ventilation is required. Baseline Studio reserves the right to reduce effect intensity if air quality or floor visibility is impaired beyond safe levels.</p>` },
+      // One shared "Effects and Equipment Safety" addendum is built from these entries (see _injectAddenda).
+      // Each entry keeps only the facts of that one effect. The rules every effect shares are written once in _injectAddenda.
+      { id: 'coldspark', effect: true, keywords: ['cold spark'],
+        title: 'Cold Spark Towers',
+        content: `Each device needs a minimum clearance of 6 feet on all sides and 12 feet of vertical clearance. Client and venue are responsible for ensuring these conditions are met. A fire extinguisher must be accessible within 15 feet of each device during operation. Baseline Studio is not responsible for venue compliance with local fire codes. Client assumes all liability for any injury or property damage resulting from failure to maintain required clearances or from unauthorized guest contact with operating devices.` },
+      { id: 'co2jets', effect: true, keywords: ['co₂ jets', 'co2 jets', 'co₂ jet', 'co2 jet'],
+        title: 'CO₂ Jets',
+        content: `Use in sealed or poorly ventilated spaces may be restricted or prohibited at Baseline Studio's discretion. A minimum 8-foot guest-free safety perimeter must be maintained around active jet devices during operation. Venue and Client are jointly responsible for crowd management in this zone. CO₂ canisters are provided for the contracted duration only, and additional activations beyond the quoted scope may not be available on-site.` },
+      { id: 'co2cannons', effect: true, keywords: ['co₂ cannon', 'co2 cannon', 'co₂ cannons', 'co2 cannons'],
+        title: 'CO₂ Cannons (handheld or mounted cryo cannons)',
+        content: `Blasts are never directed at any individual's face at close range. A minimum stand-off distance of 4 feet is required for any directed guest interaction. Client is responsible for confirming venue consent to cannon use. Condensation and CO₂ gas may affect certain surfaces and HVAC systems.` },
+      { id: 'clouds', effect: true, keywords: ['dancing on cloud', 'dancing on clouds'],
+        title: 'Dancing on Clouds (low-lying fog)',
+        content: `A low-lying fog machine creates a ground-level cloud layer, typically for the first dance or a designated ceremony moment. It may reduce visibility of the floor surface, so Client and venue are responsible for ensuring the dance floor is dry and free of trip hazards prior to activation. Each activation is typically 3 to 5 minutes. Extended continuous use is not included unless separately quoted. Baseline Studio reserves the right to halt the effect if CO₂ levels or visibility impairment present a safety concern.` },
+      { id: 'led', effect: false, keywords: ['led video wall', 'video wall'],
+        title: 'LED Video Wall',
+        content: `The wall requires dedicated 20-amp circuits, and Client is responsible for confirming power availability with the venue prior to the event date. Installation requires a minimum of 2 hours of unobstructed venue access before guest arrival, and any reduction of this window due to venue scheduling is not the liability of Baseline Studio. Standard motion background content is included. Custom graphics, logos, or video must be delivered to Baseline Studio no later than 72 hours before the event date. The wall will be ground-supported or rigged per the venue's approved plan, and no modification to the panel arrangement shall be made without written consent from Baseline Studio.` },
+      { id: 'fog', effect: true, keywords: ['fog', 'haze', 'fog / haze', 'fog/haze'],
+        title: 'Fog / Haze Machines',
+        content: `Fog and haze may trigger venue smoke detectors. Client and venue are solely responsible for coordinating with venue management to disable or cover applicable detectors prior to use, and Baseline Studio is not liable for any false alarms or associated costs. Haze machines produce a fine atmospheric haze to enhance lighting, and standard fog machines produce denser, more visible clouds. The contracted equipment type determines which is deployed. Only water-based, venue-safe fluid is used, and Baseline Studio does not use oil-based fluids. Baseline Studio reserves the right to reduce effect intensity if air quality or floor visibility is impaired beyond safe levels.` },
     ];
 
     function _detectEventServices(ev) {
@@ -1120,15 +1207,23 @@ body{margin:0;background:#e6e8eb;color:#111;font-family:Georgia,'Times New Roman
         if (hit) { matched.push(addendum); seen.add(addendum.title); }
       });
       if (!matched.length) return docHTML;
+      // One "Effects and Equipment Safety" addendum: the rules every effect shares are written once, then one short entry per booked item.
+      const has = id => matched.some(a => a.id === id);
+      const shared = [];
+      if (matched.some(a => a.effect)) {
+        shared.push(`<strong>Venue approval.</strong> Client obtains the venue's written approval before the event date for each effect listed below, along with any permit or fire marshal approval the venue or city requires. If approval is not in place, Baseline Studio may leave the effect out, and the price of that line item is not refunded.`);
+        shared.push(`<strong>Operator control.</strong> Only Baseline Studio personnel operate effects equipment. Guests and venue staff do not.`);
+        shared.push(`<strong>Clearances and safety zones.</strong> Client and the venue keep guests away from active devices and out of the clearances and safety zones below, and are responsible for crowd management there.`);
+        shared.push(`<strong>Stopping an effect.</strong> Baseline Studio may stop, pause or reduce any effect at any time for safety, including if ventilation, air quality or floor visibility is poor.`);
+        if (has('co2jets') || has('clouds') || has('fog')) shared.push(`<strong>Ventilation.</strong> CO₂ jets, low fog and fog or haze indoors need adequate venue ventilation.`);
+        shared.push(`<strong>Liability.</strong> Baseline Studio is not liable for injury or property damage caused by unauthorized guest contact with, or attempts to operate or interfere with, active effects equipment.`);
+      }
+      const bodyStyle = 'font-size:12px;line-height:1.8;color:#333;font-family:Arial,sans-serif;';
       let addendaHTML = `<div style="page-break-before:always;margin-top:48px;padding-top:32px;border-top:3px solid #1FA3E0;">
-        <h2 style="font-size:14px;text-transform:uppercase;letter-spacing:0.1em;color:#111;margin-bottom:24px;font-family:Arial,sans-serif;">Addenda: Service-Specific Terms</h2>`;
-      matched.forEach((a, idx) => {
-        addendaHTML += `<div style="margin-bottom:32px;${idx > 0 ? 'padding-top:24px;border-top:1px solid #ddd;' : ''}">
-          <h3 style="font-size:13px;text-transform:uppercase;letter-spacing:0.06em;color:#111;border-bottom:1px solid #eee;padding-bottom:6px;margin-bottom:12px;font-family:Arial,sans-serif;">${a.title}</h3>
-          <div style="font-size:12px;line-height:1.8;color:#333;font-family:Arial,sans-serif;">${a.content}</div>
-        </div>`;
-      });
-      addendaHTML += `</div>`;
+        <h2 style="font-size:14px;text-transform:uppercase;letter-spacing:0.1em;color:#111;margin-bottom:24px;font-family:Arial,sans-serif;">Addendum: Effects and Equipment Safety</h2>
+        <div style="${bodyStyle}"><p>This addendum covers the effects and equipment listed below. It applies only to the items booked for the Event.</p>`;
+      if (shared.length) addendaHTML += `<p><strong>Rules for every effect</strong></p><ol>${shared.map(x => `<li>${x}</li>`).join('')}</ol>`;
+      addendaHTML += `<p><strong>Rules for each item booked</strong></p><ul>${matched.map(a => `<li><strong>${a.title}.</strong> ${a.content}</li>`).join('')}</ul></div></div>`;
       return docHTML + addendaHTML;
     }
 

@@ -130,6 +130,7 @@ dialog.ce-sheet { width: min(860px, calc(100vw - 32px)); }
 .ce-ai textarea.input { display: block; width: 100%; box-sizing: border-box; min-height: 64px; font-size: 16px; }
 .ce-ai-row { display: flex; flex-wrap: wrap; align-items: center; gap: var(--sp-2) var(--sp-3); margin-top: var(--sp-2); }
 .ce-ai .btn { min-height: 44px; min-width: 44px; }
+.ce-ai [hidden] { display: none !important; }
 .ce-ai-status { margin: var(--sp-2) 0 0; font-size: 14px; line-height: 1.4; color: var(--text-2); }
 .ce-ai-status:empty { display: none; }
 .ce-ai-status[data-kind="error"] { color: var(--danger); }
