@@ -1554,13 +1554,35 @@
       return ev;
     }
 
+    // The quote travels inside the link (after the #), so the client opens it with no sign-in and nothing to look up (quote.html).
+    // Returns '' when the link would be too long for the email function (2000 characters); the caller then falls back to the portal.
+    function _mnyB64Url(str) {
+      const bytes = new TextEncoder().encode(str);
+      let bin = '';
+      for (let i = 0; i < bytes.length; i++) bin += String.fromCharCode(bytes[i]);
+      return btoa(bin).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+    }
+    function _mnyQuoteLink(ev, lines, total, deposit, terms, eventDate) {
+      try {
+        const t = new Date();
+        const iso = t.getFullYear() + '-' + String(t.getMonth() + 1).padStart(2, '0') + '-' + String(t.getDate()).padStart(2, '0');
+        const payload = { v: 1, c: String(ev.clientName || '').slice(0, 120), t: String(ev.type || '').slice(0, 80), d: eventDate || '',
+          l: (lines || []).map(l => [String(l.desc || '').slice(0, 200), Number(l.price) || 0]), T: Number(total) || 0, D: Number(deposit) || 0,
+          p: Number(terms && terms.depositPercent) || 50, b: Number(terms && terms.balanceDueDays) || 0, i: iso };
+        const url = 'https://www.baselinestudiofl.com/quote.html#q=' + _mnyB64Url(JSON.stringify(payload));
+        return url.length <= 1900 ? url : '';
+      } catch (e) { return ''; }
+    }
+    const _MNY_PORTAL_URL = 'https://www.baselinestudiofl.com/portal-client.html';
+
     // Sends a quote email for an event and records it. Shared by the builder and "Send" on the Quotes tab.
     async function _mnySendQuoteMail(ev, email, lines, total) {
       const deposit = _mnyDeposit(total);
       const terms = _mnyTerms();
       const evDate = _mnyDate(ev.date);
       const eventDate = evDate ? evDate.toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' }) : '';
-      // portalUrl is sent in the payload so the Edge Function can use it in the email button.
+      // portalUrl is sent in the payload so the Edge Function can use it in the email button. It is the quote page, so she sees the quote without a login.
+      const portalUrl = _mnyQuoteLink(ev, lines, total, deposit, terms, eventDate) || _MNY_PORTAL_URL;
       const result = await BSPortal.sendEmail('quote', {
         email,
         clientName: ev.clientName || 'there',
@@ -1568,12 +1590,11 @@
         eventType: ev.type || '',
         lines, total, deposit,
         notes: '',
-        portalUrl: 'https://www.baselinestudiofl.com/portal-client.html'
+        portalUrl: portalUrl
       });
       if (result.ok) return true;
-      const portalUrl = 'https://www.baselinestudiofl.com/portal-client.html';
       const quoteLines = lines.map(l => `${l.desc}: $${l.price.toLocaleString()}`).join('\n');
-      const quoteText = `Hi ${ev.clientName || 'there'},\n\nHere's your quote from Baseline Studio.\n\nEvent Date: ${eventDate}\n\n${quoteLines}\n\nTotal: $${total.toLocaleString()}\nDeposit to book (${terms.depositPercent}%): $${deposit.toLocaleString()}\n\nReady to move forward? You can access your client portal here:\n${portalUrl}\n\nOr just reply to this email or call us at (786) 302-6056. We will get you sorted.\n\nSaul\nBaseline Studio\nbaselinestudiofl.com | (786) 302-6056`;
+      const quoteText = `Hi ${ev.clientName || 'there'},\n\nHere's your quote from Baseline Studio.\n\nEvent Date: ${eventDate}\n\n${quoteLines}\n\nTotal: $${total.toLocaleString()}\nDeposit to book (${terms.depositPercent}%): $${deposit.toLocaleString()}\n\nReady to move forward? You can see your quote here:\n${portalUrl}\n\nOr just reply to this email or call us at (786) 302-6056. We will get you sorted.\n\nSaul\nBaseline Studio\nbaselinestudiofl.com | (786) 302-6056`;
       showEmailFallback(email, 'Your Event Quote - Baseline Studio', quoteText, 'Email is not available right now. Send it yourself:');
       return false;
     }

@@ -1,0 +1,215 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="robots" content="noindex, nofollow">
+<meta name="referrer" content="no-referrer">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="theme-color" content="#07070d">
+<title>Your Quote | Baseline Studio</title>
+<link rel="icon" href="favicon.ico" sizes="any">
+<link rel="icon" type="image/png" sizes="32x32" href="favicon-32x32.png">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<link rel="preload" as="font" type="font/woff2" crossorigin href="fonts/1Ptgg87LROyAm3Kz-C8CSKlv.woff2">
+<link rel="stylesheet" href="fonts/fonts.css">
+<link rel="stylesheet" href="crm-tokens.css?v=1">
+<style>
+  /* Quote page. The quote travels inside the link (after the #), so there is no sign-in and nothing to look up.
+     Everything from the link is written to the page with textContent, never as HTML. */
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  html { -webkit-text-size-adjust: 100%; }
+  body { background: var(--surface-0); color: var(--text-1); font-family: var(--font-body); font-size: 16px; line-height: 1.5; min-height: 100vh; min-height: 100dvh; }
+  a { color: var(--cyan); }
+  a:focus-visible, button:focus-visible { outline: 2px solid var(--focus); outline-offset: 3px; }
+
+  .wrap { max-width: 720px; margin: 0 auto; padding: 28px 16px 56px; }
+  .brand { display: flex; align-items: center; justify-content: space-between; gap: 16px; margin-bottom: 28px; }
+  .brand img { height: 40px; width: auto; display: block; }
+  .brand-tag { font-size: 13px; color: var(--text-3); text-align: right; }
+
+  .hero { margin-bottom: 24px; }
+  .eyebrow { font-size: 13px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--cyan); margin-bottom: 8px; }
+  h1 { font-family: var(--font-display); font-weight: 400; font-size: clamp(34px, 8vw, 52px); line-height: 1.05; letter-spacing: 0.01em; text-wrap: balance; }
+  .lede { margin-top: 14px; color: var(--text-2); max-width: 56ch; }
+
+  .facts { display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 12px; margin-bottom: 20px; }
+  .fact { background: var(--surface-1); border: 1px solid var(--border); border-radius: 12px; padding: 14px 16px; min-width: 0; }
+  .fact-l { font-size: 12px; letter-spacing: 0.06em; text-transform: uppercase; color: var(--text-3); }
+  .fact-v { margin-top: 4px; font-weight: 600; overflow-wrap: anywhere; }
+
+  .sheet { background: var(--surface-1); border: 1px solid var(--border); border-radius: 16px; overflow: hidden; }
+  .lines { list-style: none; }
+  .line { display: flex; justify-content: space-between; align-items: baseline; gap: 16px; padding: 16px 20px; border-bottom: 1px solid var(--border); }
+  .line-d { min-width: 0; overflow-wrap: anywhere; }
+  .line-p { flex: none; font-variant-numeric: tabular-nums; font-weight: 600; }
+  .totals { padding: 20px; background: var(--surface-2); display: grid; gap: 10px; }
+  .row { display: flex; justify-content: space-between; align-items: baseline; gap: 16px; color: var(--text-2); }
+  .row .v { font-variant-numeric: tabular-nums; font-weight: 600; color: var(--text-1); }
+  .row.total { color: var(--text-1); padding-bottom: 12px; border-bottom: 1px solid var(--border); }
+  .row.total .v { font-family: var(--font-display); font-weight: 400; font-size: 40px; line-height: 1; letter-spacing: 0.01em; }
+  .terms { padding: 16px 20px 20px; color: var(--text-3); font-size: 14px; }
+
+  .actions { display: flex; flex-wrap: wrap; gap: 12px; margin: 24px 0 10px; }
+  .btn { display: inline-flex; align-items: center; justify-content: center; min-height: 48px; padding: 0 22px; border-radius: 10px; font: 600 16px/1 var(--font-body); text-decoration: none; cursor: pointer; border: 1px solid var(--border-ui); background: transparent; color: var(--text-1); }
+  .btn:hover { background: var(--surface-2); }
+  .btn-primary { background: var(--cyan); border-color: var(--cyan); color: var(--text-on-accent); }
+  .btn-primary:hover { background: var(--cyan-hover); border-color: var(--cyan-hover); }
+  .help { color: var(--text-2); margin-top: 18px; }
+  .small { margin-top: 12px; font-size: 14px; color: var(--text-3); }
+  .expired { margin-bottom: 16px; padding: 12px 16px; border-radius: 12px; background: var(--warn-tint); color: var(--warn); font-size: 14px; }
+  .fail { background: var(--surface-1); border: 1px solid var(--border); border-radius: 16px; padding: 28px 22px; }
+  .fail h1 { font-size: 34px; }
+  .fail p { margin-top: 12px; color: var(--text-2); }
+  [hidden] { display: none !important; }
+
+  @media (max-width: 520px) {
+    .brand-tag { display: none; }
+    .line { padding: 14px 16px; }
+    .totals, .terms { padding-left: 16px; padding-right: 16px; }
+    .btn { width: 100%; }
+  }
+
+  /* Save as PDF: a clean white sheet */
+  @media print {
+    @page { margin: 14mm; }
+    body { background: #fff; color: #111; }
+    .wrap { max-width: none; padding: 0; }
+    .eyebrow, a { color: #0b6d99; }
+    .lede, .row, .terms, .help, .small, .fact-l, .brand-tag { color: #444; }
+    .fact, .sheet { background: #fff; border-color: #cfd3d8; }
+    .totals { background: #f2f4f6; }
+    .line, .row.total { border-color: #dfe2e6; }
+    .row .v, .row.total, .fact-v { color: #111; }
+    .actions, .signin, .no-print { display: none !important; }
+    .brand img { filter: invert(1) hue-rotate(180deg); }
+    .sheet, .fact { break-inside: avoid; }
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header class="brand">
+    <a href="/" aria-label="Baseline Studio home"><img src="logo-full.webp" alt="Baseline Studio" width="281" height="88"></a>
+    <div class="brand-tag">Miami event production<br>(786) 302-6056</div>
+  </header>
+
+  <main id="quote" hidden>
+    <section class="hero">
+      <div class="eyebrow">Your quote</div>
+      <h1 id="qTitle">Here's your quote</h1>
+      <p class="lede" id="qLede"></p>
+    </section>
+
+    <div id="qExpired" class="expired" hidden></div>
+    <div class="facts" id="qFacts"></div>
+
+    <section class="sheet" aria-label="Quote">
+      <ul class="lines" id="qLines"></ul>
+      <div class="totals">
+        <div class="row total"><span>Total</span><span class="v" id="qTotal"></span></div>
+        <div class="row"><span id="qDepLabel">Deposit to hold your date</span><span class="v" id="qDep"></span></div>
+        <div class="row" id="qBalRow"><span id="qBalLabel">Balance</span><span class="v" id="qBal"></span></div>
+      </div>
+      <p class="terms" id="qTerms"></p>
+    </section>
+
+    <div class="actions">
+      <a class="btn btn-primary" id="qBook" href="mailto:Hello@baselinestudiofl.com">Book it</a>
+      <button type="button" class="btn" id="qPdf">Save as PDF</button>
+      <a class="btn" href="tel:+17863026056">Call (786) 302-6056</a>
+    </div>
+    <p class="help">Want to move something around? Just reply to the email or call us. We'll sort it out ASAP.</p>
+    <p class="small signin no-print">Already have a client portal login? <a href="portal-client.html">Sign in to your portal</a>.</p>
+  </main>
+
+  <section id="fail" class="fail" hidden>
+    <h1>This link looks incomplete</h1>
+    <p>Some email apps cut long links short. Message us at <a href="mailto:Hello@baselinestudiofl.com">Hello@baselinestudiofl.com</a> or call <a href="tel:+17863026056">(786) 302-6056</a> and we'll send your quote again.</p>
+  </section>
+</div>
+
+<script>
+(function () {
+  var $ = function (id) { return document.getElementById(id); };
+  function fail() { $('quote').hidden = true; $('fail').hidden = false; document.title = 'Quote link | Baseline Studio'; }
+  function clean(s, n) { return String(s == null ? '' : s).replace(/[\u0000-\u001f]/g, ' ').trim().slice(0, n); }
+  function num(v) { var n = Number(v); return isFinite(n) && n >= 0 && n < 1e8 ? n : null; }
+  function usd(n) {
+    var whole = Math.abs(n - Math.round(n)) < 0.005;
+    return '$' + n.toLocaleString('en-US', { minimumFractionDigits: whole ? 0 : 2, maximumFractionDigits: 2 });
+  }
+  function parse() {
+    var m = /(?:^#|&)q=([A-Za-z0-9_-]+)/.exec(location.hash || '');
+    if (!m) return null;
+    var b64 = m[1].replace(/-/g, '+').replace(/_/g, '/');
+    while (b64.length % 4) b64 += '=';
+    var bin = atob(b64), bytes = new Uint8Array(bin.length);
+    for (var i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+    return JSON.parse(new TextDecoder().decode(bytes));
+  }
+  function fact(label, value) {
+    if (!value) return;
+    var d = document.createElement('div'); d.className = 'fact';
+    var l = document.createElement('div'); l.className = 'fact-l'; l.textContent = label;
+    var v = document.createElement('div'); v.className = 'fact-v'; v.textContent = value;
+    d.appendChild(l); d.appendChild(v); $('qFacts').appendChild(d);
+  }
+  function longDate(iso) {
+    var m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(String(iso || ''));
+    if (!m) return '';
+    return new Date(+m[1], +m[2] - 1, +m[3], 12).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' });
+  }
+  try {
+    var q = parse();
+    if (!q || q.v !== 1 || !Array.isArray(q.l) || !q.l.length || q.l.length > 60) return fail();
+    var total = num(q.T);
+    if (total === null) return fail();
+    var dep = num(q.D); if (dep === null) dep = Math.round(total / 2);
+    var pct = num(q.p) || 50, balDays = num(q.b);
+    var name = clean(q.c, 120), type = clean(q.t, 80), when = clean(q.d, 80);
+    var first = name.split(/\s+/)[0] || '';
+
+    document.title = 'Your quote' + (first ? ' for ' + first : '') + ' | Baseline Studio';
+    $('qTitle').textContent = first ? first + ', here\'s your quote' : 'Here\'s your quote';
+    $('qLede').textContent = 'Thanks for thinking of us for your ' + (type ? type.toLowerCase() : 'event') + '. We love this part, figuring out what\'s going to make it feel like yours. Here\'s what we put together.';
+    fact('Prepared for', name); fact('Event', type.charAt(0).toUpperCase() + type.slice(1)); fact('Date', when);
+
+    var sum = 0;
+    q.l.forEach(function (row) {
+      var p = num(row && row[1]); if (p === null) throw new Error('bad line');
+      sum += p;
+      var li = document.createElement('li'); li.className = 'line';
+      var d = document.createElement('span'); d.className = 'line-d'; d.textContent = clean(row[0], 200) || 'Service';
+      var pr = document.createElement('span'); pr.className = 'line-p'; pr.textContent = usd(p);
+      li.appendChild(d); li.appendChild(pr); $('qLines').appendChild(li);
+    });
+    $('qTotal').textContent = usd(total);
+    $('qDepLabel').textContent = 'Deposit to hold your date' + (pct ? ' (' + pct + '%)' : '');
+    $('qDep').textContent = usd(dep);
+    var bal = Math.max(0, total - dep);
+    if (bal > 0) {
+      $('qBalLabel').textContent = 'Balance' + (balDays ? ', due ' + balDays + ' days before your event' : '');
+      $('qBal').textContent = usd(bal);
+    } else { $('qBalRow').hidden = true; }
+
+    var issued = longDate(q.i), good = '';
+    if (/^\d{4}-\d{2}-\d{2}$/.test(String(q.i || ''))) {
+      var p = q.i.split('-'), exp = new Date(+p[0], +p[1] - 1, +p[2] + 30, 12);
+      good = exp.toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' });
+      if (exp.getTime() < Date.now()) {
+        $('qExpired').textContent = 'This quote was good until ' + good + '. Message us and we\'ll refresh it for you.';
+        $('qExpired').hidden = false;
+      }
+    }
+    $('qTerms').textContent = (issued ? 'Prepared ' + issued + '. ' : '') + (good ? 'Good for 30 days, until ' + good + '. ' : 'Good for 30 days. ') + 'Final pricing depends on the event details.';
+
+    var subject = 'Booking' + (type ? ': ' + type : '') + (name ? ' for ' + name : '');
+    var body = 'Hi, we\'d like to move forward with the quote (' + usd(total) + ').' + (when ? '\nDate: ' + when : '') + '\n\nThanks,\n' + (name || '');
+    $('qBook').href = 'mailto:Hello@baselinestudiofl.com?subject=' + encodeURIComponent(subject) + '&body=' + encodeURIComponent(body);
+    $('qPdf').addEventListener('click', function () { window.print(); });
+    $('quote').hidden = false;
+  } catch (e) { fail(); }
+})();
+</script>
+</body>
+</html>
