@@ -1,0 +1,9 @@
+/* portal-provider/css/62-link-fill.css  -  "Paste a product link" field on the cost and purchase forms. */
+.lf-field { margin: 0 0 var(--sp-3); }
+.cst-add-grid .lf-field { grid-column: 1 / -1; margin: 0; }
+.lf-row { display: flex; gap: var(--sp-2); align-items: stretch; }
+.lf-row .input { flex: 1 1 auto; min-width: 0; }
+.lf-btn { flex: 0 0 auto; white-space: nowrap; }
+.lf-note { display: block; overflow-wrap: anywhere; }
+.lf-note-bad { color: var(--danger, #e5484d); }
+@media (max-width: 479.98px) { .lf-row { flex-direction: column; } .lf-btn { width: 100%; } }

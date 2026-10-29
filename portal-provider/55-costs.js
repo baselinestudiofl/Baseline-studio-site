@@ -468,6 +468,7 @@
       return '<form class="cst-add" onsubmit="costsAddFromForm(\'' + eid + '\');return false;" aria-label="Add a cost">'
         + '<div class="section-label">Add a cost</div>'
         + '<div class="cst-add-grid">'
+        +   (typeof lfBlockHtml === 'function' ? lfBlockHtml('cstAdd') : '')
         +   '<div class="field"><label class="field-label" for="cstAddCat">Category</label><select class="input" id="cstAddCat">' + catOpts + '</select></div>'
         +   '<div class="field cst-add-wide"><label class="field-label" for="cstAddLabel">What was it</label><input class="input" id="cstAddLabel" type="text" autocomplete="off" placeholder="Example: Truck rental"></div>'
         +   '<div class="field"><label class="field-label" for="cstAddAmt">Amount</label><div class="input-wrap input-money"><span class="input-prefix">$</span><input class="input" id="cstAddAmt" type="text" inputmode="decimal" autocomplete="off" placeholder="0.00"></div></div>'
@@ -1105,6 +1106,7 @@
       const cats = (typeof INV_CATEGORIES !== 'undefined' && Array.isArray(INV_CATEGORIES)) ? INV_CATEGORIES : ['Other'];
       const eid = costsQ(eventId);
       const inner = '<form class="cst-gear" onsubmit="costsSubmitGear(\'' + eid + '\');return false;">'
+        + (typeof lfBlockHtml === 'function' ? lfBlockHtml('cstG') : '')
         + '<div class="field"><label class="field-label" for="cstGName">What did you buy</label><input class="input" id="cstGName" type="text" required autocomplete="off" placeholder="Example: Wireless mic"></div>'
         + '<div class="cst-two"><div class="field"><label class="field-label" for="cstGCat">Category</label><select class="input" id="cstGCat">' + cats.map(c => '<option value="' + esc(c) + '">' + esc(c) + '</option>').join('') + '</select></div>'
         +   '<div class="field"><label class="field-label" for="cstGQty">How many</label><input class="input" id="cstGQty" type="number" min="1" step="1" value="1" inputmode="numeric" oninput="costsGearPreview()"></div></div>'

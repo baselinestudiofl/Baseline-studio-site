@@ -208,6 +208,7 @@
       const pre = preset || {};
       const cats = invbCategoryOptions().map(c => [c, c]).concat([['__new', 'New category...']]);
       const inner = '<form class="invb-form" onsubmit="invbSubmitPurchase();return false;">'
+        + (typeof lfBlockHtml === 'function' ? lfBlockHtml('ibp') : '')
         + '<div class="field"><label class="field-label" for="ibpName">What did you buy</label><input class="input" id="ibpName" type="text" required autocomplete="off" placeholder="Example: QSC K12.2 speaker"></div>'
         + '<div class="invb-two"><div class="field"><label class="field-label" for="ibpCat">Category</label>' + invbSelect('ibpCat', cats, pre.category || 'Speakers', 'invbCatChange(this)')
         +   '<input class="input invb-newcat" id="ibpNewCat" type="text" autocomplete="off" placeholder="Name the new category" hidden></div>'
